@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NearMe India - Find Anything Near You</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,sans-serif;background:#f8fafc}
+.header{background:#2563eb;color:#fff;padding:16px;position:sticky;top:0;z-index:100}
+.header h1{font-size:22px;text-align:center}
+.search-box{max-width:600px;margin:20px auto;padding:0 16px}
+.search-box input{width:100%;padding:14px 18px;border-radius:30px;border:2px solid #e2e8f0;font-size:16px;outline:none}
+.search-box input:focus{border-color:#2563eb}
+.cats{display:flex;gap:10px;overflow-x:auto;padding:10px 16px;max-width:1000px;margin:0 auto}
+.cats button{white-space:nowrap;padding:8px 16px;border-radius:20px;border:1px solid #e2e8f0;background:#fff;cursor:pointer}
+.cats button.active{background:#2563eb;color:#fff;border-color:#2563eb}
+.container{max-width:1000px;margin:0 auto;padding:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,0.1)}
+.card h3{color:#1e293b;margin-bottom:6px}
+.card p{color:#64748b;font-size:14px;margin:4px 0}
+.badge{display:inline-block;background:#dbeafe;color:#2563eb;padding:2px 8px;border-radius:10px;font-size:12px;margin-bottom:8px}
+.btn{width:100%;margin-top:10px;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-weight:600}
+.add-btn{position:fixed;bottom:20px;right:20px;background:#2563eb;color:#fff;width:56px;height:56px;border-radius:50%;border:none;font-size:28px;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,0.4)}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:center;justify-content:center;padding:16px}
+.modal.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;padding:20px;width:100%;max-width:400px;max-height:90vh;overflow-y:auto}
+.modal-box input,.modal-box select,.modal-box textarea{width:100%;padding:10px;margin:6px 0 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px}
+.modal-box label{font-size:13px;font-weight:600;color:#334155}
+.status{padding:10px;text-align:center;font-size:13px;color:#64748b}
+</style>
+</head>
+<body>
+<div class="header"><h1>📍 NearMe India</h1></div>
+<div class="search-box"><input id="search" type="text" placeholder="Search hospital, hotel, shop, service near you..." oninput="render()"></div>
+<div class="cats" id="cats"></div>
+<div class="status" id="status">Loading...</div>
+<div class="container" id="list"></div>
+<button class="add-btn" onclick="openModal()">+</button>
+
+<div class="modal" id="modal">
+<div class="modal-box">
+<h3>Add New Place</h3>
+<label>Name *</label><input id="f_name" placeholder="Ex: City Hospital">
+<label>Category *</label><select id="f_cat"><option value="Hospital">Hospital</option><option value="Hotel">Hotel</option><option value="Restaurant">Restaurant</option><option value="Shop">Shop</option><option value="Service">Service</option><option value="Education">Education</option><option value="Other">Other</option></select>
+<label>Phone</label><input id="f_phone" placeholder="Ex: 9876543210">
+<label>Address</label><textarea id="f_addr" rows="2" placeholder="Full address"></textarea>
+<label>City</label><input id="f_city" value="Narasipura" placeholder="Your city">
+<button class="btn" onclick="savePlace()">Save Place</button>
+<button class="btn" style="background:#e2e8f0;color:#334155;margin-top:8px" onclick="closeModal()">Cancel</button>
+<p style="font-size:11px;color:#94a3b8;margin-top:10px;text-align:center" id="connInfo"></p>
+</div>
+</div>
+
+<script>
+// ============ CONFIG - UPDATE THIS LATER IF YOU HAVE SUPABASE ============
+// Leave empty for now - App will work with localStorage (NO ERROR)
+// When you get Supabase keys, paste here:
+const SUPABASE_URL = ""; // Ex: https://xyz.supabase.co
+const SUPABASE_KEY = ""; // Ex: eyJhbG...
+// =========================================================================
+
+let supabaseClient = null;
+let useSupabase = false;
+
+// Safe Supabase Init - No error if keys empty
+try {
+  if(SUPABASE_URL && SUPABASE_KEY && SUPABASE_URL.startsWith("http")){
+    supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    useSupabase = true;
+  }
+} catch(e){ useSupabase = false; }
+
+document.getElementById("connInfo").innerText = useSupabase? "Connected to Supabase ✓" : "Local mode (Add Supabase keys later to sync)";
+
+const categories = ["All","Hospital","Hotel","Restaurant","Shop","Service","Education","Other"];
+const defaultData = [
+{name:"City Hospital",cat:"Hospital",phone:"9876543210",addr:"Main Road",city:"Narasipura"},
+{name:"Grand Hotel",cat:"Hotel",phone:"9876543211",addr:"Bus Stand",city:"Narasipura"},
+{name:"Annapurna Restaurant",cat:"Restaurant",phone:"9876543212",addr:"Market",city:"Narasipura"},
+{name:"Medical Shop",cat:"Shop",phone:"9876543213",addr:"Near Hospital",city:"Narasipura"}
+];
+
+let places = [];
+let activeCat = "All";
+
+async function loadData(){
+  document.getElementById("status").innerText = useSupabase? "Loading from cloud..." : "Local data";
+  if(useSupabase){
+    try{
+      let {data,error} = await supabaseClient.from("places").select("*").order("id",{ascending:false});
+      if(error) throw error;
+      places = data.length? data : [];
+    }catch(e){
+      console.log("Supabase error, using local", e);
+      places = JSON.parse(localStorage.getItem("nearme_places") || "null") || defaultData;
+      document.getElementById("status").innerText = "Supabase error - using local data";
+    }
+  } else {
+    places = JSON.parse(localStorage.getItem("nearme_places") || "null") || defaultData;
+  }
+  renderCats();
+  render();
+}
+
+function renderCats(){
+  document.getElementById("cats").innerHTML = categories.map(c=>`<button class="${c===activeCat?'active':''}" onclick="setCat('${c}')">${c}</button>`).join("");
+}
+function setCat(c){activeCat=c;renderCats();render();}
+
+function render(){
+  let q = document.getElementById("search").value.toLowerCase();
+  let filtered = places.filter(p=>{
+    let matchCat = activeCat==="All" || p.cat===activeCat || p.category===activeCat;
+    let text = (p.name+" "+(p.cat||p.category)+" "+p.city+" "+p.addr).toLowerCase();
+    let matchQ =!q || text.includes(q);
+    return matchCat && matchQ;
+  });
+  document.getElementById("status").innerText = `${filtered.length} places found ${useSupabase?' | Cloud':' | Local'}`;
+  document.getElementById("list").innerHTML = filtered.map(p=>`
+    <div class="card">
+      <span class="badge">${p.cat||p.category}</span>
+      <h3>${p.name}</h3>
+      <p>📍 ${p.addr||p.address||''}, ${p.city||''}</p>
+      <p>📞 ${p.phone||'N/A'}</p>
+      <button class="btn" onclick="window.open('tel:${p.phone}')">Call Now</button>
+    </div>
+  `).join("") || "<p style='grid-column:1/-1;text-align:center;color:#94a3b8'>No places found. Click + to add.</p>";
+}
+
+async function savePlace(){
+  let name = document.getElementById("f_name").value.trim();
+  let cat = document.getElementById("f_cat").value;
+  let phone = document.getElementById("f_phone").value.trim();
+  let addr = document.getElementById("f_addr").value.trim();
+  let city = document.getElementById("f_city").value.trim();
+  if(!name){alert("Enter name");return;}
+
+  let newPlace = {name,cat,category:cat,phone,addr,address:addr,city};
+
+  if(useSupabase){
+    try{
+      let {error} = await supabaseClient.from("places").insert([newPlace]);
+      if(error) throw error;
+    }catch(e){
+      alert("Cloud save failed, saved locally: "+e.message);
+    }
+  }
+  places.unshift(newPlace);
+  localStorage.setItem("nearme_places", JSON.stringify(places));
+  closeModal();
+  render();
+  document.getElementById("f_name").value="";document.getElementById("f_phone").value="";document.getElementById("f_addr").value="";
+}
+
+function openModal(){document.getElementById("modal").classList.add("open");}
+function closeModal(){document.getElementById("modal").classList.remove("open");}
+
+loadData();
+</script>
+</body>
+</html>
