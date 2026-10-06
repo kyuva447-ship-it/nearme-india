@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, Store, Search, Compass, Phone, MessageCircle, CheckCircle2, Flame, Sparkles, Clock, ThumbsUp } from 'lucide-react';
 import LiveMap from './components/LiveMap';
-
+import AIOmnibar from './components/AIOmnibar';
+import AIBrokerPipeline from './components/AIBrokerPipeline';
 
 /*
   SUPABASE SCHEMA UPDATES:
@@ -269,7 +270,7 @@ export default function NearMeApp() {
 
 
     const options = {
-      key: "rzp_test_YOUR_KEY_HERE", // Replace with live Razorpay Key
+      key: import.meta.env.VITE_RAZORPAY_TEST_KEY_ID || "rzp_test_mockkey", // Replace with live Razorpay Key
       amount: amountInRupees * 100, // Amount in paise
       currency: "INR",
       name: "NearMe India",
@@ -278,14 +279,9 @@ export default function NearMeApp() {
         alert("Payment Successful! Payment ID: " + response.razorpay_payment_id);
 
         try {
-          const { error } = await supabase
-            .from('sellers')
-            .update({ wallet_balance: (currentSeller.wallet_balance || 0) + amountInRupees })
-            .eq('id', loggedInSellerId);
-
-          if (error) throw error;
-
-          setSellers(sellers.map(s => s.id === loggedInSellerId ? {...s, wallet_balance: (s.wallet_balance || 0) + amountInRupees} : s));
+          // In a real application we would use Supabase RPC `top_up_wallet` here.
+          // For now, update local state since Supabase backend isn't connected to a real instance.
+          setSellers(sellers.map(s => s.id === loggedInSellerId ? {...s, walletBalance: (s.walletBalance || 0) + amountInRupees} : s));
           setShowRechargeModal(false);
         } catch (err) {
           console.error("Error updating wallet balance:", err);
@@ -329,7 +325,7 @@ const paymentObject = new window.Razorpay(options);
     }));
   };
 
-  const categories = ['All', 'Tea & Snacks', 'Plumber', 'Electrician', 'Blood SOS', 'Property', 'Loans', 'Doctor'];
+  const categories = ['All', 'Retail', 'Manufacturer', 'Broker', 'Service', 'Freelancer', 'Tea & Snacks', 'Plumber', 'Electrician'];
 
   // Distance & Filtered Sellers Computation
   const processedSellers = sellers.map(s => {
@@ -435,23 +431,11 @@ const paymentObject = new window.Razorpay(options);
                 </div>
               </div>
 
-              <div className="relative flex items-center">
-                <input 
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search 'Chai', 'Plumber', 'Electrician', 'Blood'..."
-                  className="w-full pl-4 pr-24 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
-                />
-                <button 
-                  onClick={() => handleVoiceSearch('hi-IN')}
-                  className={`absolute right-2 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-colors flex items-center gap-1 ${
-                    isListening ? 'bg-red-600 animate-pulse' : 'bg-blue-600 hover:bg-blue-700'
-                  }`}
-                >
-                  🎤 {isListening ? 'Listening...' : 'Voice Search'}
-                </button>
-              </div>
+              {/* AI Omnibar Integration */}
+              <AIOmnibar onSearch={(q) => setSearchQuery(q)} />
+
+              {/* AI Broker Pipeline (Post a Requirement) */}
+              <AIBrokerPipeline userCoords={userCoords} />
 
               {/* Category Pills */}
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none text-xs">
@@ -516,47 +500,78 @@ const paymentObject = new window.Razorpay(options);
                         )}
                       </div>
 
-                      <div className="p-4 space-y-2">
+                      <div className="p-4 space-y-2 flex-grow">
                         <div className="flex justify-between items-start">
                           <h3 className="font-bold text-slate-900 text-base leading-snug">{seller.shopName}</h3>
-                          <button onClick={() => handleUpvote(seller.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 shadow-sm">
+                          <button onClick={() => handleUpvote(seller.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 shadow-sm shrink-0 ml-2">
                             👍 Recommend ({seller.community_upvotes || 0})
                           </button>
                         </div>
-                        <p className="text-xs text-slate-500">{seller.category} • {seller.city}</p>
+                        <p className="text-xs text-slate-500 font-medium">
+                          <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{seller.business_type || 'Service'}</span> • {seller.category} • {seller.city}
+                        </p>
                         
-                        <p className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded w-max">
+                        <p className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-1 rounded w-max mt-2">
                           📞 {seller.maskedPhone}
                         </p>
 
                         {seller.isBlocked && (
-                          <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-[11px] text-amber-800 font-medium">
-                            ⚠️ Shop Listing Paused (Recharge Pending)
+                          <div className="bg-amber-50 border border-amber-200 p-2 rounded-lg text-[11px] text-amber-800 font-medium mt-2">
+                            ⚠️ Listing Paused (Recharge Pending)
                           </div>
                         )}
                       </div>
                     </div>
 
-                    <div className="p-4 pt-0 grid grid-cols-2 gap-2">
-                      <button
-                        disabled={seller.isBlocked}
-                        onClick={() => handleLeadTrigger(seller.id, 'CALL')}
-                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors ${
-                          seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                        }`}
-                      >
-                        <Phone className="w-4 h-4" /> Call
-                      </button>
+                    <div className="p-4 pt-0 flex flex-col gap-2">
+                       {/* Universal Profile Action Buttons based on Business Type */}
+                       {seller.business_type === 'Manufacturer' && (
+                         <button
+                           disabled={seller.isBlocked}
+                           onClick={() => handleLeadTrigger(seller.id, 'WHATSAPP', seller.computedDistance)}
+                           className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
+                             seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                           }`}
+                         >
+                           <MessageCircle className="w-4 h-4" /> Request Bulk Quote
+                         </button>
+                       )}
 
-                      <button
-                        disabled={seller.isBlocked}
-                        onClick={() => handleLeadTrigger(seller.id, 'WHATSAPP', seller.computedDistance)}
-                        className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors ${
-                          seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'
-                        }`}
-                      >
-                        <MessageCircle className="w-4 h-4" /> WhatsApp
-                      </button>
+                       {seller.business_type === 'Broker' && (
+                         <button
+                           disabled={seller.isBlocked}
+                           onClick={() => handleLeadTrigger(seller.id, 'CALL')}
+                           className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${
+                             seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                           }`}
+                         >
+                           <Phone className="w-4 h-4" /> Book Consultation
+                         </button>
+                       )}
+
+                       {(!seller.business_type || !['Manufacturer', 'Broker'].includes(seller.business_type)) && (
+                         <div className="grid grid-cols-2 gap-2">
+                            <button
+                              disabled={seller.isBlocked}
+                              onClick={() => handleLeadTrigger(seller.id, 'CALL')}
+                              className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors ${
+                                seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                              }`}
+                            >
+                              <Phone className="w-4 h-4" /> Call Now
+                            </button>
+
+                            <button
+                              disabled={seller.isBlocked}
+                              onClick={() => handleLeadTrigger(seller.id, 'WHATSAPP', seller.computedDistance)}
+                              className={`py-2.5 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors ${
+                                seller.isBlocked ? 'bg-slate-100 text-slate-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700 text-white'
+                              }`}
+                            >
+                              <MessageCircle className="w-4 h-4" /> WhatsApp
+                            </button>
+                         </div>
+                       )}
                     </div>
                   </div>
                 ))}
@@ -877,14 +892,12 @@ const paymentObject = new window.Razorpay(options);
               {onboardingStep === 1 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Shop Name</label>
-                    <input required type="text" value={onboardingData.shopName} onChange={e => setOnboardingData({...onboardingData, shopName: e.target.value})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 focus:outline-none" placeholder="e.g. Gupta Electronics" />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Business Name</label>
+                    <input required type="text" value={onboardingData.shopName} onChange={e => setOnboardingData({...onboardingData, shopName: e.target.value})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 focus:outline-none" placeholder="e.g. Peenya Garments" />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Trade Category</label>
-                    <select value={onboardingData.category} onChange={e => setOnboardingData({...onboardingData, category: e.target.value})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 focus:outline-none bg-white">
-                      {['Tailoring & Garments', 'Plumbing', 'Electrician', 'Automobile', 'Home Services', 'Healthcare'].map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Industry / Category (Open Text)</label>
+                    <input required type="text" value={onboardingData.category} onChange={e => setOnboardingData({...onboardingData, category: e.target.value})} className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-emerald-500 focus:outline-none" placeholder="e.g. Factory, Broker, Plumber" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">City</label>

@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { renderToString } from 'react-dom/server';
+import { Factory, Briefcase, Store, Zap, Wrench, Activity, MapPin } from 'lucide-react';
 
 // Fix for default marker icons in React Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -24,6 +26,46 @@ function SetViewOnClick({ coords }) {
   return null;
 }
 
+const getIconForBusinessType = (type, isAvailable) => {
+  const baseClass = isAvailable ? 'text-emerald-500' : 'text-slate-400';
+  const strokeClass = isAvailable ? 'white' : 'white';
+
+  let IconComponent = Store; // Default
+  if (type === 'Manufacturer') IconComponent = Factory;
+  else if (type === 'Broker') IconComponent = Briefcase;
+  else if (type === 'Service' || type === 'Freelancer') IconComponent = Wrench;
+
+  return new L.DivIcon({
+    html: renderToString(
+      <div className={`relative ${isAvailable ? 'animate-bounce' : ''}`}>
+        <MapPin className={`w-10 h-10 ${baseClass} drop-shadow-md`} fill={strokeClass} />
+        <div className="absolute top-1.5 left-2.5 text-white">
+          <IconComponent className="w-4 h-4" />
+        </div>
+        {isAvailable && (
+          <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+        )}
+      </div>
+    ),
+    className: 'custom-map-icon',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+  });
+};
+
+const userIcon = new L.DivIcon({
+  html: renderToString(
+    <div className="relative">
+      <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg animate-ping absolute top-0 left-0"></div>
+      <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg relative z-10"></div>
+    </div>
+  ),
+  className: 'user-map-icon',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
 const LiveMap = ({ sellers, userLocation }) => {
   const [center, setCenter] = useState([12.9116, 77.6412]); // Default to Bengaluru
 
@@ -44,8 +86,30 @@ const LiveMap = ({ sellers, userLocation }) => {
         />
         <SetViewOnClick coords={center} />
 
+        {userLocation && userLocation.latitude && userLocation.longitude && (
+          <>
+            <Marker position={[userLocation.latitude, userLocation.longitude]} icon={userIcon}>
+              <Popup>
+                <div className="font-bold text-slate-800">📍 Your Location</div>
+                <div className="text-xs text-slate-500">Auto-detected via GPS</div>
+              </Popup>
+            </Marker>
+
+            {/* Demand Heatmap (Mocked via Circle) */}
+            <Circle
+              center={[userLocation.latitude, userLocation.longitude]}
+              radius={2000} // 2km Surge Zone
+              pathOptions={{ color: 'red', fillColor: 'red', fillOpacity: 0.05, weight: 1 }}
+            />
+          </>
+        )}
+
         {verifiedSellers.map((seller) => (
-          <Marker key={seller.id} position={[seller.lat, seller.lng]}>
+          <Marker
+            key={seller.id}
+            position={[seller.lat, seller.lng]}
+            icon={getIconForBusinessType(seller.business_type, seller.is_currently_available)}
+          >
             <Popup>
               <div className="text-center">
                 <h3 className="font-bold text-sm text-slate-800">{seller.shopName}</h3>
