@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Store, Search, Compass, Phone, MessageCircle, CheckCircle2, Flame, Sparkles, Clock, ThumbsUp } from 'lucide-react';
+import { Share2, MapPin, Store, Search, Compass, Phone, MessageCircle, CheckCircle2, Flame, Sparkles, Clock, ThumbsUp } from 'lucide-react';
+import MerchantDashboard from "./components/MerchantDashboard";
 import LiveMap from './components/LiveMap';
 import AIOmnibar from './components/AIOmnibar';
 import AIBrokerPipeline from './components/AIBrokerPipeline';
@@ -110,6 +111,7 @@ export default function NearMeApp() {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [radiusFilter, setRadiusFilter] = useState(25); // Max radius filter in km
   const [isListening, setIsListening] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [showRechargeModal, setShowRechargeModal] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [onboardingData, setOnboardingData] = useState({ shopName: '', category: 'Tailoring & Garments', city: 'Bengaluru', phone: '', lat: null, lng: null, current_deal_text: '', is_currently_available: false });
@@ -258,6 +260,25 @@ export default function NearMeApp() {
     }, 150);
   };
 
+  const handleShare = async (seller) => {
+    const shareData = {
+      title: seller.shopName,
+      text: `Check out ${seller.shopName} on NearMe India! Located in ${seller.city}. They are a top-rated ${seller.category} provider.`,
+      url: `https://nearme-india.org/?shop=${seller.id}`
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error('Share failed:', err);
+      }
+    } else {
+      navigator.clipboard.writeText(`${shareData.text} ${shareData.url}`);
+      alert("Link copied to clipboard! You can now paste it in WhatsApp or Facebook.");
+    }
+  };
+
   // Live Razorpay Payment Gateway Trigger
   const handleRazorpayPayment = async (amountInRupees) => {
     const isLoaded = await loadRazorpayScript();
@@ -363,6 +384,12 @@ const paymentObject = new window.Razorpay(options);
 
           <div className="flex items-center gap-3">
             <button 
+              onClick={() => setShowDashboard(true)}
+              className="hidden sm:flex items-center gap-1.5 text-xs text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 font-bold px-4 py-2.5 rounded-xl transition-all duration-200 shadow-sm"
+            >
+              Merchant Panel
+            </button>
+            <button
               onClick={() => setActiveTab('onboarding')}
               className="flex items-center gap-1.5 text-xs bg-slate-900 hover:bg-slate-800 text-white font-bold px-4 py-2.5 rounded-xl transition-all duration-200 active:scale-95 shadow-sm"
             >
@@ -503,9 +530,14 @@ const paymentObject = new window.Razorpay(options);
                       <div className="p-4 space-y-2 flex-grow">
                         <div className="flex justify-between items-start">
                           <h3 className="font-bold text-slate-900 text-base leading-snug">{seller.shopName}</h3>
-                          <button onClick={() => handleUpvote(seller.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1 rounded transition-colors flex items-center gap-1 shadow-sm shrink-0 ml-2">
-                            👍 Recommend ({seller.community_upvotes || 0})
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => handleShare(seller)} className="bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold p-1.5 rounded transition-colors flex items-center shadow-sm shrink-0" title="Share Shop">
+                              <Share2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button onClick={() => handleUpvote(seller.id)} className="bg-emerald-100 hover:bg-emerald-200 text-emerald-800 text-xs font-bold px-2 py-1.5 rounded transition-colors flex items-center gap-1 shadow-sm shrink-0">
+                              👍 ({seller.community_upvotes || 0})
+                            </button>
+                          </div>
                         </div>
                         <p className="text-xs text-slate-500 font-medium">
                           <span className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded">{seller.business_type || 'Service'}</span> • {seller.category} • {seller.city}
@@ -959,6 +991,15 @@ const paymentObject = new window.Razorpay(options);
             </form>
           </div>
         </div>
+      )}
+
+      {showDashboard && (
+        <MerchantDashboard
+          sellers={sellers}
+          setSellers={setSellers}
+          loggedInSellerId={loggedInSellerId}
+          onClose={() => setShowDashboard(false)}
+        />
       )}
 
       {/* DYNAMIC SELLER RECHARGE MODAL */}
