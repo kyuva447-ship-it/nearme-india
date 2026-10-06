@@ -19,7 +19,7 @@ CREATE TABLE sellers (
     category TEXT,
     tags TEXT[] DEFAULT '{}',
     current_deal_text TEXT,
-    deal_expiry TIMESTAMPTZ,
+    deal_expiry_time TIMESTAMPTZ,
     is_currently_available BOOLEAN DEFAULT true,
     community_upvotes INTEGER DEFAULT 0,
 
