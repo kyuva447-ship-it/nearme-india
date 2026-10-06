@@ -1,0 +1,12 @@
+
+> nearme-india@1.0.0 dev
+> vite
+
+
+  VITE v4.5.14  ready in 600 ms
+
+  ➜  Local:   http://localhost:5173/
+  ➜  Network: use --host to expose
+10:05:30 AM [vite] ✨ new dependencies optimized: react-dom/server
+10:05:30 AM [vite] ✨ optimized dependencies changed. reloading
+11:17:51 AM [vite] page reload dist/index.html
