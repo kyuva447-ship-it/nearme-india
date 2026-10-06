@@ -1,22 +1,32 @@
--- Mock Businesses in Bengaluru
-INSERT INTO sellers (name, business_type, category, tags, phone, whatsapp, latitude, longitude, wallet_balance, is_currently_available, community_upvotes, current_deal_text, deal_expiry)
-VALUES
-  -- Peenya Garment Factories (B2B Manufacturer)
-  ('Peenya Stitch Masters', 'Manufacturer', 'Textiles & Garments', ARRAY['b2b', 'bulk', 'garment', 'factory'], '+919876543210', '+919876543210', 13.0285, 77.5197, 15.00, true, 8, 'Bulk order 10% off', now() + interval '10 days'),
-  ('Loom Dynamics Pvt Ltd', 'Manufacturer', 'Textiles & Garments', ARRAY['fabric', 'export', 'weaving'], '+919876543211', '+919876543211', 13.0301, 77.5215, 50.00, true, 4, NULL, NULL),
-  ('Apex Apparel Works', 'Manufacturer', 'Textiles & Garments', ARRAY['b2b', 'tshirts', 'branding'], '+919876543212', '+919876543212', 13.0250, 77.5250, 15.00, true, 12, 'Free shipping on >500 units', now() + interval '5 days'),
+-- Seed Data for NearMe India
 
-  -- Indiranagar Real Estate Brokers (Broker)
-  ('Indiranagar Prime Spaces', 'Broker', 'Real Estate', ARRAY['residential', 'commercial', '2bhk', 'rent'], '+919876543213', '+919876543213', 12.9784, 77.6408, 100.00, true, 55, 'Zero brokerage today', now() + interval '12 hours'),
-  ('East Point Realtors', 'Broker', 'Real Estate', ARRAY['commercial', 'office', 'sale'], '+919876543214', '+919876543214', 12.9750, 77.6450, 15.00, false, 2, NULL, NULL),
-  ('Metro Living Estates', 'Broker', 'Real Estate', ARRAY['apartment', 'rent', 'villa'], '+919876543215', '+919876543215', 12.9800, 77.6420, 25.00, true, 15, 'Free background check', now() + interval '2 days'),
+-- Clear existing data if necessary (for idempotent local development)
+DELETE FROM sellers;
+DELETE FROM wallet_transactions;
+DELETE FROM b2b_jobs;
 
-  -- Koramangala Electricians (Service / Freelancer)
-  ('Koramangala Quick Spark', 'Service', 'Electrician', ARRAY['repair', 'wiring', 'emergency'], '+919876543216', '+919876543216', 12.9279, 77.6271, 15.00, true, 60, '15% off labor', now() + interval '2 hours'),
-  ('VoltFix Pro', 'Freelancer', 'Electrician', ARRAY['inverter', 'installation', 'ac'], '+919876543217', '+919876543217', 12.9300, 77.6250, 15.00, true, 25, NULL, NULL),
-  ('Raju Electricals', 'Service', 'Electrician', ARRAY['shop', 'spares', 'repair'], '+919876543218', '+919876543218', 12.9250, 77.6300, 15.00, false, 5, NULL, NULL),
+-- Insert 8 realistic, omni-category mock businesses across Bengaluru
+INSERT INTO sellers (id, business_name, industry, whatsapp_number, latitude, longitude, wallet_balance, is_available, business_type, category, tags, current_deal_text, deal_expiry, community_upvotes) VALUES
+-- 1. Peenya Garment Factory (Manufacturer)
+('11111111-1111-1111-1111-111111111111', 'Peenya Threads & Textiles', 'Manufacturer', '9876543210', 13.0285, 77.5197, 15.00, true, 'Manufacturer', 'Tailoring & Garments', '{"bulk", "export", "b2b"}', '10% off bulk orders', now() + interval '1 day', 45),
 
-  -- HSR Layout Plumbers (Service / Freelancer)
-  ('HSR Pipe Masters', 'Service', 'Plumbing', ARRAY['leak', 'bathroom', 'emergency'], '+919876543219', '+919876543219', 12.9121, 77.6446, 15.00, true, 40, 'Free inspection', now() + interval '1 day'),
-  ('ClearFlow Solutions', 'Freelancer', 'Plumbing', ARRAY['tank', 'cleaning', 'pipes'], '+919876543220', '+919876543220', 12.9150, 77.6400, 15.00, true, 18, NULL, NULL),
-  ('Babu Plumbing Works', 'Service', 'Plumbing', ARRAY['motor', 'repair', 'fittings'], '+919876543221', '+919876543221', 12.9100, 77.6450, 15.00, true, 5, 'Rs 50 off visit', now() + interval '5 hours');
+-- 2. Indiranagar Real Estate Broker (Broker)
+('22222222-2222-2222-2222-222222222222', 'Indiranagar Prime Properties', 'Broker', '9876543211', 12.9783, 77.6408, 15.00, true, 'Broker', 'Real Estate', '{"commercial", "residential", "rentals"}', NULL, NULL, 60),
+
+-- 3. Koramangala Retail Electronics (Retail)
+('33333333-3333-3333-3333-333333333333', 'Tech Hub Koramangala', 'Retail', '9876543212', 12.9352, 77.6245, 15.00, true, 'Retail', 'Electronics', '{"mobiles", "laptops", "repair"}', 'Free tempered glass with screen repair', now() + interval '5 hours', 12),
+
+-- 4. HSR Layout Plumbing Services (Service)
+('44444444-4444-4444-4444-444444444444', 'QuickFix Plumbers HSR', 'Service', '9876543213', 12.9141, 77.6411, 15.00, true, 'Service', 'Plumbing', '{"emergency", "water tank", "pipe leak"}', '₹100 off on emergency visits', now() + interval '12 hours', 85),
+
+-- 5. Whitefield IT Hardware Supplier (B2B/Wholesale)
+('55555555-5555-5555-5555-555555555555', 'Whitefield Server Solutions', 'Wholesale', '9876543214', 12.9698, 77.7499, 15.00, true, 'Wholesale', 'IT Hardware', '{"servers", "networking", "cables"}', NULL, NULL, 30),
+
+-- 6. Jayanagar Boutique (Retail)
+('66666666-6666-6666-6666-666666666666', 'Silk Route Jayanagar', 'Retail', '9876543215', 12.9299, 77.5834, 15.00, true, 'Retail', 'Clothing', '{"sarees", "ethnic wear", "custom"}', 'Buy 2 Get 1 Free on Kurtis', now() + interval '2 days', 110),
+
+-- 7. Malleshwaram Catering (Service)
+('77777777-7777-7777-7777-777777777777', 'Malleshwaram Grand Feasts', 'Service', '9876543216', 13.0068, 77.5713, 15.00, false, 'Service', 'Food & Catering', '{"weddings", "corporate", "veg"}', NULL, NULL, 95),
+
+-- 8. Electronic City Scrap Metal (Recycling/Broker)
+('88888888-8888-8888-8888-888888888888', 'E-City Metal Recyclers', 'Broker', '9876543217', 12.8452, 77.6602, 15.00, true, 'Broker', 'Scrap & Recycling', '{"copper", "iron", "industrial"}', 'Best rates for bulk copper', now() + interval '10 days', 25);
