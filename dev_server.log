@@ -8,3 +8,5 @@ Port 5173 is in use, trying another one...
 
   ➜  Local:   http://localhost:5174/
   ➜  Network: use --host to expose
+12:11:07 AM [vite] page reload index.html
+12:14:15 AM [vite] page reload dist/index.html
