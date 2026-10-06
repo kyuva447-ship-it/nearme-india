@@ -302,7 +302,7 @@ export default function NearMeApp() {
         try {
           // In a real application we would use Supabase RPC `top_up_wallet` here.
           // For now, update local state since Supabase backend isn't connected to a real instance.
-          setSellers(sellers.map(s => s.id === loggedInSellerId ? {...s, walletBalance: (s.walletBalance || 0) + amountInRupees} : s));
+          setSellers(prev => prev.map(s => s.id === loggedInSellerId ? {...s, walletBalance: (s.walletBalance || 0) + amountInRupees} : s));
           setShowRechargeModal(false);
         } catch (err) {
           console.error("Error updating wallet balance:", err);
