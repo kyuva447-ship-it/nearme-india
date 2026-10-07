@@ -99,12 +99,19 @@ const INITIAL_SELLERS = [
 export default function NearMeApp() {
   const [activeTab, setActiveTab] = useState('home');
   const [isInstagramLead, setIsInstagramLead] = useState(false);
+  const [publicProfileId, setPublicProfileId] = useState(null);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('source') === 'instagram' || params.get('ref') === 'instagram') {
       setIsInstagramLead(true);
       setActiveTab('onboarding');
+    }
+
+    // Check if URL is a direct shop link (e.g. ?shop=s1)
+    const shopParam = params.get('shop');
+    if (shopParam) {
+      setPublicProfileId(shopParam);
     }
   }, []);
   const [searchQuery, setSearchQuery] = useState('');
@@ -371,13 +378,16 @@ const paymentObject = new window.Razorpay(options);
   const totalWalletHoldings = sellers.reduce((acc, s) => acc + s.walletBalance, 0);
   const totalLeadsDelivered = sellers.reduce((acc, s) => acc + s.totalLeadsReceived, 0);
 
+  // Compute Public Profile if ?shop= is active
+  const activePublicProfile = publicProfileId ? sellers.find(s => s.id === publicProfileId) : null;
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col justify-between font-sans">
       
       {/* 1. HEADER */}
       <header className="backdrop-blur-md bg-white/90 border-b border-gray-100 sticky top-0 z-40 transition-all duration-200">
         <div className="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div onClick={() => setActiveTab('home')} className="cursor-pointer flex items-center gap-2 group">
+          <div onClick={() => { setPublicProfileId(null); setActiveTab('home'); }} className="cursor-pointer flex items-center gap-2 group">
             <MapPin className="w-8 h-8 text-emerald-600 drop-shadow-sm group-hover:scale-105 transition-transform" />
             <span className="text-2xl font-black tracking-tight text-slate-900">NearMe <span className="text-emerald-600 font-bold">India</span></span>
           </div>
@@ -425,15 +435,81 @@ const paymentObject = new window.Razorpay(options);
       {/* 3. DYNAMIC CONTENT AREA */}
       <main className="max-w-6xl mx-auto w-full px-4 py-6 flex-grow">
         
+        {/* PUBLIC PROFILE VIEW (QR SCANS) */}
+        {activePublicProfile && (
+          <div className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 overflow-hidden relative">
+              {/* Cover Banner */}
+              <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-r from-emerald-500 to-teal-600"></div>
+
+              <div className="relative pt-12 text-center">
+                <img src={activePublicProfile.image} alt="Shop" className="w-32 h-32 mx-auto rounded-full border-4 border-white shadow-lg object-cover mb-4 bg-white" />
+                <h1 className="text-3xl font-black text-slate-900 mb-1">{activePublicProfile.shopName}</h1>
+                <p className="text-slate-500 font-semibold">{activePublicProfile.category} • {activePublicProfile.city}</p>
+
+                <div className="flex justify-center gap-2 mt-4">
+                  <span className="bg-slate-100 text-slate-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                    <ThumbsUp className="w-3 h-3 text-indigo-500" /> {activePublicProfile.community_upvotes} Local Recommendations
+                  </span>
+                  {activePublicProfile.is_currently_available && (
+                    <span className="bg-emerald-50 text-emerald-700 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Right Now
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Flash Deal Alert */}
+              {activePublicProfile.current_deal_text && activePublicProfile.deal_expiry_time && new Date(activePublicProfile.deal_expiry_time) > new Date() && (
+                <div className="mt-8 bg-gradient-to-r from-orange-500 to-red-500 p-1 rounded-xl shadow-md">
+                  <div className="bg-white/95 backdrop-blur rounded-lg p-4 text-center">
+                    <div className="flex justify-center mb-1">
+                      <Flame className="text-orange-500 w-6 h-6 animate-pulse" />
+                    </div>
+                    <p className="font-black text-slate-800 text-lg uppercase tracking-tight">{activePublicProfile.current_deal_text}</p>
+                    <p className="text-xs text-slate-500 mt-1 font-semibold flex items-center justify-center gap-1">
+                      <Clock className="w-3 h-3" /> Valid until {new Date(activePublicProfile.deal_expiry_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <button
+                  onClick={() => handleLeadTrigger(activePublicProfile.id, 'WHATSAPP')}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200 active:scale-95 shadow-lg shadow-emerald-200"
+                >
+                  <MessageCircle className="w-5 h-5" /> Chat on WhatsApp
+                </button>
+                <button
+                  onClick={() => handleShare(activePublicProfile)}
+                  className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all duration-200"
+                >
+                  <Share2 className="w-5 h-5" /> Share Shop
+                </button>
+              </div>
+            </div>
+
+            {/* Cross-Sell Strip */}
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-center cursor-pointer hover:bg-indigo-100 transition-colors" onClick={() => { setPublicProfileId(null); setActiveTab('home'); }}>
+              <p className="text-sm font-bold text-indigo-900 flex items-center justify-center gap-2">
+                <Sparkles className="w-4 h-4" /> Explore 100+ other Local Deals & Services in your area on NearMe India!
+              </p>
+              <button className="mt-3 bg-white text-indigo-600 text-xs font-bold px-4 py-2 rounded-lg shadow-sm">View Neighborhood Map</button>
+            </div>
+          </div>
+        )}
+
         {/* HOMEPAGE VIEW */}
         {/* Live Map Integration */}
-        {activeTab === 'home' && (
+        {!activePublicProfile && activeTab === 'home' && (
           <div className="mb-6 z-0">
             <LiveMap sellers={filteredSellers} userLocation={{latitude: 12.9116, longitude: 77.6412}} />
           </div>
         )}
 
-        {activeTab === 'home' && (
+        {!activePublicProfile && activeTab === 'home' && (
           <div className="space-y-6">
             
             {/* Search, GPS Status & Distance Radius Filter */}
@@ -490,7 +566,7 @@ const paymentObject = new window.Razorpay(options);
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {filteredSellers.map(seller => (
-                  <div key={seller.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
+                  <div key={seller.id} id={`shop-${seller.id}`} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between">
                     <div>
                       <div className="h-36 bg-slate-200 relative">
                         <img src={seller.image} alt={seller.shopName} className="w-full h-full object-cover" />
