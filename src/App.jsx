@@ -319,7 +319,7 @@ export default function NearMeApp() {
     const shareData = {
       title: seller.shopName,
       text: `Check out ${seller.shopName} on NearMe India! Located in ${seller.city}. They are a top-rated ${seller.category} provider.`,
-      url: `https://nearme-india.org/?shop=${seller.id}`
+      url: `https://www.nearme-india.org/?shop=${seller.id}`
     };
 
     if (navigator.share) {

@@ -166,7 +166,7 @@ const MerchantDashboard = ({ sellers, setSellers, loggedInSellerId, onClose }) =
               <div className="absolute -inset-0.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-2xl opacity-20 blur-sm"></div>
               <div className="relative bg-white p-4 rounded-xl">
                 <QRCodeSVG
-                  value={`https://nearme-india.org/?shop=${seller.id}`}
+                  value={`https://www.nearme-india.org/?shop=${seller.id}`}
                   size={200}
                   bgColor={"#ffffff"}
                   fgColor={"#0f172a"}
