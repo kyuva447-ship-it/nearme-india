@@ -46,7 +46,7 @@ const MerchantDashboard = ({ sellers, setSellers, loggedInSellerId, onClose }) =
       ctx.fillStyle = "#64748b";
       ctx.font = "30px Inter, sans-serif";
       ctx.fillText("Powered by NearMe India", canvas.width/2, 950);
-      ctx.fillText("nearme-india.com", canvas.width/2, 1000);
+      ctx.fillText("nearme-india.org", canvas.width/2, 1000);
 
       const pngFile = canvas.toDataURL("image/png");
       const downloadLink = document.createElement("a");
@@ -166,7 +166,7 @@ const MerchantDashboard = ({ sellers, setSellers, loggedInSellerId, onClose }) =
               <div className="absolute -inset-0.5 bg-gradient-to-br from-indigo-500 to-emerald-500 rounded-2xl opacity-20 blur-sm"></div>
               <div className="relative bg-white p-4 rounded-xl">
                 <QRCodeSVG
-                  value={`https://nearme-india.com/?shop=${seller.id}`}
+                  value={`https://nearme-india.org/?shop=${seller.id}`}
                   size={200}
                   bgColor={"#ffffff"}
                   fgColor={"#0f172a"}

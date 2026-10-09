@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from './supabaseClient';
+
 import { Share2, MapPin, Store, Search, Compass, Phone, MessageCircle, CheckCircle2, Flame, Sparkles, Clock, ThumbsUp } from 'lucide-react';
 import MerchantDashboard from "./components/MerchantDashboard";
 import LiveMap from './components/LiveMap';
@@ -97,6 +99,52 @@ const INITIAL_SELLERS = [
 ];
 
 export default function NearMeApp() {
+
+  // Admin Auth State
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminLoginError, setAdminLoginError] = useState('');
+
+  // Check existing session on load
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session && session.user.email === import.meta.env.VITE_OWNER_EMAIL) {
+        setIsAdminAuthenticated(true);
+      }
+    };
+    checkSession();
+  }, []);
+
+  const handleAdminLogin = async (e) => {
+    e.preventDefault();
+    setAdminLoginError('');
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: adminEmail,
+        password: adminPassword,
+      });
+      if (error) throw error;
+
+      if (data.user && data.user.email === import.meta.env.VITE_OWNER_EMAIL) {
+        setIsAdminAuthenticated(true);
+        setActiveTab('admin');
+      } else {
+        await supabase.auth.signOut();
+        setAdminLoginError('Unauthorized: Not an owner account.');
+      }
+    } catch (error) {
+      setAdminLoginError(error.message || 'Login failed.');
+    }
+  };
+
+  const handleAdminLogout = async () => {
+    await supabase.auth.signOut();
+    setIsAdminAuthenticated(false);
+    setActiveTab('home');
+  };
+
   const [activeTab, setActiveTab] = useState('home');
   const [isInstagramLead, setIsInstagramLead] = useState(false);
   const [publicProfileId, setPublicProfileId] = useState(null);
@@ -271,7 +319,7 @@ export default function NearMeApp() {
     const shareData = {
       title: seller.shopName,
       text: `Check out ${seller.shopName} on NearMe India! Located in ${seller.city}. They are a top-rated ${seller.category} provider.`,
-      url: `https://nearme-india.com/?shop=${seller.id}`
+      url: `https://nearme-india.org/?shop=${seller.id}`
     };
 
     if (navigator.share) {
@@ -690,18 +738,72 @@ const paymentObject = new window.Razorpay(options);
 
 
         )}
-        {/* OWNER / ADMIN DASHBOARD PANEL */}
-        {activeTab === 'admin' && (
+
+        {activeTab === 'admin' && !isAdminAuthenticated && (
+          <div className="max-w-md mx-auto mt-20 bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
+            <div className="text-center mb-6">
+              <h1 className="text-2xl font-black text-slate-900">Admin Login</h1>
+              <p className="text-xs text-slate-500 mt-1">Authorized personnel only.</p>
+            </div>
+
+            {adminLoginError && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 border border-red-100">
+                {adminLoginError}
+              </div>
+            )}
+
+            <form onSubmit={handleAdminLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Owner Email</label>
+                <input
+                  type="email"
+                  required
+                  value={adminEmail}
+                  onChange={(e) => setAdminEmail(e.target.value)}
+                  className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                <input
+                  type="password"
+                  required
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  className="w-full p-3 border-2 border-slate-100 rounded-xl focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+              <button
+                type="submit"
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all shadow-md"
+              >
+                Secure Login
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* SECURE OWNER / ADMIN DASHBOARD PANEL */}
+        {activeTab === 'admin' && isAdminAuthenticated && (
           <div className="space-y-6">
             <div className="flex justify-between items-center border-b pb-4">
               <div>
                 <h1 className="text-2xl font-black text-slate-900">👑 Platform Owner Dashboard</h1>
                 <p className="text-xs text-slate-500">Manage sellers, manual top-ups, revenue, and active listings.</p>
               </div>
-              <span className="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">
-                Admin Mode Active
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-full">
+                  Admin Mode Active
+                </span>
+                <button
+                  onClick={handleAdminLogout}
+                  className="text-xs text-slate-500 hover:text-slate-800 underline"
+                >
+                  Logout
+                </button>
+              </div>
             </div>
+
 
             {/* Metrics */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -854,7 +956,7 @@ const paymentObject = new window.Razorpay(options);
                 <p className="text-xs text-slate-400">Last Updated: September 12, 2026</p>
                 
                 <h3 className="font-bold text-slate-900 text-base">1. Information Collection</h3>
-                <p>NearMe India ("nearme-india.com") collects operational data including merchant business names, mobile numbers, shop photos, and location coordinates via GPS or manual pin selection. For consumers, we access device location strictly to calculate proximity distances to nearby service providers.</p>
+                <p>NearMe India ("nearme-india.org") collects operational data including merchant business names, mobile numbers, shop photos, and location coordinates via GPS or manual pin selection. For consumers, we access device location strictly to calculate proximity distances to nearby service providers.</p>
                 
                 <h3 className="font-bold text-slate-900 text-base">2. Usage of Collected Data</h3>
                 <p>Personal and business details are utilized exclusively to route buyer calls and WhatsApp messages to relevant merchants. We do not rent, trade, or monetize user contact records to third-party marketing networks.</p>
@@ -886,14 +988,14 @@ const paymentObject = new window.Razorpay(options);
                 <p>Prepaid wallet recharges (₹100 to ₹5000) are immediately converted into lead allocation credits and are non-refundable once credited to a merchant account.</p>
 
                 <h3 className="font-bold text-slate-900 text-base">2. Subscription Refunds</h3>
-                <p>Subscription fees (₹299/month) are eligible for a full refund within 7 calendar days of purchase ONLY if zero (0) buyer lead interactions were routed to the subscriber's account during that window. Refund inquiries must be sent to contact@nearme-india.com.</p>
+                <p>Subscription fees (₹299/month) are eligible for a full refund within 7 calendar days of purchase ONLY if zero (0) buyer lead interactions were routed to the subscriber's account during that window. Refund inquiries must be sent to contact@nearme-india.org.</p>
               </article>
             )}
 
             {activeTab === 'about' && (
               <article className="space-y-4 text-slate-700 text-sm leading-relaxed">
                 <h1 className="text-3xl font-black text-slate-900 border-b pb-3">About NearMe India</h1>
-                <p>NearMe India (nearme-india.com) is a hyper-local business discovery directory established in 2026 in Bengaluru, Karnataka. Our technology bridges micro-merchants, local tradespeople, and everyday consumers using zero-commission pay-per-lead models.</p>
+                <p>NearMe India (nearme-india.org) is a hyper-local business discovery directory established in 2026 in Bengaluru, Karnataka. Our technology bridges micro-merchants, local tradespeople, and everyday consumers using zero-commission pay-per-lead models.</p>
               </article>
             )}
 
@@ -903,12 +1005,12 @@ const paymentObject = new window.Razorpay(options);
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <p><strong>Support Email:</strong> <a href="mailto:contact@nearme-india.com" className="text-blue-600 underline">contact@nearme-india.com</a></p>
+                    <p><strong>Support Email:</strong> <a href="mailto:contact@nearme-india.org" className="text-blue-600 underline">contact@nearme-india.org</a></p>
                     <p><strong>Registered Address:</strong><br />NearMe India, #123, 2nd Floor, HSR Layout Sector 1, Bengaluru, Karnataka - 560102</p>
                     <p><strong>Working Hours:</strong> Monday – Saturday (10:00 AM – 7:00 PM IST)</p>
                   </div>
 
-                  <form onSubmit={(e) => { e.preventDefault(); alert('Message sent to contact@nearme-india.com'); }} className="bg-slate-50 p-4 rounded-xl border space-y-3">
+                  <form onSubmit={(e) => { e.preventDefault(); alert('Message sent to contact@nearme-india.org'); }} className="bg-slate-50 p-4 rounded-xl border space-y-3">
                     <input required type="text" placeholder="Your Name" className="w-full p-2 border rounded-lg text-xs" />
                     <input required type="email" placeholder="Your Email" className="w-full p-2 border rounded-lg text-xs" />
                     <textarea required placeholder="Your Inquiry..." rows={3} className="w-full p-2 border rounded-lg text-xs"></textarea>
@@ -1137,7 +1239,7 @@ const paymentObject = new window.Razorpay(options);
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6 text-center md:text-left">
           <div className="space-y-1">
             <p className="text-slate-200 font-medium text-sm">© 2026 NearMe India — Bengaluru, Karnataka</p>
-            <p className="text-xs text-slate-400">Official Support: <a href="mailto:contact@nearme-india.com" className="text-blue-400 underline">contact@nearme-india.com</a></p>
+            <p className="text-xs text-slate-400">Official Support: <a href="mailto:contact@nearme-india.org" className="text-blue-400 underline">contact@nearme-india.org</a></p>
           </div>
 
           <div className="flex flex-wrap justify-center gap-3 text-xs font-medium">
