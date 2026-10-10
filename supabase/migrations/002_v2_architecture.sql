@@ -75,7 +75,7 @@ BEGIN
         RETURN false;
     END IF;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Set up Row Level Security (RLS) for Admin Dashboard
 ALTER TABLE v2_users ENABLE ROW LEVEL SECURITY;
