@@ -3,14 +3,50 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AIOmnibar from '@/components/marketplace/AIOmnibar';
 import { MapPin, ShieldCheck, Factory, Wallet, MessageSquare } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { supabase } from '@/lib/supabase/client';
+
+const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr: false, loading: () => <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-bold">Initializing PostGIS Engine...</div> });
 
 export default function MorphingDashboard() {
   const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
   const [searchQuery, setSearchQuery] = useState('');
+  const [merchants, setMerchants] = useState<{ [key: string]: string | number | boolean | null }[]>([]);
+  const [rfqs, setRfqs] = useState<{ [key: string]: string | number | boolean | null }[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleIntent = (detectedIntent: 'B2C' | 'B2B', query: string) => {
+  const mockMerchants = [
+    { id: '1', business_name: 'Raju Plumbers (Fallback)', category: 'Plumbing', surge_multiplier: 1.2 },
+    { id: '2', business_name: 'Sri Venkateshwara Electric', category: 'Electrician', surge_multiplier: 1.0 }
+  ];
+
+  const mockRfqs = [
+    { id: '1', title: 'Need 5,000 Corporate Uniforms (Fallback)', target_budget: 250000, status: 'OPEN' },
+    { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
+  ];
+
+  const handleIntent = async (detectedIntent: 'B2C' | 'B2B', query: string) => {
     setIntent(detectedIntent);
     setSearchQuery(query);
+    setIsLoading(true);
+
+    try {
+      if (detectedIntent === 'B2C') {
+        const { data, error } = await supabase.from('v2_merchants').select('*').limit(10);
+        if (error || !data || data.length === 0) setMerchants(mockMerchants);
+        else setMerchants(data);
+      } else {
+        const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
+        if (error || !data || data.length === 0) setRfqs(mockRfqs);
+        else setRfqs(data);
+      }
+    } catch {
+      console.warn('DB Fetch failed, using fallbacks');
+      setMerchants(mockMerchants);
+      setRfqs(mockRfqs);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -77,23 +113,36 @@ export default function MorphingDashboard() {
                   </div>
                 </div>
                 <div className="h-[500px] bg-slate-100 flex items-center justify-center relative">
-                  {/* Leaflet Map Placeholder */}
-                  <div className="absolute inset-0 opacity-50" style={{ backgroundImage: 'url("https://www.transparenttextures.com/patterns/cubes.png")' }}></div>
-                  <div className="relative z-10 flex flex-col items-center gap-4">
-                    <MapPin className="w-16 h-16 text-indigo-500 animate-bounce" />
-                    <p className="text-slate-500 font-medium">PostGIS Spatial Engine Loading...</p>
-                    <div className="flex gap-4">
-                      {/* Mock Gold Pin Merchant */}
-                      <div className="bg-white p-4 rounded-xl shadow-lg border-2 border-amber-400 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-bl-lg">GOLD PIN</div>
-                        <h4 className="font-bold text-slate-900">Raju Plumbers</h4>
-                        <p className="text-xs text-slate-500 mb-3">1.2 km away</p>
-                        <button className="w-full bg-emerald-500 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1">
-                          <MessageSquare className="w-3 h-3" /> WhatsApp (-₹5)
-                        </button>
+                  {isLoading ? (
+                    <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center">
+                      <div className="text-slate-400 font-bold flex flex-col items-center gap-4">
+                        <MapPin className="w-12 h-12 animate-bounce" />
+                        Fetching local merchants from Supabase...
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="absolute inset-0 z-0">
+                        <LiveMap merchants={merchants} />
+                      </div>
+
+                      {/* Floating overlay UI */}
+                      <div className="relative z-10 w-full h-full p-4 pointer-events-none">
+                        <div className="absolute bottom-4 left-4 right-4 flex gap-4 overflow-x-auto pointer-events-auto pb-2 scrollbar-hide">
+                          {merchants.map((m: { [key: string]: string | number | boolean | null }, i: number) => (
+                            <div key={i} className={`flex-shrink-0 w-64 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border-2 ${m.is_gold_pin_active ? 'border-amber-400' : 'border-white'}`}>
+                              {m.is_gold_pin_active && <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-full shadow">GOLD</div>}
+                              <h4 className="font-bold text-slate-900 truncate">{m.business_name}</h4>
+                              <p className="text-xs text-slate-500 mb-3">{m.category}</p>
+                              <button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
+                                <MessageSquare className="w-3 h-3" /> Connect (-₹5)
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </motion.div>
             )}
@@ -122,25 +171,41 @@ export default function MorphingDashboard() {
                 </div>
 
                 <div className="p-8">
-                  <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full uppercase">Open Bid</span>
-                        <h4 className="text-xl font-bold text-white mt-3">Need 5,000 Corporate Uniforms</h4>
-                        <p className="text-sm text-slate-400 mt-1">Buyer located in Whitefield, Bengaluru</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-xs text-slate-500 uppercase font-bold">Target Budget</p>
-                        <p className="text-xl font-black text-white">₹2,50,000</p>
-                      </div>
+                  {isLoading ? (
+                    <div className="space-y-4">
+                      {[1,2].map(i => (
+                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 animate-pulse">
+                          <div className="h-4 bg-slate-700 rounded w-1/4 mb-4"></div>
+                          <div className="h-6 bg-slate-700 rounded w-3/4 mb-2"></div>
+                          <div className="h-4 bg-slate-700 rounded w-1/2"></div>
+                        </div>
+                      ))}
                     </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-                      <p className="text-xs text-slate-400">4 verified suppliers have bid</p>
-                      <button className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-sm px-6 py-2 rounded-xl flex items-center gap-2 group-hover:scale-105 transition-all">
-                        Unlock Lead (-₹250)
-                      </button>
+                  ) : (
+                    <div className="space-y-4">
+                      {rfqs.map((rfq: { [key: string]: string | number | boolean | null }, i: number) => (
+                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
+                          <div className="flex justify-between items-start mb-4">
+                            <div>
+                              <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full uppercase">{rfq.status}</span>
+                              <h4 className="text-xl font-bold text-white mt-3">{rfq.title}</h4>
+                              <p className="text-sm text-slate-400 mt-1">Sourced from Supabase V2 Engine</p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-slate-500 uppercase font-bold">Target Budget</p>
+                              <p className="text-xl font-black text-white">₹{rfq.target_budget?.toLocaleString('en-IN') || 'N/A'}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between pt-4 border-t border-slate-700">
+                            <p className="text-xs text-slate-400">Verified RFQ</p>
+                            <button className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-sm px-6 py-2 rounded-xl flex items-center gap-2 group-hover:scale-105 transition-all">
+                              Unlock Lead (-₹250)
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
+                  )}
                 </div>
               </motion.div>
             )}
