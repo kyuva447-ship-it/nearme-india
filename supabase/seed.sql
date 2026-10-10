@@ -6,7 +6,7 @@ DELETE FROM wallet_transactions;
 DELETE FROM b2b_jobs;
 
 -- Insert 8 realistic, omni-category mock businesses across Bengaluru
-INSERT INTO sellers (id, business_name, industry, whatsapp_number, latitude, longitude, wallet_balance, is_available, business_type, category, tags, current_deal_text, deal_expiry, community_upvotes) VALUES
+INSERT INTO sellers (id, business_name, industry, whatsapp_number, latitude, longitude, wallet_balance, is_available, business_type, category, tags, current_deal_text, deal_expiry_time, community_upvotes) VALUES
 -- 1. Peenya Garment Factory (Manufacturer)
 ('11111111-1111-1111-1111-111111111111', 'Peenya Threads & Textiles', 'Manufacturer', '9876543210', 13.0285, 77.5197, 15.00, true, 'Manufacturer', 'Tailoring & Garments', '{"bulk", "export", "b2b"}', '10% off bulk orders', now() + interval '1 day', 45),
 

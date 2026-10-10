@@ -23,6 +23,13 @@ CREATE TABLE sellers (
     is_currently_available BOOLEAN DEFAULT true,
     community_upvotes INTEGER DEFAULT 0,
 
+    -- Viral Marketing & Zero-Touch Onboarding
+    is_claimed BOOLEAN DEFAULT true,
+    profile_views INTEGER DEFAULT 0,
+    qr_scans INTEGER DEFAULT 0,
+    referral_code TEXT,
+    referred_by UUID REFERENCES sellers(id),
+
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
