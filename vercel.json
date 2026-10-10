@@ -15,14 +15,14 @@
   ],
   "redirects": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "has": [
         {
           "type": "host",
           "value": "(?<subdomain>.*)\\.vercel\\.app"
         }
       ],
-      "destination": "https://www.nearme-india.org/:1",
+      "destination": "https://www.nearme-india.org/:path*",
       "permanent": true
     }
   ]
