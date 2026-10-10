@@ -68,7 +68,7 @@ export default function MorphingDashboard() {
                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
                   <div>
                     <h3 className="text-xl font-black text-slate-900">Consumer Map</h3>
-                    <p className="text-sm text-slate-500">Showing local results for: <span className="font-bold text-indigo-600">"{searchQuery}"</span></p>
+                    <p className="text-sm text-slate-500">Showing local results for: <span className="font-bold text-indigo-600">&quot;{searchQuery}&quot;</span></p>
                   </div>
                   <div className="flex gap-2">
                     <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
@@ -111,7 +111,7 @@ export default function MorphingDashboard() {
                     <h3 className="text-2xl font-black text-white flex items-center gap-3">
                       <Factory className="w-8 h-8 text-amber-500" /> Procurement Dashboard
                     </h3>
-                    <p className="text-sm text-slate-400 mt-2">Active RFQs related to: <span className="font-bold text-amber-400">"{searchQuery}"</span></p>
+                    <p className="text-sm text-slate-400 mt-2">Active RFQs related to: <span className="font-bold text-amber-400">&quot;{searchQuery}&quot;</span></p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Your Escrow Wallet</p>
