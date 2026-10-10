@@ -31,9 +31,11 @@ export default function LiveMap({ merchants }: { merchants: { [key: string]: str
       />
 
       {merchants.map((m) => {
-        // Fallback to Bengaluru center if no location exists
-        const lat = 12.9716;
-        const lng = 77.5946;
+        // Fallback to Bengaluru center if no location exists.
+        // In a real app, parse PostGIS geography to [lat, lng].
+        // e.g. from 0101000020E6100000.... to coordinates.
+        const lat = m.lat ? Number(m.lat) : 12.9716 + (Math.random() - 0.5) * 0.05;
+        const lng = m.lng ? Number(m.lng) : 77.5946 + (Math.random() - 0.5) * 0.05;
         return (
           <Marker key={String(m.id)} position={[lat, lng]} icon={customIcon}>
             <Popup>
