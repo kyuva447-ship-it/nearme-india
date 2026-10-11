@@ -140,20 +140,6 @@ export default function MorphingDashboard() {
       </div>
 
       <div className="relative z-10 container mx-auto px-4 py-8">
-        <header className="flex justify-between items-center mb-12">
-          <h1 className={`text-2xl font-black tracking-tight flex items-center gap-2 ${intent === 'B2B' ? 'text-white' : 'text-slate-900'}`}>
-            <MapPin className="w-8 h-8 text-emerald-500" />
-            NearMe <span className="text-emerald-500">India</span>
-          </h1>
-          <div className="flex gap-4">
-            <a href="/login" className={`font-bold text-sm px-6 py-2 rounded-full border-2 transition-all ${
-              intent === 'B2B' ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:bg-slate-100'
-            }`}>
-              Merchant Login
-            </a>
-          </div>
-        </header>
-
         <AIOmnibar onIntentDetected={handleIntent} />
 
         <div className="mt-16">

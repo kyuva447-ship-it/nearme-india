@@ -18,11 +18,22 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #f97316 0%, #d946ef 100%)',
-          borderRadius: '20%',
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+          borderRadius: '40px',
+          border: '4px solid rgba(99, 102, 241, 0.2)',
+          position: 'relative'
         }}
       >
-        <div style={{ color: 'white', fontSize: 100, fontWeight: 'bold' }}>N</div>
+        <div style={{ color: 'white', fontSize: 110, fontWeight: '900', fontFamily: 'sans-serif' }}>N</div>
+        <div style={{
+          position: 'absolute',
+          top: '35px',
+          right: '35px',
+          width: '24px',
+          height: '24px',
+          background: 'linear-gradient(135deg, #ff6b00 0%, #10b981 100%)',
+          borderRadius: '50%'
+        }} />
       </div>
     ),
     { ...size }
