@@ -11,19 +11,80 @@ const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr:
 export default function MorphingDashboard() {
   const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
   const [searchQuery, setSearchQuery] = useState('');
-  const [merchants, setMerchants] = useState<{ [key: string]: string | number | boolean | null }[]>([]);
-  const [rfqs, setRfqs] = useState<{ [key: string]: string | number | boolean | null }[]>([]);
+  const [merchants, setMerchants] = useState<any[]>([]);
+  const [rfqs, setRfqs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const mockMerchants = [
-    { id: '1', business_name: 'Raju Plumbers (Fallback)', category: 'Plumbing', surge_multiplier: 1.2 },
-    { id: '2', business_name: 'Sri Venkateshwara Electric', category: 'Electrician', surge_multiplier: 1.0 }
+    {
+      id: '1',
+      business_name: 'Raju Plumbers (Fallback)',
+      category: 'Plumbing',
+      surge_multiplier: 1.2,
+      current_deal_text: '20% OFF today only',
+      deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
+      is_currently_available: true,
+      community_upvotes: 55
+    },
+    {
+      id: '2',
+      business_name: 'Sri Venkateshwara Electric',
+      category: 'Electrician',
+      surge_multiplier: 1.0,
+      is_currently_available: false,
+      community_upvotes: 12
+    }
   ];
 
   const mockRfqs = [
     { id: '1', title: 'Need 5,000 Corporate Uniforms (Fallback)', target_budget: 250000, status: 'OPEN' },
     { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
   ];
+
+  const handleLeadTrigger = async (merchantId: string, merchantData: any) => {
+    try {
+      // 1. Check & Deduct Wallet (Secure RPC)
+      const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
+        merchant_uuid: merchantId,
+        amount: 3.00 // Upgraded Contextual Lead Fee
+      });
+
+      if (deductError || !deductSuccess) {
+        alert('Merchant out of wallet balance. Cannot connect right now.');
+        return;
+      }
+
+      // 2. Generate Context-Aware WhatsApp Message
+      const hasActiveDeal = merchantData.current_deal_text && merchantData.deal_expiry_time && new Date(merchantData.deal_expiry_time) > new Date();
+      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1); // Mock distance calculation
+
+      let message = `Hi ${merchantData.business_name}, I found you on NearMe India. `;
+      if (hasActiveDeal) {
+        message += `Are you still offering the "${merchantData.current_deal_text}" deal? `;
+      } else {
+         message += `I'm looking for ${merchantData.category} services. `;
+      }
+      message += `I am located approximately ${distancePlaceholder}km away.`;
+
+      // 3. Log the lead in DB for analytics
+      await supabase.from('v2_b2c_leads').insert([
+        {
+          merchant_id: merchantId,
+          lead_fee_charged: 3.00,
+          whatsapp_context: message
+        }
+      ]);
+
+      // 4. Trigger Handoff
+      const merchantPhone = merchantData.phone_number || '919999999999';
+      const whatsappUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
+      window.open(whatsappUrl, '_blank');
+
+    } catch (e) {
+      console.error('Lead trigger failed:', e);
+      alert('Failed to connect. Please try again.');
+    }
+  };
 
   const handleIntent = async (detectedIntent: 'B2C' | 'B2B', query: string) => {
     setIntent(detectedIntent);
@@ -32,8 +93,16 @@ export default function MorphingDashboard() {
 
     try {
       if (detectedIntent === 'B2C') {
-        const { data, error } = await supabase.from('v2_merchants').select('*').limit(10);
-        if (error || !data || data.length === 0) setMerchants(mockMerchants);
+        const { data, error } = await supabase.from('v2_merchants')
+          .select('*')
+          .order('is_currently_available', { ascending: false }) // Sort live merchants to top
+          .limit(10);
+
+        if (error || !data || data.length === 0) {
+           // Sort mock fallback data as well
+           const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+           setMerchants(sortedMocks);
+        }
         else setMerchants(data);
       } else {
         const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
@@ -42,7 +111,8 @@ export default function MorphingDashboard() {
       }
     } catch {
       console.warn('DB Fetch failed, using fallbacks');
-      setMerchants(mockMerchants);
+      const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+      setMerchants(sortedMocks);
       setRfqs(mockRfqs);
     } finally {
       setIsLoading(false);
@@ -129,16 +199,64 @@ export default function MorphingDashboard() {
                       {/* Floating overlay UI */}
                       <div className="relative z-10 w-full h-full p-4 pointer-events-none">
                         <div className="absolute bottom-4 left-4 right-4 flex gap-4 overflow-x-auto pointer-events-auto pb-2 scrollbar-hide">
-                          {merchants.map((m: { [key: string]: string | number | boolean | null }, i: number) => (
-                            <div key={i} className={`flex-shrink-0 w-64 bg-white/90 backdrop-blur p-4 rounded-xl shadow-lg border-2 ${m.is_gold_pin_active ? 'border-amber-400' : 'border-white'}`}>
-                              {m.is_gold_pin_active && <div className="absolute -top-2 -right-2 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-full shadow">GOLD</div>}
-                              <h4 className="font-bold text-slate-900 truncate">{m.business_name}</h4>
-                              <p className="text-xs text-slate-500 mb-3">{m.category}</p>
-                              <button className="w-full bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold py-2 rounded-lg flex items-center justify-center gap-1 transition-colors">
-                                <MessageSquare className="w-3 h-3" /> Connect (-₹5)
-                              </button>
-                            </div>
-                          ))}
+                          {merchants.map((m: any, i: number) => {
+                            const hasActiveDeal = m.current_deal_text && m.deal_expiry_time && new Date(m.deal_expiry_time) > new Date();
+                            const isLegend = (m.community_upvotes || 0) > 50;
+
+                            return (
+                              <div key={i} className={`flex-shrink-0 w-72 bg-white/90 backdrop-blur-md p-5 rounded-xl shadow-lg border-2 flex flex-col justify-between ${m.is_gold_pin_active ? 'border-amber-400' : 'border-slate-100'} hover:shadow-xl transition-all`}>
+                                <div>
+                                  {/* Badges Area */}
+                                  <div className="flex justify-between items-start mb-2 relative">
+                                    {m.is_currently_available && (
+                                      <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1">
+                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Available Right Now
+                                      </span>
+                                    )}
+                                    {m.is_gold_pin_active && <div className="absolute -top-3 -right-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-full shadow z-10">GOLD</div>}
+                                  </div>
+
+                                  {/* Deals Area */}
+                                  {hasActiveDeal && (
+                                    <div className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-md mb-3 flex items-center gap-1 animate-pulse shadow-sm shadow-red-500/20">
+                                      <span>🔥 LIVE DEAL:</span> {m.current_deal_text}
+                                    </div>
+                                  )}
+
+                                  <h4 className="font-bold text-slate-900 truncate text-lg">{m.business_name}</h4>
+                                  <div className="flex justify-between items-center mb-3">
+                                    <p className="text-xs text-slate-500 font-medium">{m.category}</p>
+
+                                    {/* Local Legend Upvotes */}
+                                    <div className="flex flex-col items-end gap-1">
+                                      <div className="flex items-center gap-1">
+                                        {isLegend && <span title="Neighborhood Legend" className="text-lg">👑</span>}
+                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                          👍 {m.community_upvotes || 0}
+                                        </span>
+                                      </div>
+                                      {isLegend && <span className="text-[10px] font-black text-amber-500 uppercase">Local Legend</span>}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex gap-2 mt-2">
+                                  <button
+                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center transition-colors"
+                                    onClick={() => alert(`Upvoted! ${m.business_name} now has ${(m.community_upvotes || 0) + 1} upvotes.`)}
+                                  >
+                                    👍 Recommend
+                                  </button>
+                                  <button
+                                    onClick={() => handleLeadTrigger(m.id, m)}
+                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20 hover:scale-[1.02]"
+                                  >
+                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹3)
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     </>
