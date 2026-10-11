@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="md:col-span-2">
             <BrandLogo className="mb-4 grayscale opacity-70" />
             <p className="text-sm mt-2 font-medium text-slate-300">
-              NearMe India — Operated by Beerangi Kartheek Kumar
+              NearMe India — Verified Hyper-Local Business Directory
             </p>
             <p className="text-xs mt-1">
               (Proprietorship / Digital SaaS & Directory Platform)

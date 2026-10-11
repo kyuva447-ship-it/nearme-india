@@ -10,7 +10,7 @@ export default function AboutPage() {
         </p>
         <h2 className="text-2xl font-bold text-slate-800 mb-4">Leadership</h2>
         <p className="text-slate-600 mb-6">
-          Operated by <strong>Beerangi Kartheek Kumar</strong> as a Proprietorship, NearMe India is dedicated to digital
+          Operated by <strong>NearMe India</strong> as a Proprietorship, NearMe India is dedicated to digital
           transformation for the unorganized local commerce sector across Bengaluru and India at large.
         </p>
         <h2 className="text-2xl font-bold text-slate-800 mb-4">Our Technology</h2>

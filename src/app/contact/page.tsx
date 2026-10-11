@@ -48,7 +48,7 @@ export default function ContactPage() {
 
           <div className="mt-12 bg-slate-900 p-8 rounded-3xl text-slate-100">
             <h3 className="text-xl font-bold mb-4 text-white">Grievance Officer</h3>
-            <p className="text-sm text-slate-400 mb-2">Name: <span className="font-bold text-white">Beerangi Kartheek Kumar</span></p>
+            <p className="text-sm text-slate-400 mb-2">Name: <span className="font-bold text-white">Grievance & Compliance Officer — NearMe India</span></p>
             <p className="text-sm text-slate-400 mb-2">Email: <span className="font-bold text-white">contact@nearme-india.org</span></p>
             <p className="text-sm text-slate-400">Resolution Timeline: Within 48 hours</p>
           </div>

@@ -76,7 +76,7 @@ export default function MerchantDashboard() {
                     <User className="w-8 h-8 text-emerald-400" />
                     Merchant HQ
                 </h1>
-                <p className="text-emerald-400 mt-2 font-bold text-sm bg-emerald-400/10 px-3 py-1 rounded-full inline-block">Verified Session: Beerangi Kartheek Kumar</p>
+                <p className="text-emerald-400 mt-2 font-bold text-sm bg-emerald-400/10 px-3 py-1 rounded-full inline-block">Verified Session: NearMe India</p>
             </div>
             <div className="text-right flex flex-col items-end gap-3">
                 <div>

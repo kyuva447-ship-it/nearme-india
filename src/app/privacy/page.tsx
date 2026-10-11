@@ -28,7 +28,7 @@ export default function PrivacyPage() {
           In accordance with the Information Technology Act, 2000, the name and contact details of the Grievance Officer are provided below:
         </p>
         <div className="bg-slate-100 p-6 rounded-xl border border-slate-200 mt-4">
-          <p className="m-0 font-bold text-slate-800">Name: Beerangi Kartheek Kumar</p>
+          <p className="m-0 font-bold text-slate-800">Name: Grievance & Compliance Officer — NearMe India</p>
           <p className="m-0 text-slate-600">Email: contact@nearme-india.org</p>
           <p className="m-0 text-slate-600">Phone: +91 8247831885</p>
           <p className="m-0 text-slate-600 mt-2 font-semibold">Resolution Timeline: Within 48 hours</p>

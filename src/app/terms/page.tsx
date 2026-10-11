@@ -8,7 +8,7 @@ export default function TermsPage() {
         <h2>1. Introduction</h2>
         <p>
           Welcome to NearMe India. These Terms and Conditions govern your use of the NearMe India website and platform,
-          which is an IT/SaaS directory and lead-generation service operated by Beerangi Kartheek Kumar (Proprietorship).
+          which is an IT/SaaS directory and lead-generation service operated by NearMe India (Proprietorship).
         </p>
 
         <h2>2. Services Provided</h2>

@@ -58,7 +58,7 @@ export default function RootLayout({
         "logo": "https://www.nearme-india.org/icon",
         "founder": {
           "@type": "Person",
-          "name": "Beerangi Kartheek Kumar"
+          "name": "NearMe India"
         },
         "contactPoint": {
           "@type": "ContactPoint",
