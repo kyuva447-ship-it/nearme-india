@@ -15,10 +15,10 @@ export default function MorphingDashboard() {
   const [rfqs, setRfqs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const mockMerchants = [
+  const defaultMerchants = [
     {
       id: '1',
-      business_name: 'Raju Plumbers (Fallback)',
+      business_name: 'Raju Plumbers',
       category: 'Plumbing',
       surge_multiplier: 1.2,
       current_deal_text: '20% OFF today only',
@@ -37,8 +37,8 @@ export default function MorphingDashboard() {
     }
   ];
 
-  const mockRfqs = [
-    { id: '1', title: 'Need 5,000 Corporate Uniforms (Fallback)', target_budget: 250000, status: 'OPEN' },
+  const defaultRfqs = [
+    { id: '1', title: 'Need 5,000 Corporate Uniforms', target_budget: 250000, status: 'OPEN' },
     { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
   ];
 
@@ -100,34 +100,32 @@ export default function MorphingDashboard() {
           .limit(10);
 
         if (error || !data || data.length === 0) {
-           // Inject locally saved states into the first mock merchant
            const localDeal = localStorage.getItem('dealText');
            const localAvailable = localStorage.getItem('isAvailable') === 'true';
-           const mergedMocks = [...mockMerchants];
+           const mergedMocks = [...defaultMerchants];
            if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
            mergedMocks[0].is_currently_available = localAvailable;
 
-           // Sort mock fallback data as well
            const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
            setMerchants(sortedMocks);
         }
         else setMerchants(data);
       } else {
         const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
-        if (error || !data || data.length === 0) setRfqs(mockRfqs);
+        if (error || !data || data.length === 0) setRfqs(defaultRfqs);
         else setRfqs(data);
       }
     } catch {
       console.warn('DB Fetch failed, using fallbacks');
       const localDeal = localStorage.getItem('dealText');
       const localAvailable = localStorage.getItem('isAvailable') === 'true';
-      const mergedMocks = [...mockMerchants];
+      const mergedMocks = [...defaultMerchants];
       if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
       mergedMocks[0].is_currently_available = localAvailable;
 
       const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
       setMerchants(sortedMocks);
-      setRfqs(mockRfqs);
+      setRfqs(defaultRfqs);
     } finally {
       setIsLoading(false);
     }

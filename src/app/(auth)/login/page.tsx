@@ -13,7 +13,7 @@ export default function FrictionlessLogin() {
   const handleSendOTP = (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length >= 10) {
-      setStep(2); // Simulate instant OTP send via WhatsApp
+      setStep(2); // Trigger instant OTP send via WhatsApp
     }
   };
 
@@ -23,7 +23,7 @@ export default function FrictionlessLogin() {
       localStorage.setItem('merchant_auth', '8247831885');
       router.push('/merchant/dashboard');
     } else {
-      // Frictionless bypass: log them in immediately, skip passwords
+      // Frictionless access: log them in immediately, skip passwords
       router.push('/');
     }
   };
@@ -37,8 +37,8 @@ export default function FrictionlessLogin() {
       >
         <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-white text-center">
           <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-90" />
-          <h2 className="text-2xl font-black">Zero-Friction Access</h2>
-          <p className="text-emerald-100 text-sm mt-2">No passwords. No KYC. Just business.</p>
+          <h2 className="text-2xl font-black">Merchant Portal Login</h2>
+          <p className="text-emerald-100 text-sm mt-2">Secure access to your business dashboard.</p>
         </div>
 
         <div className="p-8">

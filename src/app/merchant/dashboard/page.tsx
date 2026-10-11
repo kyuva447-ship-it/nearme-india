@@ -8,73 +8,112 @@ import { useRouter } from 'next/navigation';
 export default function MerchantDashboard() {
   const [isAvailable, setIsAvailable] = useState(false);
   const [dealText, setDealText] = useState('');
-  const [walletBalance, setWalletBalance] = useState(50.00);
+  const [walletBalance, setWalletBalance] = useState(498.00);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Profile state
+  const [businessName, setBusinessName] = useState('Raju Plumbers');
+  const [category, setCategory] = useState('Plumbing');
+  const [city, setCity] = useState('Bengaluru');
+  const [phone, setPhone] = useState('+91 8247831885');
+
   const router = useRouter();
 
   useEffect(() => {
-    // Check authentication
     const auth = localStorage.getItem('merchant_auth');
     if (auth !== '8247831885') {
       router.push('/login');
       return;
     }
 
-    // Load saved states
     const savedAvailable = localStorage.getItem('isAvailable');
     if (savedAvailable !== null) setIsAvailable(savedAvailable === 'true');
 
     const savedDealText = localStorage.getItem('dealText');
     if (savedDealText !== null) setDealText(savedDealText);
+
+    const savedName = localStorage.getItem('businessName');
+    if (savedName !== null) setBusinessName(savedName);
+
+    const savedCategory = localStorage.getItem('category');
+    if (savedCategory !== null) setCategory(savedCategory);
   }, [router]);
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    // Save locally
     localStorage.setItem('isAvailable', String(isAvailable));
     localStorage.setItem('dealText', dealText);
+    localStorage.setItem('businessName', businessName);
+    localStorage.setItem('category', category);
 
-    // Attempt to save to Supabase (assuming merchant row exists)
     try {
-      const { data, error } = await supabase.from('v2_merchants')
+      const { error } = await supabase.from('v2_merchants')
         .update({
           is_currently_available: isAvailable,
           current_deal_text: dealText,
-          deal_expiry_time: dealText ? new Date(Date.now() + 3600000).toISOString() : null, // 1 hr
+          deal_expiry_time: dealText ? new Date(Date.now() + 3600000).toISOString() : null,
+          business_name: businessName,
+          category: category
         })
         .eq('phone_number', '918247831885');
-        // if the row does not exist, this might fail, but localstorage fallback ensures the UI works
     } catch (e) {
       console.warn("Could not sync with Supabase, relying on local storage.");
     } finally {
-      setTimeout(() => setIsSaving(false), 500); // Simulate network delay
+      setTimeout(() => setIsSaving(false), 500);
     }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100 font-sans relative overflow-hidden">
-        {/* Background Gradients */}
         <div className="absolute top-[-10%] left-[-10%] w-[50vw] h-[50vw] rounded-full bg-emerald-600/20 blur-[120px] pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] rounded-full bg-indigo-600/20 blur-[100px] pointer-events-none" />
 
       <div className="max-w-4xl mx-auto relative z-10">
-        <header className="flex justify-between items-center mb-10 border-b border-slate-800 pb-6">
+        <header className="flex justify-between items-end mb-10 border-b border-slate-800 pb-6">
             <div>
                 <h1 className="text-3xl font-black flex items-center gap-3">
                     <User className="w-8 h-8 text-emerald-400" />
                     Merchant HQ
                 </h1>
-                <p className="text-slate-400 mt-1">Welcome back. Manage your local presence.</p>
+                <p className="text-emerald-400 mt-2 font-bold text-sm bg-emerald-400/10 px-3 py-1 rounded-full inline-block">Verified Session: Beerangi Kartheek Kumar</p>
             </div>
-            <div className="text-right">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Lead Wallet</p>
-                <div className="text-3xl font-black text-emerald-400 flex items-center gap-2 justify-end">
-                    <Wallet className="w-7 h-7" />
-                    ₹{walletBalance.toFixed(2)}
+            <div className="text-right flex flex-col items-end gap-3">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Lead Wallet</p>
+                  <div className="text-3xl font-black text-emerald-400 flex items-center gap-2 justify-end">
+                      <Wallet className="w-7 h-7" />
+                      ₹{walletBalance.toFixed(2)}
+                  </div>
                 </div>
+                <button className="bg-white text-slate-900 text-xs font-bold px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors">
+                  Top Up Wallet (₹199 / ₹499)
+                </button>
             </div>
         </header>
+
+        {/* Profile Editor */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-900/60 backdrop-blur-xl border border-slate-800 rounded-3xl p-8 mb-8 relative overflow-hidden">
+             <h2 className="text-xl font-bold mb-6">Business Profile</h2>
+             <div className="grid md:grid-cols-2 gap-6">
+                 <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Shop Name</label>
+                     <input type="text" value={businessName} onChange={e => setBusinessName(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" />
+                 </div>
+                 <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Category</label>
+                     <input type="text" value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" />
+                 </div>
+                 <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">City</label>
+                     <input type="text" value={city} onChange={e => setCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" />
+                 </div>
+                 <div>
+                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">WhatsApp Number</label>
+                     <input type="text" value={phone} disabled className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed" />
+                 </div>
+             </div>
+        </motion.div>
 
         <div className="grid md:grid-cols-2 gap-8">
 
