@@ -24,7 +24,8 @@ export default function MorphingDashboard() {
       current_deal_text: '20% OFF today only',
       deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
       is_currently_available: true,
-      community_upvotes: 55
+      community_upvotes: 55,
+      phone_number: '918247831885'
     },
     {
       id: '2',
@@ -46,7 +47,7 @@ export default function MorphingDashboard() {
       // 1. Check & Deduct Wallet (Secure RPC)
       const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
         merchant_uuid: merchantId,
-        amount: 3.00 // Upgraded Contextual Lead Fee
+        amount: 2.00 // Upgraded Contextual Lead Fee
       });
 
       if (deductError || !deductSuccess) {
@@ -70,7 +71,7 @@ export default function MorphingDashboard() {
       await supabase.from('v2_b2c_leads').insert([
         {
           merchant_id: merchantId,
-          lead_fee_charged: 3.00,
+          lead_fee_charged: 2.00,
           whatsapp_context: message
         }
       ]);
@@ -99,8 +100,15 @@ export default function MorphingDashboard() {
           .limit(10);
 
         if (error || !data || data.length === 0) {
+           // Inject locally saved states into the first mock merchant
+           const localDeal = localStorage.getItem('dealText');
+           const localAvailable = localStorage.getItem('isAvailable') === 'true';
+           const mergedMocks = [...mockMerchants];
+           if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
+           mergedMocks[0].is_currently_available = localAvailable;
+
            // Sort mock fallback data as well
-           const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+           const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
            setMerchants(sortedMocks);
         }
         else setMerchants(data);
@@ -111,7 +119,13 @@ export default function MorphingDashboard() {
       }
     } catch {
       console.warn('DB Fetch failed, using fallbacks');
-      const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+      const localDeal = localStorage.getItem('dealText');
+      const localAvailable = localStorage.getItem('isAvailable') === 'true';
+      const mergedMocks = [...mockMerchants];
+      if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
+      mergedMocks[0].is_currently_available = localAvailable;
+
+      const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
       setMerchants(sortedMocks);
       setRfqs(mockRfqs);
     } finally {
@@ -251,7 +265,7 @@ export default function MorphingDashboard() {
                                     onClick={() => handleLeadTrigger(m.id, m)}
                                     className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20 hover:scale-[1.02]"
                                   >
-                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹3)
+                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹2)
                                   </button>
                                 </div>
                               </div>

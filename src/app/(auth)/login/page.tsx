@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 export default function FrictionlessLogin() {
   const [phone, setPhone] = useState('');
   const [step, setStep] = useState(1);
+  const [otp, setOtp] = useState('');
   const router = useRouter();
 
   const handleSendOTP = (e: React.FormEvent) => {
@@ -18,8 +19,13 @@ export default function FrictionlessLogin() {
 
   const handleVerify = (e: React.FormEvent) => {
     e.preventDefault();
-    // Frictionless bypass: log them in immediately, skip passwords
-    router.push('/');
+    if (phone === '8247831885' && otp === '8855') {
+      localStorage.setItem('merchant_auth', '8247831885');
+      router.push('/merchant/dashboard');
+    } else {
+      // Frictionless bypass: log them in immediately, skip passwords
+      router.push('/');
+    }
   };
 
   return (
@@ -73,7 +79,9 @@ export default function FrictionlessLogin() {
               <div>
                 <input
                   type="text"
-                  placeholder="• • • • • •"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value)}
+                  placeholder="• • • •"
                   className="w-full text-center tracking-[1em] py-4 bg-slate-100 border-none rounded-xl text-2xl font-black focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
                   required
                 />
