@@ -13,6 +13,10 @@ export const metadata: Metadata = {
     template: '%s | NearMe India',
   },
   description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
+  icons: {
+    icon: '/icon',
+    apple: '/apple-icon',
+  },
   keywords: ['hyper-local', 'business directory', 'B2B procurement', 'India', 'merchants', 'flash deals'],
   alternates: {
     canonical: '/',
