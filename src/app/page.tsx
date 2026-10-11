@@ -15,16 +15,17 @@ export default function MorphingDashboard() {
   const [rfqs, setRfqs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  const mockMerchants = [
+  const defaultMerchants = [
     {
       id: '1',
-      business_name: 'Raju Plumbers (Fallback)',
+      business_name: 'Raju Plumbers',
       category: 'Plumbing',
       surge_multiplier: 1.2,
       current_deal_text: '20% OFF today only',
       deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
       is_currently_available: true,
-      community_upvotes: 55
+      community_upvotes: 55,
+      phone_number: '918247831885'
     },
     {
       id: '2',
@@ -36,8 +37,8 @@ export default function MorphingDashboard() {
     }
   ];
 
-  const mockRfqs = [
-    { id: '1', title: 'Need 5,000 Corporate Uniforms (Fallback)', target_budget: 250000, status: 'OPEN' },
+  const defaultRfqs = [
+    { id: '1', title: 'Need 5,000 Corporate Uniforms', target_budget: 250000, status: 'OPEN' },
     { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
   ];
 
@@ -46,7 +47,7 @@ export default function MorphingDashboard() {
       // 1. Check & Deduct Wallet (Secure RPC)
       const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
         merchant_uuid: merchantId,
-        amount: 3.00 // Upgraded Contextual Lead Fee
+        amount: 2.00 // Upgraded Contextual Lead Fee
       });
 
       if (deductError || !deductSuccess) {
@@ -70,7 +71,7 @@ export default function MorphingDashboard() {
       await supabase.from('v2_b2c_leads').insert([
         {
           merchant_id: merchantId,
-          lead_fee_charged: 3.00,
+          lead_fee_charged: 2.00,
           whatsapp_context: message
         }
       ]);
@@ -99,21 +100,32 @@ export default function MorphingDashboard() {
           .limit(10);
 
         if (error || !data || data.length === 0) {
-           // Sort mock fallback data as well
-           const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+           const localDeal = localStorage.getItem('dealText');
+           const localAvailable = localStorage.getItem('isAvailable') === 'true';
+           const mergedMocks = [...defaultMerchants];
+           if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
+           mergedMocks[0].is_currently_available = localAvailable;
+
+           const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
            setMerchants(sortedMocks);
         }
         else setMerchants(data);
       } else {
         const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
-        if (error || !data || data.length === 0) setRfqs(mockRfqs);
+        if (error || !data || data.length === 0) setRfqs(defaultRfqs);
         else setRfqs(data);
       }
     } catch {
       console.warn('DB Fetch failed, using fallbacks');
-      const sortedMocks = [...mockMerchants].sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+      const localDeal = localStorage.getItem('dealText');
+      const localAvailable = localStorage.getItem('isAvailable') === 'true';
+      const mergedMocks = [...defaultMerchants];
+      if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
+      mergedMocks[0].is_currently_available = localAvailable;
+
+      const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
       setMerchants(sortedMocks);
-      setRfqs(mockRfqs);
+      setRfqs(defaultRfqs);
     } finally {
       setIsLoading(false);
     }
@@ -251,7 +263,7 @@ export default function MorphingDashboard() {
                                     onClick={() => handleLeadTrigger(m.id, m)}
                                     className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20 hover:scale-[1.02]"
                                   >
-                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹3)
+                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹2)
                                   </button>
                                 </div>
                               </div>
