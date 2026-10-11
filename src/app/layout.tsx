@@ -9,25 +9,25 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.nearme-india.org'),
   title: {
-    default: 'NearMe India — Verified Hyper-Local Business Directory & B2B Trade Network',
+    default: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
     template: '%s | NearMe India',
   },
-  description: 'NearMe India is India’s verified hyper-local business directory and B2B procurement SaaS platform. Discover live flash deals, instant WhatsApp merchant connect, and verified local suppliers across India.',
+  description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
   keywords: ['hyper-local', 'business directory', 'B2B procurement', 'India', 'merchants', 'flash deals'],
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    title: 'NearMe India — Verified Hyper-Local Business Directory & B2B Trade Network',
-    description: 'NearMe India is India’s verified hyper-local business directory and B2B procurement SaaS platform. Discover live flash deals, instant WhatsApp merchant connect, and verified local suppliers across India.',
+    title: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
+    description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
     url: 'https://www.nearme-india.org',
     siteName: 'NearMe India',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NearMe India — Verified Hyper-Local Business Directory & B2B Trade Network',
-    description: 'NearMe India is India’s verified hyper-local business directory and B2B procurement SaaS platform. Discover live flash deals, instant WhatsApp merchant connect, and verified local suppliers across India.',
+    title: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
+    description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
   },
   robots: {
     index: true,
