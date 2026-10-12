@@ -14,8 +14,16 @@ export const metadata: Metadata = {
   },
   description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
   icons: {
-    icon: '/icon',
-    apple: '/apple-icon',
+    icon: [
+      { url: '/favicon.ico?v=5', sizes: '48x48', type: 'image/x-icon' },
+      { url: '/icon-192.png?v=5', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png?v=5', sizes: '512x512', type: 'image/png' },
+      { url: '/icon.svg?v=5', type: 'image/svg+xml' },
+    ],
+    shortcut: '/favicon.ico?v=5',
+    apple: [
+      { url: '/apple-touch-icon.png?v=5', sizes: '180x180', type: 'image/png' },
+    ],
   },
   keywords: ['hyper-local', 'business directory', 'B2B procurement', 'India', 'merchants', 'flash deals'],
   alternates: {
@@ -52,14 +60,14 @@ export default function RootLayout({
         "@id": "https://www.nearme-india.org/#website",
         "url": "https://www.nearme-india.org",
         "name": "NearMe India",
-        "description": "NearMe India is India’s verified hyper-local business directory and B2B procurement SaaS platform."
+        "description": "NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India."
       },
       {
         "@type": "Organization",
         "@id": "https://www.nearme-india.org/#organization",
         "name": "NearMe India",
         "url": "https://www.nearme-india.org",
-        "logo": "https://www.nearme-india.org/icon",
+        "logo": "https://www.nearme-india.org/icon-512.png",
         "founder": {
           "@type": "Person",
           "name": "NearMe India"
