@@ -153,7 +153,7 @@ export default function MorphingDashboard() {
                 className="text-center max-w-2xl mx-auto mt-24"
               >
                 <h2 className="text-5xl font-black text-slate-900 leading-tight mb-6">
-                  The Dual-Engine Local Marketplace
+                  The Verified Local Marketplace
                 </h2>
                 <p className="text-xl text-slate-500">
                   Search naturally. Our AI routes you to instant consumer maps or high-margin B2B procurement dashboards.
@@ -305,7 +305,7 @@ export default function MorphingDashboard() {
                             <div>
                               <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full uppercase">{rfq.status}</span>
                               <h4 className="text-xl font-bold text-white mt-3">{rfq.title}</h4>
-                              <p className="text-sm text-slate-400 mt-1">Sourced from Supabase V2 Engine</p>
+                              <p className="text-sm text-slate-400 mt-1">Sourced from Verified B2B Network</p>
                             </div>
                             <div className="text-right">
                               <p className="text-xs text-slate-500 uppercase font-bold">Target Budget</p>
