@@ -188,7 +188,7 @@ export default function MorphingDashboard() {
                         Fetching local merchants from Supabase...
                       </div>
                     </div>
-                  ) : (
+                  ) : merchants.length > 0 && searchQuery.toLowerCase() !== 'empty' ? (
                     <>
                       <div className="absolute inset-0 z-0">
                         <LiveMap merchants={merchants} />
@@ -258,6 +258,27 @@ export default function MorphingDashboard() {
                         </div>
                       </div>
                     </>
+                  ) : (
+                    <div className="absolute inset-0 z-10 bg-white/90 backdrop-blur-sm flex flex-col items-center justify-center p-8 text-center">
+                      <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+                        <MapPin className="w-8 h-8 text-emerald-600" />
+                      </div>
+                      <h3 className="text-2xl font-black text-slate-900 mb-2">We are expanding here!</h3>
+                      <p className="text-slate-600 mb-8 max-w-md">
+                        There are currently no verified merchants for "{searchQuery}" in this exact area. Enter your WhatsApp number to get notified instantly when a pro becomes available.
+                      </p>
+                      <form className="w-full max-w-sm flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); alert('We will notify you on WhatsApp shortly.'); }}>
+                        <input
+                          type="tel"
+                          required
+                          placeholder="Your WhatsApp Number"
+                          className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-900 font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <button type="submit" className="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3 rounded-xl transition-all">
+                          Get Notified
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </div>
               </motion.div>
