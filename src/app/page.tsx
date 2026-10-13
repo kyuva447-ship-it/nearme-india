@@ -194,6 +194,17 @@ export default function MorphingDashboard() {
                         <LiveMap merchants={merchants} />
                       </div>
 
+                      {merchants.length === 0 && (
+                        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-slate-900/90 backdrop-blur-md text-white p-8 text-center">
+                          <h3 className="text-3xl font-black mb-4">We are expanding here!</h3>
+                          <p className="mb-6 text-slate-300">Enter your WhatsApp to get notified when merchants arrive.</p>
+                          <div className="flex gap-2">
+                            <input type="text" placeholder="+91 Your Number" className="px-4 py-3 rounded-lg text-slate-900 w-64 mb-4" />
+                            <button className="bg-emerald-500 hover:bg-emerald-600 px-6 py-3 rounded-lg font-bold shadow-lg shadow-emerald-500/20 transition-all h-[52px]">Notify Me</button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Floating overlay UI */}
                       <div className="relative z-10 w-full h-full p-4 pointer-events-none">
                         <div className="absolute bottom-4 left-4 right-4 flex gap-4 overflow-x-auto pointer-events-auto pb-2 scrollbar-hide">
