@@ -171,6 +171,28 @@ export default function MerchantDashboard() {
                  </div>
             </motion.div>
 
+            {/* AI Marketing Agent */}
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }} className="bg-slate-900/60 backdrop-blur-xl border border-indigo-500/30 rounded-3xl p-8 relative overflow-hidden md:col-span-2">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row justify-between items-center gap-6">
+                     <div>
+                        <h2 className="text-xl font-bold mb-2 flex items-center gap-2">
+                           <MessageSquare className="w-5 h-5 text-indigo-400" /> AI Marketing Agent
+                        </h2>
+                        <p className="text-sm text-slate-400">Autonomously generate WhatsApp blasts and SEO captions to drive zero-manual local growth.</p>
+                     </div>
+                     <button
+                        onClick={() => {
+                            const message = `Hey from ${businessName}! 🚀 Check out our exclusive local deal today: ${dealText || 'Special discount inside!'}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank');
+                        }}
+                        className="w-full md:w-auto bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-3 px-6 rounded-xl flex items-center justify-center gap-2 transition-colors whitespace-nowrap shadow-lg shadow-indigo-500/20"
+                     >
+                        <MessageSquare className="w-5 h-5" /> Generate AI Blast
+                     </button>
+                 </div>
+            </motion.div>
+
         </div>
 
         {/* Save Button */}
