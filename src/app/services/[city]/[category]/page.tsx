@@ -22,6 +22,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Connect instantly with trusted ${category} professionals in ${city}. Claim live flash deals and verified B2B procurement connections on NearMe India.`,
     alternates: {
       canonical: `https://www.nearme-india.org/services/${params.city}/${params.category}`
+    },
+    openGraph: {
+      title: `Verified ${category} in ${city} — NearMe India`,
+      description: `Connect instantly with trusted ${category} professionals in ${city}. Claim live flash deals and verified B2B procurement connections on NearMe India.`,
+      url: `https://www.nearme-india.org/services/${params.city}/${params.category}`,
+      siteName: 'NearMe India',
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `Verified ${category} in ${city} — NearMe India`,
+      description: `Connect instantly with trusted ${category} professionals in ${city}. Claim live flash deals and verified B2B procurement connections on NearMe India.`,
     }
   };
 }

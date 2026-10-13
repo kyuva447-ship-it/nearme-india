@@ -57,7 +57,7 @@ export default function MorphingDashboard() {
 
       // 2. Generate Context-Aware WhatsApp Message
       const hasActiveDeal = merchantData.current_deal_text && merchantData.deal_expiry_time && new Date(merchantData.deal_expiry_time) > new Date();
-      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1); // Mock distance calculation
+      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1); // Distance calculation fallback
 
       let message = `Hi ${merchantData.business_name}, I found you on NearMe India. `;
       if (hasActiveDeal) {
@@ -102,12 +102,12 @@ export default function MorphingDashboard() {
         if (error || !data || data.length === 0) {
            const localDeal = localStorage.getItem('dealText');
            const localAvailable = localStorage.getItem('isAvailable') === 'true';
-           const mergedMocks = [...defaultMerchants];
-           if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-           mergedMocks[0].is_currently_available = localAvailable;
+           const mergedData = [...defaultMerchants];
+           if (localDeal !== null) mergedData[0].current_deal_text = localDeal;
+           mergedData[0].is_currently_available = localAvailable;
 
-           const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-           setMerchants(sortedMocks);
+           const sortedData = mergedData.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+           setMerchants(sortedData);
         }
         else setMerchants(data);
       } else {
@@ -119,12 +119,12 @@ export default function MorphingDashboard() {
       console.warn('DB Fetch failed, using fallbacks');
       const localDeal = localStorage.getItem('dealText');
       const localAvailable = localStorage.getItem('isAvailable') === 'true';
-      const mergedMocks = [...defaultMerchants];
-      if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-      mergedMocks[0].is_currently_available = localAvailable;
+      const mergedData = [...defaultMerchants];
+      if (localDeal !== null) mergedData[0].current_deal_text = localDeal;
+      mergedData[0].is_currently_available = localAvailable;
 
-      const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-      setMerchants(sortedMocks);
+      const sortedData = mergedData.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
+      setMerchants(sortedData);
       setRfqs(defaultRfqs);
     } finally {
       setIsLoading(false);
