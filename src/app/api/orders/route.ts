@@ -10,7 +10,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
     }
 
-    const amountInPaise = Math.round(amount * 100);
+    // TEMPORARY: Hardcode amount to exactly ₹1 (100 paise) for live E2E verification test
+    const amountInPaise = 100; // Math.round(amount * 100);
 
     const razorpay = new Razorpay({
       key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID as string,
