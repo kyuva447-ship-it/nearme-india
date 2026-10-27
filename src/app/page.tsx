@@ -47,7 +47,7 @@ export default function MorphingDashboard() {
       // 1. Check & Deduct Wallet (Secure RPC)
       const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
         merchant_uuid: merchantId,
-        amount: 2.00 // Upgraded Contextual Lead Fee
+        amount: 3.00 // Upgraded Contextual Lead Fee
       });
 
       if (deductError || !deductSuccess) {
@@ -71,7 +71,7 @@ export default function MorphingDashboard() {
       await supabase.from('v2_b2c_leads').insert([
         {
           merchant_id: merchantId,
-          lead_fee_charged: 2.00,
+          lead_fee_charged: 3.00,
           whatsapp_context: message
         }
       ]);

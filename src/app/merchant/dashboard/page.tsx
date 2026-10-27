@@ -197,7 +197,7 @@ export default function MerchantDashboard() {
                         </div>
                         <div className="text-right">
                             <span className="bg-red-500/10 text-red-400 text-xs font-bold px-3 py-1 rounded-md border border-red-500/20">
-                                -₹2.00
+                                -₹3.00
                             </span>
                         </div>
                     </div>

@@ -1,0 +1,1 @@
+CREATE TABLE IF NOT EXISTS public.v2_razorpay_events (id TEXT PRIMARY KEY, event_type TEXT, payload JSONB, processed_at TIMESTAMPTZ DEFAULT now()); ALTER TABLE public.v2_razorpay_events ENABLE ROW LEVEL SECURITY; CREATE POLICY "Service role can manage" ON public.v2_razorpay_events FOR ALL USING (auth.role() = 'service_role');
