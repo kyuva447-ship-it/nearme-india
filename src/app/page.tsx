@@ -1,53 +1,53 @@
 'use client';
+
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AIOmnibar from '@/components/marketplace/AIOmnibar';
-import { MapPin, ShieldCheck, Factory, Wallet, MessageSquare } from 'lucide-react';
+import { MapPin, ShieldCheck, Factory, Wallet, MessageSquare, Mic, Camera, PenLine } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { supabase } from '@/lib/supabase/client';
 
-const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr: false, loading: () => <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-bold">Initializing PostGIS Engine...</div> });
+const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr: false });
 
-export default function MorphingDashboard() {
-  const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [merchants, setMerchants] = useState<any[]>([]);
-  const [rfqs, setRfqs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const defaultMerchants = [
+const defaultMerchants = [
     {
-      id: '1',
-      business_name: 'Raju Plumbers',
-      category: 'Plumbing',
-      surge_multiplier: 1.2,
+      id: 'mock-1',
+      business_name: 'Sri Balaji Electricals',
+      category: 'Electrician',
+      rating: 4.8,
+      latitude: 13.6288,
+      longitude: 79.4192,
+      distance: 1.2,
       current_deal_text: '20% OFF today only',
       deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
       is_currently_available: true,
       community_upvotes: 55,
-      phone_number: '918247831885'
+      is_gold_pin_active: true
     },
     {
-      id: '2',
-      business_name: 'Sri Venkateshwara Electric',
-      category: 'Electrician',
-      surge_multiplier: 1.0,
+      id: 'mock-2',
+      business_name: 'Tirupati Plumbing Experts',
+      category: 'Plumber',
+      rating: 4.5,
+      latitude: 13.6300,
+      longitude: 79.4200,
+      distance: 2.5,
+      current_deal_text: null,
       is_currently_available: false,
       community_upvotes: 12
     }
-  ];
+];
 
-  const defaultRfqs = [
-    { id: '1', title: 'Need 5,000 Corporate Uniforms', target_budget: 250000, status: 'OPEN' },
-    { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
-  ];
+export default function MorphingDashboard() {
+  const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [merchants, setMerchants] = useState<any[]>(defaultMerchants);
 
   const handleLeadTrigger = async (merchantId: string, merchantData: any) => {
     try {
-      // 1. Check & Deduct Wallet (Secure RPC)
       const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
         merchant_uuid: merchantId,
-        amount: 3.00 // Upgraded Contextual Lead Fee
+        amount: 3.00
       });
 
       if (deductError || !deductSuccess) {
@@ -55,9 +55,8 @@ export default function MorphingDashboard() {
         return;
       }
 
-      // 2. Generate Context-Aware WhatsApp Message
       const hasActiveDeal = merchantData.current_deal_text && merchantData.deal_expiry_time && new Date(merchantData.deal_expiry_time) > new Date();
-      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1); // Mock distance calculation
+      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1);
 
       let message = `Hi ${merchantData.business_name}, I found you on NearMe India. `;
       if (hasActiveDeal) {
@@ -67,7 +66,6 @@ export default function MorphingDashboard() {
       }
       message += `I am located approximately ${distancePlaceholder}km away.`;
 
-      // 3. Log the lead in DB for analytics
       await supabase.from('v2_b2c_leads').insert([
         {
           merchant_id: merchantId,
@@ -76,257 +74,133 @@ export default function MorphingDashboard() {
         }
       ]);
 
-      // 4. Trigger Handoff
       const merchantPhone = merchantData.phone_number || '919999999999';
       const whatsappUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
       window.open(whatsappUrl, '_blank');
 
     } catch (e) {
       console.error('Lead trigger failed:', e);
-      alert('Failed to connect. Please try again.');
-    }
-  };
-
-  const handleIntent = async (detectedIntent: 'B2C' | 'B2B', query: string) => {
-    setIntent(detectedIntent);
-    setSearchQuery(query);
-    setIsLoading(true);
-
-    try {
-      if (detectedIntent === 'B2C') {
-        const { data, error } = await supabase.from('v2_merchants')
-          .select('*')
-          .order('is_currently_available', { ascending: false }) // Sort live merchants to top
-          .limit(10);
-
-        if (error || !data || data.length === 0) {
-           const localDeal = localStorage.getItem('dealText');
-           const localAvailable = localStorage.getItem('isAvailable') === 'true';
-           const mergedMocks = [...defaultMerchants];
-           if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-           mergedMocks[0].is_currently_available = localAvailable;
-
-           const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-           setMerchants(sortedMocks);
-        }
-        else setMerchants(data);
-      } else {
-        const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
-        if (error || !data || data.length === 0) setRfqs(defaultRfqs);
-        else setRfqs(data);
-      }
-    } catch {
-      console.warn('DB Fetch failed, using fallbacks');
-      const localDeal = localStorage.getItem('dealText');
-      const localAvailable = localStorage.getItem('isAvailable') === 'true';
-      const mergedMocks = [...defaultMerchants];
-      if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-      mergedMocks[0].is_currently_available = localAvailable;
-
-      const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-      setMerchants(sortedMocks);
-      setRfqs(defaultRfqs);
-    } finally {
-      setIsLoading(false);
+      alert('Could not process lead. Please try again.');
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden">
-      {/* Background Gradients */}
-      <div className="absolute inset-0 pointer-events-none transition-colors duration-1000">
-        {intent === 'B2C' && <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-slate-50" />}
-        {intent === 'B2B' && <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-800" />}
+    <div className="min-h-screen bg-slate-950 overflow-hidden font-sans relative">
+      <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-br from-indigo-500/20 via-fuchsia-500/10 to-transparent blur-[100px] pointer-events-none" />
+
+      {/* Floating Meta AI */}
+      <div className="fixed bottom-6 right-6 z-50">
+         <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-full shadow-2xl cursor-pointer hover:bg-white/20 transition-all flex items-center gap-3">
+             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-spin-slow">
+                 <span className="text-white font-black text-xl">M</span>
+             </div>
+             <div className="hidden md:block">
+                 <p className="text-white font-bold text-sm">Mee kosam em cheyyali?</p>
+                 <p className="text-slate-300 text-xs">Meta AI Assistant</p>
+             </div>
+         </motion.div>
       </div>
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <AIOmnibar onIntentDetected={handleIntent} />
+      <div className="relative z-10 container mx-auto px-4 pt-12 pb-32">
+        <div className="text-center max-w-3xl mx-auto mb-16">
+           <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 mb-6 tracking-tight">
+               NearMe India
+           </h1>
+           <p className="text-xl text-slate-400 mb-10">The Verified Local Marketplace. Zero Fake Reviews.</p>
 
-        <div className="mt-16">
-          <AnimatePresence mode="wait">
-            {intent === 'IDLE' && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="text-center max-w-2xl mx-auto mt-24"
-              >
-                <h2 className="text-5xl font-black text-slate-900 leading-tight mb-6">
-                  The Verified Local Marketplace
-                </h2>
-                <p className="text-xl text-slate-500">
-                  Search naturally. Our AI routes you to instant consumer maps or high-margin B2B procurement dashboards.
-                </p>
-              </motion.div>
-            )}
+           {/* The 3 BIG Buttons */}
+           <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
+               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-3xl shadow-xl shadow-orange-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
+                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><Mic className="w-8 h-8 text-white"/></div>
+                   <span className="text-white font-black text-lg tracking-wider">BOLO</span>
+               </button>
+               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-purple-500 to-indigo-600 p-6 rounded-3xl shadow-xl shadow-purple-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
+                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><Camera className="w-8 h-8 text-white"/></div>
+                   <span className="text-white font-black text-lg tracking-wider">PHOTO LO</span>
+               </button>
+               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-3xl shadow-xl shadow-emerald-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
+                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><PenLine className="w-8 h-8 text-white"/></div>
+                   <span className="text-white font-black text-lg tracking-wider">LIKHO</span>
+               </button>
+           </div>
+        </div>
 
-            {intent === 'B2C' && (
-              <motion.div
-                key="b2c"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200"
-              >
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Consumer Map</h3>
-                    <p className="text-sm text-slate-500">Showing local results for: <span className="font-bold text-indigo-600">&quot;{searchQuery}&quot;</span></p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" /> Surge 1.0x
-                    </span>
-                  </div>
+        <AnimatePresence mode="wait">
+          {intent === 'B2C' && (
+            <motion.div
+              initial={{ opacity: 0, y: 40 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 40 }}
+              className="bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-800"
+            >
+              <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
+                <div>
+                  <h3 className="text-2xl font-black text-white">Live Consumer Map</h3>
+                  <p className="text-sm text-emerald-400 font-bold flex items-center gap-2 mt-1">
+                      <ShieldCheck className="w-4 h-4"/> 100% Verified Merchants
+                  </p>
                 </div>
-                <div className="h-[500px] bg-slate-100 flex items-center justify-center relative">
-                  {isLoading ? (
-                    <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center">
-                      <div className="text-slate-400 font-bold flex flex-col items-center gap-4">
-                        <MapPin className="w-12 h-12 animate-bounce" />
-                        Fetching local merchants from Supabase...
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="absolute inset-0 z-0">
-                        <LiveMap merchants={merchants} />
-                      </div>
+              </div>
+              <div className="h-[600px] relative">
+                  <div className="absolute inset-0 z-0">
+                    <LiveMap merchants={merchants} />
+                  </div>
 
-                      {/* Floating overlay UI */}
-                      <div className="relative z-10 w-full h-full p-4 pointer-events-none">
-                        <div className="absolute bottom-4 left-4 right-4 flex gap-4 overflow-x-auto pointer-events-auto pb-2 scrollbar-hide">
-                          {merchants.map((m: any, i: number) => {
-                            const hasActiveDeal = m.current_deal_text && m.deal_expiry_time && new Date(m.deal_expiry_time) > new Date();
-                            const isLegend = (m.community_upvotes || 0) > 50;
+                  {/* Floating Overlay UI for Merchants */}
+                  <div className="relative z-10 w-full h-full p-6 pointer-events-none flex flex-col justify-end">
+                    <div className="flex gap-6 overflow-x-auto pointer-events-auto pb-4 scrollbar-hide">
+                      {merchants.map((m: any, i: number) => {
+                        const hasActiveDeal = m.current_deal_text && m.deal_expiry_time && new Date(m.deal_expiry_time) > new Date();
+                        const isLegend = (m.community_upvotes || 0) > 50;
 
-                            return (
-                              <div key={i} className={`flex-shrink-0 w-72 bg-white/90 backdrop-blur-md p-5 rounded-xl shadow-lg border-2 flex flex-col justify-between ${m.is_gold_pin_active ? 'border-amber-400' : 'border-slate-100'} hover:shadow-xl transition-all`}>
-                                <div>
-                                  {/* Badges Area */}
-                                  <div className="flex justify-between items-start mb-2 relative">
-                                    {m.is_currently_available && (
-                                      <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Available Right Now
-                                      </span>
-                                    )}
-                                    {m.is_gold_pin_active && <div className="absolute -top-3 -right-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-full shadow z-10">GOLD</div>}
-                                  </div>
+                        return (
+                          <div key={i} className={`flex-shrink-0 w-80 bg-slate-900/90 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border flex flex-col justify-between ${m.is_gold_pin_active ? 'border-amber-500/50 shadow-amber-500/10' : 'border-slate-700'}`}>
+                            <div>
+                              <div className="flex justify-between items-start mb-4 relative">
+                                {m.is_currently_available && (
+                                  <span className="bg-emerald-500/20 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-500/30">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div> LIVE
+                                  </span>
+                                )}
+                                {m.is_gold_pin_active && <div className="bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 text-xs font-black px-3 py-1.5 rounded-full shadow-lg">TOP SLOT</div>}
+                              </div>
 
-                                  {/* Deals Area */}
-                                  {hasActiveDeal && (
-                                    <div className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-md mb-3 flex items-center gap-1 animate-pulse shadow-sm shadow-red-500/20">
-                                      <span>🔥 LIVE DEAL:</span> {m.current_deal_text}
-                                    </div>
-                                  )}
-
-                                  <h4 className="font-bold text-slate-900 truncate text-lg">{m.business_name}</h4>
-                                  <div className="flex justify-between items-center mb-3">
-                                    <p className="text-xs text-slate-500 font-medium">{m.category}</p>
-
-                                    {/* Local Legend Upvotes */}
-                                    <div className="flex flex-col items-end gap-1">
-                                      <div className="flex items-center gap-1">
-                                        {isLegend && <span title="Neighborhood Legend" className="text-lg">👑</span>}
-                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                          👍 {m.community_upvotes || 0}
-                                        </span>
-                                      </div>
-                                      {isLegend && <span className="text-[10px] font-black text-amber-500 uppercase">Local Legend</span>}
-                                    </div>
-                                  </div>
+                              {hasActiveDeal && (
+                                <div className="bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black px-4 py-2 rounded-lg mb-4 flex items-center gap-2 animate-pulse shadow-lg shadow-red-500/20">
+                                  <span>🔥 STREAK DEAL:</span> {m.current_deal_text}
                                 </div>
+                              )}
 
-                                <div className="flex gap-2 mt-2">
-                                  <button
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center transition-colors"
-                                    onClick={() => alert(`Upvoted! ${m.business_name} now has ${(m.community_upvotes || 0) + 1} upvotes.`)}
-                                  >
-                                    👍 Recommend
-                                  </button>
-                                  <button
-                                    onClick={() => handleLeadTrigger(m.id, m)}
-                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20 hover:scale-[1.02]"
-                                  >
-                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹2)
-                                  </button>
+                              <h4 className="font-black text-white text-xl mb-1">{m.business_name}</h4>
+                              <p className="text-sm text-slate-400 font-medium mb-4">{m.category} • {m.distance}km away</p>
+
+                              <div className="flex justify-between items-center mb-4">
+                                <div className="flex flex-col gap-1">
+                                  <div className="flex items-center gap-2">
+                                    {isLegend && <span title="Neighborhood Legend" className="text-xl">👑</span>}
+                                    <span className="text-sm font-black text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-lg flex items-center gap-1 border border-emerald-400/20">
+                                      Trust 90+
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {intent === 'B2B' && (
-              <motion.div
-                key="b2b"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -40 }}
-                className="bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-700 text-slate-200"
-              >
-                <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-                  <div>
-                    <h3 className="text-2xl font-black text-white flex items-center gap-3">
-                      <Factory className="w-8 h-8 text-amber-500" /> Procurement Dashboard
-                    </h3>
-                    <p className="text-sm text-slate-400 mt-2">Active RFQs related to: <span className="font-bold text-amber-400">&quot;{searchQuery}&quot;</span></p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Your Escrow Wallet</p>
-                    <div className="text-2xl font-black text-emerald-400 flex items-center gap-2 justify-end">
-                      <Wallet className="w-6 h-6" /> ₹15,000.00
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-8">
-                  {isLoading ? (
-                    <div className="space-y-4">
-                      {[1,2].map(i => (
-                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 animate-pulse">
-                          <div className="h-4 bg-slate-700 rounded w-1/4 mb-4"></div>
-                          <div className="h-6 bg-slate-700 rounded w-3/4 mb-2"></div>
-                          <div className="h-4 bg-slate-700 rounded w-1/2"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {rfqs.map((rfq: { [key: string]: string | number | boolean | null }, i: number) => (
-                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full uppercase">{rfq.status}</span>
-                              <h4 className="text-xl font-bold text-white mt-3">{rfq.title}</h4>
-                              <p className="text-sm text-slate-400 mt-1">Sourced from Verified B2B Network</p>
                             </div>
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500 uppercase font-bold">Target Budget</p>
-                              <p className="text-xl font-black text-white">₹{rfq.target_budget?.toLocaleString('en-IN') || 'N/A'}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-                            <p className="text-xs text-slate-400">Verified RFQ</p>
-                            <button className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-sm px-6 py-2 rounded-xl flex items-center gap-2 group-hover:scale-105 transition-all">
-                              Unlock Lead (-₹250)
+
+                            <button
+                                onClick={() => handleLeadTrigger(m.id, m)}
+                                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-sm font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-500/20"
+                            >
+                                <MessageSquare className="w-5 h-5" /> Connect on WhatsApp
                             </button>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                  </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

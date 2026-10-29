@@ -1,100 +1,104 @@
 'use client';
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Phone, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
+import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { Phone, ShieldCheck, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
 
-export default function FrictionlessLogin() {
+export default function Login() {
   const [phone, setPhone] = useState('');
-  const [step, setStep] = useState(1);
   const [otp, setOtp] = useState('');
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSendOTP = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone.length >= 10) {
-      setStep(2); // Trigger instant OTP send via WhatsApp
+  const handleSendOtp = async () => {
+    setLoading(true);
+    const res = await fetch('/api/otp/generate', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert(`[DEMO MODE] Your OTP is: ${data.mock_otp}`);
+      setStep(2);
     }
+    setLoading(false);
   };
 
-  const handleVerify = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (phone === '8247831885' && otp === '8855') {
-      localStorage.setItem('merchant_auth', '8247831885');
+  const handleVerify = async () => {
+    setLoading(true);
+    const result = await signIn('credentials', {
+      phone,
+      otp,
+      redirect: false,
+    });
+    if (result?.ok) {
       router.push('/merchant/dashboard');
     } else {
-      // Frictionless access: log them in immediately, skip passwords
-      router.push('/');
+      alert('Invalid OTP');
     }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="max-w-md w-full bg-white rounded-3xl shadow-xl overflow-hidden"
-      >
-        <div className="bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-white text-center">
-          <ShieldCheck className="w-12 h-12 mx-auto mb-4 opacity-90" />
-          <h2 className="text-2xl font-black">Merchant Portal Login</h2>
-          <p className="text-emerald-100 text-sm mt-2">Secure access to your business dashboard.</p>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-slate-900 border border-slate-800 rounded-3xl p-8 max-w-md w-full shadow-2xl">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-emerald-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+            <ShieldCheck className="w-8 h-8 text-emerald-400" />
+          </div>
+          <h1 className="text-2xl font-black text-white">Merchant Login</h1>
+          <p className="text-slate-400 text-sm mt-2">Zero KYC. Start getting leads instantly.</p>
         </div>
 
-        <div className="p-8">
-          {step === 1 ? (
-            <form onSubmit={handleSendOTP} className="space-y-6">
-              <div>
-                <label className="block text-sm font-bold text-slate-700 mb-2">WhatsApp Number</label>
-                <div className="relative">
-                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="e.g. 98765 43210"
-                    className="w-full pl-12 pr-4 py-4 bg-slate-100 border-none rounded-xl text-lg font-bold focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
-                    required
-                  />
-                </div>
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-slate-900 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-slate-800 transition-all active:scale-95"
-              >
-                Send Instant OTP <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-          ) : (
-            <motion.form
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              onSubmit={handleVerify}
-              className="space-y-6"
-            >
-              <div className="text-center mb-6">
-                <p className="text-sm font-bold text-slate-600">OTP sent to +91 {phone}</p>
-                <button type="button" onClick={() => setStep(1)} className="text-xs text-emerald-600 font-bold underline mt-1">Change Number</button>
-              </div>
-              <div>
+        {step === 1 ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">WhatsApp Number</label>
+              <div className="relative">
+                <Phone className="w-5 h-5 text-slate-500 absolute left-3 top-3.5" />
                 <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="• • • •"
-                  className="w-full text-center tracking-[1em] py-4 bg-slate-100 border-none rounded-xl text-2xl font-black focus:ring-2 focus:ring-emerald-500 transition-all outline-none"
-                  required
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="9876543210"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-white focus:border-emerald-500 outline-none"
                 />
               </div>
-              <button
-                type="submit"
-                className="w-full bg-emerald-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 hover:bg-emerald-700 transition-all active:scale-95 shadow-lg shadow-emerald-500/30"
-              >
-                <Zap className="w-5 h-5" /> Instant Verify
-              </button>
-            </motion.form>
-          )}
-        </div>
+            </div>
+            <button
+              onClick={handleSendOtp}
+              disabled={loading || phone.length < 10}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Sending...' : 'Send Secure OTP'}
+              <Zap className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Enter 4-Digit OTP</label>
+              <input
+                type="text"
+                value={otp}
+                onChange={(e) => setOtp(e.target.value)}
+                placeholder="0000"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white text-center text-2xl tracking-widest focus:border-emerald-500 outline-none"
+                maxLength={4}
+              />
+            </div>
+            <button
+              onClick={handleVerify}
+              disabled={loading || otp.length < 4}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-bold py-3 rounded-xl transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Verifying...' : 'Verify & Dashboard'}
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
