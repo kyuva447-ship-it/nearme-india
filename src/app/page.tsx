@@ -1,206 +1,195 @@
 'use client';
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { MapPin, ShieldCheck, Factory, Wallet, MessageSquare, Mic, Camera, PenLine } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Search, MapPin, Star, Phone, MessageSquare, Menu, Camera, PenLine, Mic, X, ChevronRight, Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabase/client';
+import { motion, AnimatePresence } from 'framer-motion';
 
-const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr: false });
+import BoloVoiceSearch from '@/components/BoloVoiceSearch';
+import PhotoSearch from '@/components/PhotoSearch';
+import MetaAIFloater from '@/components/MetaAIFloater';
+import BiddingWar from '@/components/BiddingWar';
+import PriorityBribeButton from '@/components/PriorityBribeButton';
+import DukaanReels from '@/components/DukaanReels';
+import Analytics from '@/components/Analytics';
 
-const defaultMerchants = [
+import { voiceHandoff } from '@/lib/voiceHandoff';
+import { trackEvent } from '@/lib/analytics';
+
+// Safely load maps only on client
+const LiveMap = dynamic(() => import('@/components/LiveMap'), { ssr: false });
+
+export default function Home() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [merchants, setMerchants] = useState<any[]>([
     {
-      id: 'mock-1',
-      business_name: 'Sri Balaji Electricals',
-      category: 'Electrician',
-      rating: 4.8,
-      latitude: 13.6288,
-      longitude: 79.4192,
-      distance: 1.2,
-      current_deal_text: '20% OFF today only',
-      deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
+      id: '1',
+      business_name: 'Fast Fix Plumbers',
+      category: 'plumber',
+      phone: '919876543210',
+      trust_score: 95,
+      community_upvotes: 60,
       is_currently_available: true,
-      community_upvotes: 55,
-      is_gold_pin_active: true
+      is_gold_pin_active: true,
+      current_deal_text: '20% OFF today only',
+      latitude: 17.3850,
+      longitude: 78.4867
     },
     {
-      id: 'mock-2',
-      business_name: 'Tirupati Plumbing Experts',
-      category: 'Plumber',
-      rating: 4.5,
-      latitude: 13.6300,
-      longitude: 79.4200,
-      distance: 2.5,
-      current_deal_text: null,
+      id: '2',
+      business_name: 'Electro Pro Experts',
+      category: 'electrician',
+      phone: '919876543211',
+      trust_score: 85,
+      community_upvotes: 20,
       is_currently_available: false,
-      community_upvotes: 12
+      is_gold_pin_active: false,
+      current_deal_text: '',
+      latitude: 17.3900,
+      longitude: 78.4900
     }
-];
+  ]);
+  const [selectedMerchant, setSelectedMerchant] = useState<any | null>(null);
 
-export default function MorphingDashboard() {
-  const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [merchants, setMerchants] = useState<any[]>(defaultMerchants);
-
-  const handleLeadTrigger = async (merchantId: string, merchantData: any) => {
-    try {
-      const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
-        merchant_uuid: merchantId,
-        amount: 3.00
-      });
-
-      if (deductError || !deductSuccess) {
-        alert('Merchant out of wallet balance. Cannot connect right now.');
-        return;
-      }
-
-      const hasActiveDeal = merchantData.current_deal_text && merchantData.deal_expiry_time && new Date(merchantData.deal_expiry_time) > new Date();
-      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1);
-
-      let message = `Hi ${merchantData.business_name}, I found you on NearMe India. `;
-      if (hasActiveDeal) {
-        message += `Are you still offering the "${merchantData.current_deal_text}" deal? `;
-      } else {
-         message += `I'm looking for ${merchantData.category} services. `;
-      }
-      message += `I am located approximately ${distancePlaceholder}km away.`;
-
-      await supabase.from('v2_b2c_leads').insert([
-        {
-          merchant_id: merchantId,
-          lead_fee_charged: 3.00,
-          whatsapp_context: message
-        }
-      ]);
-
-      const merchantPhone = merchantData.phone_number || '919999999999';
-      const whatsappUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
-
-    } catch (e) {
-      console.error('Lead trigger failed:', e);
-      alert('Could not process lead. Please try again.');
-    }
+  const handleLeadTrigger = async (merchant: any) => {
+    trackEvent('lead_trigger_click', { merchant_id: merchant.id });
+    await voiceHandoff("I need your service", merchant.id, merchant.phone, merchant, "2.5");
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 overflow-hidden font-sans relative">
-      <div className="absolute top-0 right-0 w-full h-[500px] bg-gradient-to-br from-indigo-500/20 via-fuchsia-500/10 to-transparent blur-[100px] pointer-events-none" />
+    <div className="min-h-screen bg-slate-950 font-sans text-white relative overflow-x-hidden pb-20">
+      <Analytics />
 
-      {/* Floating Meta AI */}
-      <div className="fixed bottom-6 right-6 z-50">
-         <motion.div animate={{ y: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 3 }} className="bg-white/10 backdrop-blur-xl border border-white/20 p-4 rounded-full shadow-2xl cursor-pointer hover:bg-white/20 transition-all flex items-center gap-3">
-             <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center animate-spin-slow">
-                 <span className="text-white font-black text-xl">M</span>
-             </div>
-             <div className="hidden md:block">
-                 <p className="text-white font-bold text-sm">Mee kosam em cheyyali?</p>
-                 <p className="text-slate-300 text-xs">Meta AI Assistant</p>
-             </div>
-         </motion.div>
-      </div>
+      {/* Decorative Background */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500/20 to-fuchsia-500/20 blur-[100px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 blur-[100px] rounded-full pointer-events-none" />
 
-      <div className="relative z-10 container mx-auto px-4 pt-12 pb-32">
-        <div className="text-center max-w-3xl mx-auto mb-16">
-           <h1 className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 mb-6 tracking-tight">
-               NearMe India
-           </h1>
-           <p className="text-xl text-slate-400 mb-10">The Verified Local Marketplace. Zero Fake Reviews.</p>
+      {/* Header */}
+      <header className="p-6 relative z-10 flex justify-between items-center max-w-7xl mx-auto">
+        <div>
+          <h1 className="text-4xl md:text-6xl font-black bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-400 to-emerald-400 tracking-tight">
+            NearMe India
+          </h1>
+          <p className="text-emerald-400 font-medium tracking-widest text-xs mt-1 uppercase">
+            Verified Local Marketplace
+          </p>
+        </div>
+        <div className="flex gap-4">
+           <a href="/merchant/dashboard" className="hidden md:block bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-full font-bold transition-colors">Merchant Login</a>
+           <button className="md:hidden bg-white/10 p-2 rounded-lg"><Menu /></button>
+        </div>
+      </header>
 
-           {/* The 3 BIG Buttons */}
-           <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto">
-               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-amber-400 to-orange-500 p-6 rounded-3xl shadow-xl shadow-orange-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
-                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><Mic className="w-8 h-8 text-white"/></div>
-                   <span className="text-white font-black text-lg tracking-wider">BOLO</span>
-               </button>
-               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-purple-500 to-indigo-600 p-6 rounded-3xl shadow-xl shadow-purple-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
-                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><Camera className="w-8 h-8 text-white"/></div>
-                   <span className="text-white font-black text-lg tracking-wider">PHOTO LO</span>
-               </button>
-               <button onClick={() => setIntent('B2C')} className="bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-3xl shadow-xl shadow-emerald-500/20 hover:scale-105 transition-transform flex flex-col items-center gap-3">
-                   <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm"><PenLine className="w-8 h-8 text-white"/></div>
-                   <span className="text-white font-black text-lg tracking-wider">LIKHO</span>
-               </button>
+      <main className="max-w-7xl mx-auto px-4 relative z-10">
+
+        {/* BIG 3 INTENT BUTTONS */}
+        <div className="grid grid-cols-3 gap-4 max-w-2xl mx-auto mt-8 mb-12">
+            <BoloVoiceSearch onResult={(t) => setSearchQuery(t)} />
+            <PhotoSearch onResult={(r) => setMerchants(r)} />
+
+            <button
+              className="w-full bg-gradient-to-br from-emerald-400 to-teal-500 p-6 rounded-3xl shadow-xl shadow-teal-500/20 hover:scale-105 transition-all flex flex-col items-center gap-3"
+            >
+              <div className="w-16 h-16 bg-white/20 rounded-full backdrop-blur flex items-center justify-center">
+                <PenLine className="w-8 h-8 text-white" />
+              </div>
+              <span className="font-black tracking-wider text-white">LIKHO</span>
+            </button>
+        </div>
+
+        {/* Standard Search Bar fallback */}
+        <div className="max-w-2xl mx-auto mb-12">
+           <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50 w-6 h-6" />
+              <input
+                 type="text"
+                 value={searchQuery}
+                 onChange={(e) => setSearchQuery(e.target.value)}
+                 placeholder="Search plumbers, electricians..."
+                 className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-14 pr-4 text-lg text-white placeholder-white/30 outline-none focus:border-indigo-500 transition-colors backdrop-blur-sm"
+              />
            </div>
         </div>
 
-        <AnimatePresence mode="wait">
-          {intent === 'B2C' && (
-            <motion.div
-              initial={{ opacity: 0, y: 40 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 40 }}
-              className="bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-800"
+        {/* Map Section */}
+        <div className="h-[40vh] md:h-[50vh] rounded-3xl overflow-hidden border border-white/10 shadow-2xl relative mb-12 z-0">
+          <LiveMap merchants={merchants} onMarkerClick={setSelectedMerchant} />
+        </div>
+
+        {/* Dynamic Bidding War Banner */}
+        <BiddingWar category={searchQuery || 'services'} searchCount={8} />
+
+        {/* Reels Section */}
+        <DukaanReels merchants={merchants} />
+
+        {/* Horizontal Scrolling Merchant Cards */}
+        <div className="flex overflow-x-auto pb-8 gap-6 snap-x scrollbar-hide">
+          {merchants.map((merchant) => (
+            <div
+              key={merchant.id}
+              className={`snap-center shrink-0 w-80 md:w-96 bg-slate-900/90 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border-2 flex flex-col justify-between ${merchant.is_gold_pin_active ? 'border-amber-400' : 'border-slate-700'} relative overflow-hidden`}
             >
-              <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-                <div>
-                  <h3 className="text-2xl font-black text-white">Live Consumer Map</h3>
-                  <p className="text-sm text-emerald-400 font-bold flex items-center gap-2 mt-1">
-                      <ShieldCheck className="w-4 h-4"/> 100% Verified Merchants
-                  </p>
-                </div>
-              </div>
-              <div className="h-[600px] relative">
-                  <div className="absolute inset-0 z-0">
-                    <LiveMap merchants={merchants} />
-                  </div>
+              {merchant.is_gold_pin_active && (
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-yellow-500" />
+              )}
 
-                  {/* Floating Overlay UI for Merchants */}
-                  <div className="relative z-10 w-full h-full p-6 pointer-events-none flex flex-col justify-end">
-                    <div className="flex gap-6 overflow-x-auto pointer-events-auto pb-4 scrollbar-hide">
-                      {merchants.map((m: any, i: number) => {
-                        const hasActiveDeal = m.current_deal_text && m.deal_expiry_time && new Date(m.deal_expiry_time) > new Date();
-                        const isLegend = (m.community_upvotes || 0) > 50;
+              {merchant.current_deal_text && (
+                 <div className="absolute top-4 right-[-30px] bg-gradient-to-r from-red-500 to-pink-500 text-white text-[10px] font-black py-1 px-10 rotate-45 animate-pulse shadow-lg">
+                    🔥 LIVE DEAL
+                 </div>
+              )}
 
-                        return (
-                          <div key={i} className={`flex-shrink-0 w-80 bg-slate-900/90 backdrop-blur-xl p-6 rounded-2xl shadow-2xl border flex flex-col justify-between ${m.is_gold_pin_active ? 'border-amber-500/50 shadow-amber-500/10' : 'border-slate-700'}`}>
-                            <div>
-                              <div className="flex justify-between items-start mb-4 relative">
-                                {m.is_currently_available && (
-                                  <span className="bg-emerald-500/20 text-emerald-400 text-xs font-black px-3 py-1.5 rounded-full flex items-center gap-2 border border-emerald-500/30">
-                                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></div> LIVE
-                                  </span>
-                                )}
-                                {m.is_gold_pin_active && <div className="bg-gradient-to-r from-amber-300 to-yellow-500 text-amber-950 text-xs font-black px-3 py-1.5 rounded-full shadow-lg">TOP SLOT</div>}
-                              </div>
-
-                              {hasActiveDeal && (
-                                <div className="bg-gradient-to-r from-red-500 to-pink-600 text-white text-xs font-black px-4 py-2 rounded-lg mb-4 flex items-center gap-2 animate-pulse shadow-lg shadow-red-500/20">
-                                  <span>🔥 STREAK DEAL:</span> {m.current_deal_text}
-                                </div>
-                              )}
-
-                              <h4 className="font-black text-white text-xl mb-1">{m.business_name}</h4>
-                              <p className="text-sm text-slate-400 font-medium mb-4">{m.category} • {m.distance}km away</p>
-
-                              <div className="flex justify-between items-center mb-4">
-                                <div className="flex flex-col gap-1">
-                                  <div className="flex items-center gap-2">
-                                    {isLegend && <span title="Neighborhood Legend" className="text-xl">👑</span>}
-                                    <span className="text-sm font-black text-emerald-400 bg-emerald-400/10 px-3 py-1 rounded-lg flex items-center gap-1 border border-emerald-400/20">
-                                      Trust 90+
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            <button
-                                onClick={() => handleLeadTrigger(m.id, m)}
-                                className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white text-sm font-black py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-xl shadow-emerald-500/20"
-                            >
-                                <MessageSquare className="w-5 h-5" /> Connect on WhatsApp
-                            </button>
-                          </div>
-                        );
-                      })}
+              <div>
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h3 className="text-xl font-black text-white flex items-center gap-2">
+                        {merchant.business_name}
+                        {merchant.community_upvotes > 50 && <span title="Neighborhood Legend">👑</span>}
+                      </h3>
+                      <p className="text-slate-400 capitalize text-sm">{merchant.category} • 2.5km away</p>
                     </div>
                   </div>
+
+                  {merchant.current_deal_text && (
+                      <p className="text-pink-400 text-sm font-bold mb-4 bg-pink-500/10 inline-block px-2 py-1 rounded">
+                         "{merchant.current_deal_text}"
+                      </p>
+                  )}
+
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-1 rounded text-xs font-bold flex items-center gap-1">
+                      <Star className="w-3 h-3" /> Trust: {merchant.trust_score}%
+                    </span>
+                    {merchant.is_currently_available && (
+                        <span className="bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded text-xs font-bold flex items-center gap-1 animate-pulse">
+                           <div className="w-2 h-2 rounded-full bg-emerald-400" /> Available Now
+                        </span>
+                    )}
+                  </div>
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+
+              <div className="mt-auto pt-4 border-t border-white/10 space-y-3">
+                 <button
+                   onClick={() => handleLeadTrigger(merchant)}
+                   className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-black py-3 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
+                 >
+                   <MessageSquare className="w-5 h-5" /> Connect on WhatsApp
+                 </button>
+                 <PriorityBribeButton merchantId={merchant.id} />
+              </div>
+            </div>
+          ))}
+        </div>
+
+      </main>
+
+      <MetaAIFloater />
+
+      {/* Mobile Bottom Nav */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-xl border-t border-white/10 p-4 flex justify-around items-center z-40">
+         <a href="/" className="text-emerald-400 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Search</span></a>
+         <a href="/escrow" className="text-slate-400 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Escrow</span></a>
+         <a href="/merchant/dashboard" className="text-slate-400 flex flex-col items-center gap-1"><Menu className="w-6 h-6"/><span className="text-[10px] font-bold">Account</span></a>
       </div>
     </div>
   );
