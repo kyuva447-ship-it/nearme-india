@@ -1,39 +1,8 @@
 {
   "crons": [
-    {
-      "path": "/api/cron/churn",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/verify-expiry",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/staking-expiry",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/escrow-release-check",
-      "schedule": "0 * * * *"
-    }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
-        }
-      ]
-    }
+    {"path": "/api/cron/churn", "schedule": "0 9 * * *"},
+    {"path": "/api/cron/verify-expiry", "schedule": "0 0 * * *"},
+    {"path": "/api/cron/staking-expiry", "schedule": "0 1 * * *"},
+    {"path": "/api/cron/escrow-release-check", "schedule": "0 2 * * *"}
   ]
 }
