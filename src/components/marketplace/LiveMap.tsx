@@ -15,7 +15,7 @@ const customIcon = new L.Icon({
   shadowSize: [41, 41]
 });
 
-export default function LiveMap({ merchants }: { merchants: { [key: string]: string | number | boolean | null }[] }) {
+export default function LiveMap({ merchants }: { merchants: any[] }) {
 
 
   return (
@@ -41,10 +41,10 @@ export default function LiveMap({ merchants }: { merchants: { [key: string]: str
           <Marker key={String(m.id)} position={[lat, lng]} icon={customIcon}>
             <Popup>
               <div className="font-sans">
-                <h3 className="font-bold text-slate-900">{m.business_name}</h3>
+                <h3 className="font-bold text-slate-900">{m.business_name || m.name}</h3>
                 <p className="text-xs text-slate-500">{m.category}</p>
                 <div className="mt-2 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded inline-block">
-                  Surge {m.surge_multiplier}x
+                  Surge {m.surge_multiplier || 1}x
                 </div>
               </div>
             </Popup>
