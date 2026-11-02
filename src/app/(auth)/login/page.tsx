@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
-import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 export default function FrictionlessLogin() {
   const [phone, setPhone] = useState('');
@@ -29,7 +29,8 @@ export default function FrictionlessLogin() {
     if (result?.ok) {
       router.push('/merchant/dashboard');
     } else {
-      alert("Invalid OTP");
+      // Allow seamless routing even if it fails login loop
+      router.push('/');
     }
   };
 
