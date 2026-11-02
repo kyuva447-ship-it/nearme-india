@@ -1,68 +1,83 @@
 'use client';
+
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { Zap, Wallet, MessageSquare, Save, User, MapPin } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import { User, MapPin, Zap, TrendingUp, Wallet, Save } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { supabase } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
 
 export default function MerchantDashboard() {
-  const [isAvailable, setIsAvailable] = useState(false);
-  const [dealText, setDealText] = useState('');
-  const [walletBalance, setWalletBalance] = useState(498.00);
-  const [isSaving, setIsSaving] = useState(false);
-
-  // Profile state
-  const [businessName, setBusinessName] = useState('Raju Plumbers');
-  const [category, setCategory] = useState('Plumbing');
-  const [city, setCity] = useState('Bengaluru');
-  const [phone, setPhone] = useState('+91 8247831885');
-
   const router = useRouter();
 
+  // Safe session destructuring to prevent prerender crash
+  const sessionData = useSession();
+  const session = sessionData?.data;
+  const status = sessionData?.status || 'loading';
+
+  const [isAvailable, setIsAvailable] = useState(true);
+  const [dealText, setDealText] = useState('');
+  const [businessName, setBusinessName] = useState('');
+  const [category, setCategory] = useState('');
+  const [city, setCity] = useState('Bangalore');
+  const [walletBalance, setWalletBalance] = useState(15.00);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
-    const auth = localStorage.getItem('merchant_auth');
-    if (auth !== '8247831885') {
+    if (status === 'unauthenticated') {
       router.push('/login');
-      return;
     }
+  }, [status, router]);
 
-    const savedAvailable = localStorage.getItem('isAvailable');
-    if (savedAvailable !== null) setIsAvailable(savedAvailable === 'true');
+  useEffect(() => {
+    const fetchData = async () => {
+      // Ignore strict type checking for custom session additions temporarily in UI component
+      const userId = (session?.user as any)?.id;
+      if (userId) {
+         // Try fetching from V1 table using session user ID
+         const { data, error } = await supabase.from('shops_v1')
+             .select('*')
+             .eq('owner_id', userId)
+             .single();
 
-    const savedDealText = localStorage.getItem('dealText');
-    if (savedDealText !== null) setDealText(savedDealText);
-
-    const savedName = localStorage.getItem('businessName');
-    if (savedName !== null) setBusinessName(savedName);
-
-    const savedCategory = localStorage.getItem('category');
-    if (savedCategory !== null) setCategory(savedCategory);
-  }, [router]);
+         if (data) {
+             setIsAvailable(data.is_currently_available);
+             setDealText(data.current_deal_text || '');
+             setBusinessName(data.name || '');
+             setCategory(data.category || '');
+             setCity(data.city || 'Bangalore');
+             setWalletBalance(data.coins || 15.0);
+         }
+      }
+    };
+    if (status === 'authenticated') fetchData();
+  }, [session, status]);
 
   const handleSave = async () => {
+    const userId = (session?.user as any)?.id;
+    if (!userId) return;
     setIsSaving(true);
 
-    localStorage.setItem('isAvailable', String(isAvailable));
-    localStorage.setItem('dealText', dealText);
-    localStorage.setItem('businessName', businessName);
-    localStorage.setItem('category', category);
-
     try {
-      const { error } = await supabase.from('v2_merchants')
+      const { error } = await supabase.from('shops_v1')
         .update({
           is_currently_available: isAvailable,
           current_deal_text: dealText,
-          deal_expiry_time: dealText ? new Date(Date.now() + 3600000).toISOString() : null,
-          business_name: businessName,
-          category: category
+          name: businessName,
+          category: category,
+          city: city
         })
-        .eq('phone_number', '918247831885');
+        .eq('owner_id', userId);
+
+      if (error) console.error("Update failed:", error);
     } catch (e) {
-      console.warn("Could not sync with Supabase, relying on local storage.");
+      console.error("Could not sync with Supabase", e);
     } finally {
       setTimeout(() => setIsSaving(false), 500);
     }
   };
+
+  if (status === 'loading') return <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center">Loading Secure Session...</div>;
 
   return (
     <div className="min-h-screen bg-slate-950 p-6 text-slate-100 font-sans relative overflow-hidden">
@@ -76,7 +91,7 @@ export default function MerchantDashboard() {
                     <User className="w-8 h-8 text-emerald-400" />
                     Merchant HQ
                 </h1>
-                <p className="text-emerald-400 mt-2 font-bold text-sm bg-emerald-400/10 px-3 py-1 rounded-full inline-block">Verified Session: NearMe India</p>
+                <p className="text-emerald-400 mt-2 font-bold text-sm bg-emerald-400/10 px-3 py-1 rounded-full inline-block">Verified V1 Session</p>
             </div>
             <div className="text-right flex flex-col items-end gap-3">
                 <div>
@@ -107,10 +122,6 @@ export default function MerchantDashboard() {
                  <div>
                      <label className="block text-xs font-bold text-slate-500 uppercase mb-2">City</label>
                      <input type="text" value={city} onChange={e => setCity(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none" />
-                 </div>
-                 <div>
-                     <label className="block text-xs font-bold text-slate-500 uppercase mb-2">WhatsApp Number</label>
-                     <input type="text" value={phone} disabled className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-slate-500 cursor-not-allowed" />
                  </div>
              </div>
         </motion.div>
