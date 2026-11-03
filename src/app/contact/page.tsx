@@ -64,7 +64,7 @@ export default function ContactPage() {
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Email Address</label>
-              <input type="email" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="john@example.com" />
+              <input type="email" required className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500" placeholder="john@nearme-india.org" />
             </div>
             <div>
               <label className="block text-sm font-bold text-slate-700 mb-2">Message</label>
