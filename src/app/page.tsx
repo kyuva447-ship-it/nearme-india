@@ -39,7 +39,7 @@ export default function Home() {
             pincode: '560001',
             trust_score: 98,
             mood: 'Busy',
-            live_video_url: 'https://example.com/live',
+            live_video_url: 'https://www.nearme-india.org/live',
             coins: 150,
             premium_plan: 'PRO',
             is_verified: true,
