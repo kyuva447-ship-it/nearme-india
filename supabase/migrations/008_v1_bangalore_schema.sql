@@ -1,0 +1,32 @@
+ALTER TABLE v2_merchants
+ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'Bangalore',
+ADD COLUMN IF NOT EXISTS pincode TEXT,
+ADD COLUMN IF NOT EXISTS trust_score INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS trust_dna JSONB DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS mood TEXT DEFAULT 'Busy',
+ADD COLUMN IF NOT EXISTS live_video_url TEXT,
+ADD COLUMN IF NOT EXISTS coins INTEGER DEFAULT 0,
+ADD COLUMN IF NOT EXISTS premium_plan TEXT,
+ADD COLUMN IF NOT EXISTS business_hours JSONB DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS seo_title TEXT,
+ADD COLUMN IF NOT EXISTS image_urls TEXT[] DEFAULT '{}',
+ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS reviews JSONB DEFAULT '[]';
+
+CREATE TABLE IF NOT EXISTS v2_products (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    merchant_id UUID REFERENCES v2_merchants(id),
+    name TEXT NOT NULL,
+    price NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS v2_orders (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID REFERENCES v2_users(id),
+    merchant_id UUID REFERENCES v2_merchants(id),
+    amount NUMERIC NOT NULL,
+    commission NUMERIC,
+    status TEXT DEFAULT 'PENDING',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
