@@ -1,333 +1,231 @@
 'use client';
-import { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import AIOmnibar from '@/components/marketplace/AIOmnibar';
-import { MapPin, ShieldCheck, Factory, Wallet, MessageSquare } from 'lucide-react';
+import { Search, MapPin, Mic, ShieldCheck, Zap, Heart, MessageSquare, Coffee, Video, TrendingUp } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 
-const LiveMap = dynamic(() => import('@/components/marketplace/LiveMap'), { ssr: false, loading: () => <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-bold">Initializing PostGIS Engine...</div> });
+const LiveMap = dynamic(() => import('@/components/LiveMap'), {
+  ssr: false,
+  loading: () => <div className="w-full h-[500px] bg-indigo-50 animate-pulse rounded-3xl" />
+});
 
-export default function MorphingDashboard() {
-  const [intent, setIntent] = useState<'IDLE' | 'B2C' | 'B2B'>('IDLE');
+export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [merchants, setMerchants] = useState<any[]>([]);
-  const [rfqs, setRfqs] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('ALL');
 
-  const defaultMerchants = [
-    {
-      id: '1',
-      business_name: 'Raju Plumbers',
-      category: 'Plumbing',
-      surge_multiplier: 1.2,
-      current_deal_text: '20% OFF today only',
-      deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
-      is_currently_available: true,
-      community_upvotes: 55,
-      phone_number: '918247831885'
-    },
-    {
-      id: '2',
-      business_name: 'Sri Venkateshwara Electric',
-      category: 'Electrician',
-      surge_multiplier: 1.0,
-      is_currently_available: false,
-      community_upvotes: 12
-    }
-  ];
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://mock.supabase.co',
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-anon-key'
+  );
 
-  const defaultRfqs = [
-    { id: '1', title: 'Need 5,000 Corporate Uniforms', target_budget: 250000, status: 'OPEN' },
-    { id: '2', title: 'Bulk copper wiring 500kg', target_budget: 450000, status: 'OPEN' }
-  ];
-
-  const handleLeadTrigger = async (merchantId: string, merchantData: any) => {
-    try {
-      // 1. Check & Deduct Wallet (Secure RPC)
-      const { data: deductSuccess, error: deductError } = await supabase.rpc('deduct_v2_wallet', {
-        merchant_uuid: merchantId,
-        amount: 3.00 // Upgraded Contextual Lead Fee
-      });
-
-      if (deductError || !deductSuccess) {
-        alert('Merchant out of wallet balance. Cannot connect right now.');
-        return;
-      }
-
-      // 2. Generate Context-Aware WhatsApp Message
-      const hasActiveDeal = merchantData.current_deal_text && merchantData.deal_expiry_time && new Date(merchantData.deal_expiry_time) > new Date();
-      const distancePlaceholder = (Math.random() * 5 + 0.5).toFixed(1); // Mock distance calculation
-
-      let message = `Hi ${merchantData.business_name}, I found you on NearMe India. `;
-      if (hasActiveDeal) {
-        message += `Are you still offering the "${merchantData.current_deal_text}" deal? `;
+  useEffect(() => {
+    async function fetchMerchants() {
+      setIsLoading(true);
+      const { data, error } = await supabase.from('v2_merchants').select('*').limit(50);
+      if (!error && data && data.length > 0) {
+        setMerchants(data);
       } else {
-         message += `I'm looking for ${merchantData.category} services. `;
+        // Fallback for V1 Bangalore display if DB is empty or fails
+        setMerchants([
+          {
+            id: '1',
+            business_name: 'Lakshmi Kirana Store',
+            category: 'Grocery',
+            city: 'Bangalore',
+            pincode: '560001',
+            trust_score: 98,
+            mood: 'Busy',
+            live_video_url: 'https://example.com/live',
+            coins: 150,
+            premium_plan: 'PRO',
+            is_verified: true,
+            current_deal_text: 'Free delivery in Indiranagar',
+            deal_expiry_time: new Date(Date.now() + 3600000).toISOString(),
+            is_currently_available: true,
+            latitude: 12.9715987,
+            longitude: 77.5945627
+          },
+          {
+            id: '2',
+            business_name: 'TechHub Solutions',
+            category: 'IT Services',
+            city: 'Bangalore',
+            pincode: '560103',
+            trust_score: 100,
+            mood: 'Empty',
+            coins: 50,
+            is_verified: true,
+            current_deal_text: 'Free Consultation',
+            deal_expiry_time: new Date(Date.now() + 7200000).toISOString(),
+            is_currently_available: true,
+            latitude: 12.9351929,
+            longitude: 77.62448069999999
+          }
+        ]);
       }
-      message += `I am located approximately ${distancePlaceholder}km away.`;
-
-      // 3. Log the lead in DB for analytics
-      await supabase.from('v2_b2c_leads').insert([
-        {
-          merchant_id: merchantId,
-          lead_fee_charged: 3.00,
-          whatsapp_context: message
-        }
-      ]);
-
-      // 4. Trigger Handoff
-      const merchantPhone = merchantData.phone_number || '919999999999';
-      const whatsappUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
-      window.open(whatsappUrl, '_blank');
-
-    } catch (e) {
-      console.error('Lead trigger failed:', e);
-      alert('Failed to connect. Please try again.');
-    }
-  };
-
-  const handleIntent = async (detectedIntent: 'B2C' | 'B2B', query: string) => {
-    setIntent(detectedIntent);
-    setSearchQuery(query);
-    setIsLoading(true);
-
-    try {
-      if (detectedIntent === 'B2C') {
-        const { data, error } = await supabase.from('v2_merchants')
-          .select('*')
-          .order('is_currently_available', { ascending: false }) // Sort live merchants to top
-          .limit(10);
-
-        if (error || !data || data.length === 0) {
-           const localDeal = localStorage.getItem('dealText');
-           const localAvailable = localStorage.getItem('isAvailable') === 'true';
-           const mergedMocks = [...defaultMerchants];
-           if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-           mergedMocks[0].is_currently_available = localAvailable;
-
-           const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-           setMerchants(sortedMocks);
-        }
-        else setMerchants(data);
-      } else {
-        const { data, error } = await supabase.from('v2_b2b_rfqs').select('*').limit(10);
-        if (error || !data || data.length === 0) setRfqs(defaultRfqs);
-        else setRfqs(data);
-      }
-    } catch {
-      console.warn('DB Fetch failed, using fallbacks');
-      const localDeal = localStorage.getItem('dealText');
-      const localAvailable = localStorage.getItem('isAvailable') === 'true';
-      const mergedMocks = [...defaultMerchants];
-      if (localDeal !== null) mergedMocks[0].current_deal_text = localDeal;
-      mergedMocks[0].is_currently_available = localAvailable;
-
-      const sortedMocks = mergedMocks.sort((a, b) => (b.is_currently_available === a.is_currently_available) ? 0 : b.is_currently_available ? 1 : -1);
-      setMerchants(sortedMocks);
-      setRfqs(defaultRfqs);
-    } finally {
       setIsLoading(false);
     }
+    fetchMerchants();
+  }, []);
+
+  const handleVoiceSearch = () => {
+    alert('Voice search activated! "Anna Bangalore li best biryani elli"');
   };
 
+  const tabs = ['ALL', 'B2C', 'B2B'];
+
   return (
-    <div className="min-h-screen bg-slate-50 relative overflow-hidden">
-      {/* Background Gradients */}
-      <div className="absolute inset-0 pointer-events-none transition-colors duration-1000">
-        {intent === 'B2C' && <div className="absolute inset-0 bg-gradient-to-b from-blue-50 to-slate-50" />}
-        {intent === 'B2B' && <div className="absolute inset-0 bg-gradient-to-b from-slate-900 to-slate-800" />}
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-pink-50 text-slate-800 font-sans">
 
-      <div className="relative z-10 container mx-auto px-4 py-8">
-        <AIOmnibar onIntentDetected={handleIntent} />
+      {/* Header Section */}
+      <header className="pt-12 pb-8 px-6 text-center max-w-4xl mx-auto">
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-purple-100 text-purple-700 font-medium text-sm mb-6">
+          <MapPin className="w-4 h-4 text-pink-500" />
+          <span>V1 Bangalore is LIVE</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse ml-2" />
+        </motion.div>
 
-        <div className="mt-16">
-          <AnimatePresence mode="wait">
-            {intent === 'IDLE' && (
-              <motion.div
-                key="idle"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="text-center max-w-2xl mx-auto mt-24"
+        <motion.h1 initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-4xl md:text-6xl font-extrabold tracking-tight mb-6 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 to-pink-500">
+          Discover Bengaluru Like Never Before
+        </motion.h1>
+
+        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }} className="text-lg md:text-xl text-slate-500 font-light max-w-2xl mx-auto mb-10">
+          From Kirana to Corporate, find trusted local businesses instantly. AI-powered, 100% verified, soft & easy for everyone.
+        </motion.p>
+
+        {/* AI Omni-Search */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="relative max-w-3xl mx-auto shadow-2xl rounded-3xl bg-white p-2 flex items-center border border-purple-100/50 backdrop-blur-xl">
+          <div className="flex-1 flex items-center px-4 gap-3">
+            <Search className="w-6 h-6 text-purple-400" />
+            <input
+              type="text"
+              placeholder="Search anything... 'Kirana', 'IT Startup', 'Medical'"
+              className="w-full text-lg outline-none text-slate-700 bg-transparent py-4 placeholder-slate-400"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+          <button onClick={handleVoiceSearch} className="p-4 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-2xl transition-colors flex items-center gap-2 font-medium">
+            <Mic className="w-5 h-5" />
+            <span className="hidden sm:inline">Kannada/Hi/En</span>
+          </button>
+        </motion.div>
+      </header>
+
+      {/* Main Content Area */}
+      <main className="max-w-7xl mx-auto px-6 pb-20">
+
+        {/* Navigation Tabs */}
+        <div className="flex justify-center mb-10">
+          <div className="flex gap-2 p-1.5 bg-white/60 backdrop-blur-md rounded-2xl shadow-sm border border-slate-100">
+            {tabs.map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-8 py-2.5 rounded-xl text-sm font-bold transition-all ${activeTab === tab ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md shadow-purple-200' : 'text-slate-500 hover:bg-white'}`}
               >
-                <h2 className="text-5xl font-black text-slate-900 leading-tight mb-6">
-                  The Verified Local Marketplace
-                </h2>
-                <p className="text-xl text-slate-500">
-                  Search naturally. Our AI routes you to instant consumer maps or high-margin B2B procurement dashboards.
-                </p>
-              </motion.div>
-            )}
-
-            {intent === 'B2C' && (
-              <motion.div
-                key="b2c"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200"
-              >
-                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-blue-50/50">
-                  <div>
-                    <h3 className="text-xl font-black text-slate-900">Consumer Map</h3>
-                    <p className="text-sm text-slate-500">Showing local results for: <span className="font-bold text-indigo-600">&quot;{searchQuery}&quot;</span></p>
-                  </div>
-                  <div className="flex gap-2">
-                    <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" /> Surge 1.0x
-                    </span>
-                  </div>
-                </div>
-                <div className="h-[500px] bg-slate-100 flex items-center justify-center relative">
-                  {isLoading ? (
-                    <div className="w-full h-full bg-slate-100 animate-pulse flex items-center justify-center">
-                      <div className="text-slate-400 font-bold flex flex-col items-center gap-4">
-                        <MapPin className="w-12 h-12 animate-bounce" />
-                        Fetching local merchants from Supabase...
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="absolute inset-0 z-0">
-                        <LiveMap merchants={merchants} />
-                      </div>
-
-                      {/* Floating overlay UI */}
-                      <div className="relative z-10 w-full h-full p-4 pointer-events-none">
-                        <div className="absolute bottom-4 left-4 right-4 flex gap-4 overflow-x-auto pointer-events-auto pb-2 scrollbar-hide">
-                          {merchants.map((m: any, i: number) => {
-                            const hasActiveDeal = m.current_deal_text && m.deal_expiry_time && new Date(m.deal_expiry_time) > new Date();
-                            const isLegend = (m.community_upvotes || 0) > 50;
-
-                            return (
-                              <div key={i} className={`flex-shrink-0 w-72 bg-white/90 backdrop-blur-md p-5 rounded-xl shadow-lg border-2 flex flex-col justify-between ${m.is_gold_pin_active ? 'border-amber-400' : 'border-slate-100'} hover:shadow-xl transition-all`}>
-                                <div>
-                                  {/* Badges Area */}
-                                  <div className="flex justify-between items-start mb-2 relative">
-                                    {m.is_currently_available && (
-                                      <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> Available Right Now
-                                      </span>
-                                    )}
-                                    {m.is_gold_pin_active && <div className="absolute -top-3 -right-3 bg-amber-400 text-amber-900 text-[10px] font-black px-2 py-1 rounded-full shadow z-10">GOLD</div>}
-                                  </div>
-
-                                  {/* Deals Area */}
-                                  {hasActiveDeal && (
-                                    <div className="bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-md mb-3 flex items-center gap-1 animate-pulse shadow-sm shadow-red-500/20">
-                                      <span>🔥 LIVE DEAL:</span> {m.current_deal_text}
-                                    </div>
-                                  )}
-
-                                  <h4 className="font-bold text-slate-900 truncate text-lg">{m.business_name}</h4>
-                                  <div className="flex justify-between items-center mb-3">
-                                    <p className="text-xs text-slate-500 font-medium">{m.category}</p>
-
-                                    {/* Local Legend Upvotes */}
-                                    <div className="flex flex-col items-end gap-1">
-                                      <div className="flex items-center gap-1">
-                                        {isLegend && <span title="Neighborhood Legend" className="text-lg">👑</span>}
-                                        <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                          👍 {m.community_upvotes || 0}
-                                        </span>
-                                      </div>
-                                      {isLegend && <span className="text-[10px] font-black text-amber-500 uppercase">Local Legend</span>}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                <div className="flex gap-2 mt-2">
-                                  <button
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold py-2.5 rounded-lg flex items-center justify-center transition-colors"
-                                    onClick={() => alert(`Upvoted! ${m.business_name} now has ${(m.community_upvotes || 0) + 1} upvotes.`)}
-                                  >
-                                    👍 Recommend
-                                  </button>
-                                  <button
-                                    onClick={() => handleLeadTrigger(m.id, m)}
-                                    className="flex-[2] bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-bold py-2.5 rounded-lg flex items-center justify-center gap-2 transition-colors shadow-md shadow-emerald-500/20 hover:scale-[1.02]"
-                                  >
-                                    <MessageSquare className="w-4 h-4" /> WhatsApp (-₹2)
-                                  </button>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {intent === 'B2B' && (
-              <motion.div
-                key="b2b"
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -40 }}
-                className="bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-700 text-slate-200"
-              >
-                <div className="p-8 border-b border-slate-800 flex justify-between items-center bg-slate-950/50">
-                  <div>
-                    <h3 className="text-2xl font-black text-white flex items-center gap-3">
-                      <Factory className="w-8 h-8 text-amber-500" /> Procurement Dashboard
-                    </h3>
-                    <p className="text-sm text-slate-400 mt-2">Active RFQs related to: <span className="font-bold text-amber-400">&quot;{searchQuery}&quot;</span></p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Your Escrow Wallet</p>
-                    <div className="text-2xl font-black text-emerald-400 flex items-center gap-2 justify-end">
-                      <Wallet className="w-6 h-6" /> ₹15,000.00
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-8">
-                  {isLoading ? (
-                    <div className="space-y-4">
-                      {[1,2].map(i => (
-                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 animate-pulse">
-                          <div className="h-4 bg-slate-700 rounded w-1/4 mb-4"></div>
-                          <div className="h-6 bg-slate-700 rounded w-3/4 mb-2"></div>
-                          <div className="h-4 bg-slate-700 rounded w-1/2"></div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {rfqs.map((rfq: { [key: string]: string | number | boolean | null }, i: number) => (
-                        <div key={i} className="bg-slate-800 rounded-2xl p-6 border border-slate-700 hover:border-amber-500/50 transition-colors cursor-pointer group">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <span className="bg-amber-500/20 text-amber-400 text-xs font-black px-3 py-1 rounded-full uppercase">{rfq.status}</span>
-                              <h4 className="text-xl font-bold text-white mt-3">{rfq.title}</h4>
-                              <p className="text-sm text-slate-400 mt-1">Sourced from Verified B2B Network</p>
-                            </div>
-                            <div className="text-right">
-                              <p className="text-xs text-slate-500 uppercase font-bold">Target Budget</p>
-                              <p className="text-xl font-black text-white">₹{rfq.target_budget?.toLocaleString('en-IN') || 'N/A'}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center justify-between pt-4 border-t border-slate-700">
-                            <p className="text-xs text-slate-400">Verified RFQ</p>
-                            <button className="bg-amber-500 hover:bg-amber-400 text-slate-900 font-black text-sm px-6 py-2 rounded-xl flex items-center gap-2 group-hover:scale-105 transition-all">
-                              Unlock Lead (-₹250)
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+                {tab}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+
+        {/* Dynamic Content */}
+        <AnimatePresence mode="wait">
+          {isLoading ? (
+            <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-96 flex flex-col items-center justify-center text-purple-400">
+              <Zap className="w-12 h-12 animate-bounce mb-4" />
+              <p className="font-medium animate-pulse">Scanning Bangalore Neighborhoods...</p>
+            </motion.div>
+          ) : (
+            <motion.div key="content" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+              {/* Left Sidebar - AI Features */}
+              <div className="lg:col-span-3 space-y-6">
+                <div className="bg-white/80 backdrop-blur-lg p-6 rounded-3xl border border-white shadow-xl shadow-purple-900/5">
+                  <h3 className="font-bold text-lg mb-4 flex items-center gap-2"><TrendingUp className="text-purple-500 w-5 h-5"/> Live Shop TV</h3>
+                  <div className="aspect-video bg-slate-100 rounded-2xl overflow-hidden relative group cursor-pointer">
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Video className="w-8 h-8 text-slate-300 group-hover:text-pink-400 transition-colors" />
+                    </div>
+                    <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">LIVE</div>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-3 font-medium">Watch Koramangala shops live right now.</p>
+                </div>
+
+                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-6 rounded-3xl shadow-lg text-white">
+                  <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><Coffee className="w-5 h-5"/> Earn Coins</h3>
+                  <p className="text-sm text-indigo-100 mb-4">Visit shops, earn digital coins, get real money rewards.</p>
+                  <button className="w-full py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-bold backdrop-blur-sm transition-colors">
+                    Claim Today's 50 Coins
+                  </button>
+                </div>
+              </div>
+
+              {/* Center Map & Results */}
+              <div className="lg:col-span-6 bg-white rounded-[2.5rem] shadow-2xl shadow-pink-900/5 border border-slate-50 overflow-hidden relative h-[600px] flex flex-col">
+                <div className="p-4 bg-white/90 backdrop-blur z-10 flex justify-between items-center border-b border-slate-100">
+                  <div className="font-semibold text-slate-700">Explore <span className="text-purple-600">Bengaluru</span></div>
+                  <div className="text-xs bg-pink-100 text-pink-700 px-3 py-1 rounded-full font-bold">100+ Shops Auto-Imported Today</div>
+                </div>
+                <div className="flex-1 relative z-0">
+                  <LiveMap merchants={merchants} />
+                </div>
+              </div>
+
+              {/* Right Sidebar - Merchant Cards */}
+              <div className="lg:col-span-3 space-y-6 overflow-y-auto max-h-[600px] scrollbar-hide pr-2">
+                {merchants.map((m) => (
+                  <div key={m.id} className="bg-white rounded-3xl p-5 shadow-lg border border-slate-100 hover:border-purple-200 transition-all hover:-translate-y-1">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="font-bold text-slate-800 text-lg leading-tight">{m.business_name}</h4>
+                        <p className="text-xs text-slate-400 mt-1">{m.category} • {m.pincode}</p>
+                      </div>
+                      {m.is_verified && <ShieldCheck className="text-emerald-500 w-5 h-5" />}
+                    </div>
+
+                    <div className="flex gap-2 mb-4">
+                      <span className="text-[10px] font-black px-2 py-1 rounded-md bg-purple-50 text-purple-600 flex items-center gap-1">
+                        DNA {m.trust_score || 0}%
+                      </span>
+                      <span className={`text-[10px] font-black px-2 py-1 rounded-md ${m.mood === 'Busy' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600'}`}>
+                        {m.mood || 'Standard'}
+                      </span>
+                    </div>
+
+                    {m.current_deal_text && (
+                      <div className="bg-pink-50 text-pink-600 text-xs font-semibold p-2 rounded-xl mb-4 text-center">
+                        🔥 {m.current_deal_text}
+                      </div>
+                    )}
+
+                    {/* Exactly 3 main action buttons */}
+                    <div className="space-y-2">
+                      <button className="w-full py-2.5 bg-gradient-to-r from-emerald-400 to-emerald-500 text-white rounded-xl text-sm font-bold flex justify-center items-center gap-2 shadow-md shadow-emerald-200 hover:opacity-90">
+                        <MessageSquare className="w-4 h-4" /> WhatsApp Connect
+                      </button>
+                      <div className="flex gap-2">
+                        <button className="flex-1 py-2 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-colors">
+                          View Profile
+                        </button>
+                        <button className="flex-1 py-2 bg-pink-50 hover:bg-pink-100 text-pink-600 rounded-xl text-xs font-bold transition-colors flex justify-center items-center gap-1">
+                          <Heart className="w-3 h-3"/> Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </main>
     </div>
   );
 }
