@@ -1,4 +1,3 @@
-// FORCE DEPLOY INDIA BUILD v1.1
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -40,7 +39,7 @@ export default function Home() {
             pincode: '560001',
             trust_score: 98,
             mood: 'Busy',
-            live_video_url: 'https://www.nearme-india.org/live',
+            live_video_url: 'https://nearme-india.org/live',
             coins: 150,
             premium_plan: 'PRO',
             is_verified: true,
