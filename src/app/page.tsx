@@ -215,7 +215,6 @@ export default function Home() {
          <a href="/escrow" className="text-slate-400 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></a>
          <a href="/merchant/dashboard" className="text-slate-400 flex flex-col items-center gap-1"><Menu className="w-6 h-6"/><span className="text-[10px] font-bold">Account</span></a>
       </div>
-      {/* FORCE DEPLOY INDIA BUILD v1.2 */}
     </div>
   );
 }

@@ -1,7 +1,12 @@
-import React from 'react';
+'use client';
+import { useEffect } from 'react';
 
-const Analytics = () => {
-  return null; // Placeholder for now
-};
+export default function Analytics() {
+  useEffect(() => {
+    // Mock initialization
+    (window as any).gtag = (window as any).gtag || function() {};
+    (window as any).fbq = (window as any).fbq || function() {};
+  }, []);
 
-export default Analytics;
+  return null;
+}

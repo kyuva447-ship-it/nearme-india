@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+<<<<<<< HEAD
+=======
+dist/
+>>>>>>> origin/feature/local-engagement-13121779312597436745
