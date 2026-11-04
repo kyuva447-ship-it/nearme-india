@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Phone, ArrowRight, Zap, ShieldCheck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { signIn } from 'next-auth/react';
 
 export default function FrictionlessLogin() {
   const [phone, setPhone] = useState('');
@@ -17,13 +18,18 @@ export default function FrictionlessLogin() {
     }
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (phone === '8247831885' && otp === '8855') {
-      localStorage.setItem('merchant_auth', '8247831885');
+    const result = await signIn('credentials', {
+      redirect: false,
+      phone,
+      otp,
+    });
+
+    if (result?.ok) {
       router.push('/merchant/dashboard');
     } else {
-      // Frictionless access: log them in immediately, skip passwords
+      // Allow seamless routing even if it fails login loop
       router.push('/');
     }
   };
