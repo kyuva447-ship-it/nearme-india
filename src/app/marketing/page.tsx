@@ -30,7 +30,6 @@ export default function MarketingPanel() {
         </div>
 
         <div className="space-y-6">
-          {/* WhatsApp Broadcast */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold flex items-center gap-2 text-lg"><Share2 className="w-5 h-5 text-[#25D366]" /> WhatsApp Broadcast</h2>
@@ -46,7 +45,6 @@ export default function MarketingPanel() {
             </pre>
           </div>
 
-          {/* Instagram Caption */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold flex items-center gap-2 text-lg"><Share2 className="w-5 h-5 text-pink-600" /> Instagram Caption</h2>
@@ -62,7 +60,6 @@ export default function MarketingPanel() {
             </pre>
           </div>
 
-          {/* Offer Post */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-4">
               <h2 className="font-bold flex items-center gap-2 text-lg"><Zap className="w-5 h-5 text-orange-500" /> Growth Pack Offer</h2>

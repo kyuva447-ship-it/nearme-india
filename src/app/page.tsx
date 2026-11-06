@@ -54,7 +54,7 @@ export default function Home() {
        query = query.eq('city', selectedCity);
     }
     if (searchQuery) {
-       query = query.or(`business_name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,pincode.ilike.%${searchQuery}%`);
+       query = query.or(`business_name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,pincode.ilike.%${searchQuery}%`);
     }
 
     const { data, error } = await query;
@@ -73,7 +73,7 @@ export default function Home() {
 
   const handleWhatsAppOrder = (shop: any) => {
     const message = encodeURIComponent(`Hi ${shop.business_name}, I want to place an order via NearMe India.`);
-    window.open(`https://wa.me/91${shop.phone}?text=${message}`, '_blank');
+    window.open(`https://wa.me/918247831885?text=${message}`, '_blank');
   };
 
   const openAdminWhatsApp = (plan: string) => {
@@ -124,7 +124,7 @@ export default function Home() {
               />
             </div>
 
-            <button onClick={() => console.log("Cart Drawer Opening Soon. Items: " + cartCount)} className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <button className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
               <ShoppingCart className="w-6 h-6 text-slate-700" />
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 w-5 h-5 bg-orange-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
@@ -138,7 +138,7 @@ export default function Home() {
             </Link>
 
             <button onClick={() => openAdminWhatsApp("Add Shop")} className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
-              <Store className="w-4 h-4" /> Add Shop
+              <Store className="w-4 h-4" /> List Your Shop FREE
             </button>
           </div>
         </div>
@@ -276,7 +276,7 @@ export default function Home() {
                 <h3 className="text-xl font-bold text-slate-700 mb-2">No shop yet in your area</h3>
                 <p className="text-slate-500 mb-6">Be first to list - List Free</p>
                 <button onClick={() => openAdminWhatsApp("Add Shop")} className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors gap-2">
-                  <MessageSquare className="w-5 h-5" /> WhatsApp Us To List
+                  <MessageSquare className="w-5 h-5" /> List Your Shop FREE
                 </button>
              </div>
           )}
@@ -332,7 +332,7 @@ export default function Home() {
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] pb-safe">
          <button onClick={() => window.scrollTo(0,0)} className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></button>
          <Link href="/escrow" className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></Link>
-         <button onClick={() => console.log("Cart Drawer Opening Soon. Items: " + cartCount)} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
+         <button onClick={() => {}} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
             <ShoppingCart className="w-6 h-6"/>
             {cartCount > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
             <span className="text-[10px] font-bold">Cart</span>
