@@ -13,30 +13,11 @@ const handler = NextAuth({
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.otp) return null;
 
-        // Ensure user exists in database without hardcoding any magic backdoors
-        let { data: user } = await supabaseAdmin
-            .from('users_v1')
-            .select('*')
-            .eq('phone', credentials.phone)
-            .single();
-
-        if (!user) {
-            const { data: newUser, error } = await supabaseAdmin
-                .from('users_v1')
-                .insert([{ phone: credentials.phone, name: 'New User' }])
-                .select()
-                .single();
-            if (error) {
-                console.error("Auth User Creation Error: ", error);
-                return null;
-            }
-            user = newUser;
-        }
-
-        if (user) {
-            return { id: user.id, name: user.name, phone: user.phone };
-        }
-
+        // =========================================================================
+        // TODO: Add MSG91 / Twilio API Key Here For Real OTP - Owner Will Add Key
+        // Currently forced to fail to prevent fake OTP login bypass.
+        // Replace this return null with actual OTP verification logic.
+        // =========================================================================
         return null;
       }
     })
