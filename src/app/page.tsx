@@ -30,47 +30,49 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
-  const [selectedCity, setSelectedCity] = useState('Delhi');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCity, setSelectedCity] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [cartCount, setCartCount] = useState(0);
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch shops dynamically based on city
   useEffect(() => {
-    const fetchShops = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('shops_v1')
-          .select('*')
-          .eq('city', selectedCity)
-          .eq('is_active', true)
-          .limit(10);
+    // Load cart from local storage
+    const savedCart = localStorage.getItem('nearme_cart_count');
+    if (savedCart) {
+        setCartCount(parseInt(savedCart));
+    }
+  }, []);
 
-        if (data) {
-          setShops(data);
-        } else {
-          setShops([]); // Default fallback
-        }
-      } catch (e) {
-        console.error(e);
-        // Fallback mock if db not ready
-        setShops([]);
-      }
-      setLoading(false);
-    };
-
-    fetchShops();
-  }, [selectedCity]);
+  const handleSearchClick = async () => {
+    if (!searchQuery) return;
+    setLoading(true);
+    // Real search based on DB
+    const { data } = await supabase
+       .from('shops_v1')
+       .select('*')
+       .ilike('city', `%${searchQuery}%`)
+       .eq('is_active', true)
+       .limit(20);
+    setShops(data || []);
+    setLoading(false);
+  };
 
   const handleAddToCart = () => {
-    setCartCount(prev => prev + 1);
+    const newCount = cartCount + 1;
+    setCartCount(newCount);
+    localStorage.setItem('nearme_cart_count', newCount.toString());
   };
 
   const handleWhatsAppOrder = (shop: any) => {
     const message = encodeURIComponent(`Hi ${shop.business_name}, I want to place an order via NearMe India.`);
     window.open(`https://wa.me/91${shop.phone}?text=${message}`, '_blank');
+  };
+
+  const openAdminWhatsApp = (plan: string) => {
+    const message = encodeURIComponent(`Hi NearMe India, I want to activate the ${plan} plan.`);
+    window.open(`https://wa.me/918247831885?text=${message}`, '_blank');
   };
 
   return (
@@ -99,6 +101,7 @@ export default function Home() {
               className="bg-transparent border-none outline-none w-full text-sm placeholder-slate-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
             />
           </div>
 
@@ -106,18 +109,16 @@ export default function Home() {
           <div className="flex items-center gap-3 md:gap-6">
             <div className="relative group hidden sm:flex items-center cursor-pointer bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 hover:border-emerald-300">
               <MapPin className="w-4 h-4 text-orange-500 mr-1" />
-              <select
-                value={selectedCity}
-                onChange={(e) => setSelectedCity(e.target.value)}
-                className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 cursor-pointer appearance-none pr-4"
-              >
-                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
-                <option value="All">All India - 500 Cities</option>
-              </select>
-              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 pointer-events-none" />
+              <input
+                 type="text"
+                 placeholder="Any City / Pincode"
+                 value={selectedCity}
+                 onChange={(e) => setSelectedCity(e.target.value)}
+                 className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-32"
+              />
             </div>
 
-            <button className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <button onClick={() => alert("Cart Drawer Opening Soon. Items: " + cartCount)} className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
               <ShoppingCart className="w-6 h-6 text-slate-700" />
               {cartCount > 0 && (
                 <span className="absolute top-0 right-0 w-5 h-5 bg-orange-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
@@ -130,9 +131,9 @@ export default function Home() {
               <User className="w-5 h-5" /> Login
             </Link>
 
-            <Link href="/merchant/dashboard" className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
+            <button onClick={() => openAdminWhatsApp("Add Shop")} className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
               <Store className="w-4 h-4" /> Add Shop
-            </Link>
+            </button>
           </div>
         </div>
       </header>
@@ -140,10 +141,9 @@ export default function Home() {
       {/* 3. MONEY STRIP - GREEN */}
       <div className="bg-emerald-600 text-white overflow-hidden whitespace-nowrap py-2 border-b border-emerald-700 shadow-sm relative z-40">
         <div className="animate-marquee inline-block text-sm font-medium">
-          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
-          <span className="mx-4">✅ Verification Rs499 <Link href="/checkout?plan=verify" className="underline font-bold hover:text-orange-300 ml-1">[Buy Now]</Link></span>
-          <span className="mx-4">📢 Ads Rs99/day <Link href="/merchant/dashboard" className="underline font-bold hover:text-orange-300 ml-1">[Promote Shop]</Link></span>
-          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
+          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <button onClick={() => openAdminWhatsApp("Premium")} className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</button></span>
+          <span className="mx-4">✅ Verification Rs499 <button onClick={() => openAdminWhatsApp("Verification")} className="underline font-bold hover:text-orange-300 ml-1">[Buy Now]</button></span>
+          <span className="mx-4">📢 Ads Rs99/day <button onClick={() => openAdminWhatsApp("Ads")} className="underline font-bold hover:text-orange-300 ml-1">[Promote Shop]</button></span>
         </div>
       </div>
 
@@ -154,7 +154,7 @@ export default function Home() {
             NearMe India - <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-orange-500">Everything Near You</span>, All India
           </h1>
           <p className="text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-2xl mx-auto">
-            500 Cities | 10 Lakh Shops | Order In 10 Min
+            Serving All India - Every City, Town, Village & Pincode
           </p>
 
           <div className="max-w-3xl mx-auto mb-8 relative">
@@ -167,10 +167,10 @@ export default function Home() {
                   <option>Kannada Voice</option>
                 </select>
                 <div className="flex-1 flex items-center bg-slate-50 rounded-xl md:rounded-none px-4 py-3 md:py-0">
-                   <input type="text" placeholder="Speak to search anything..." className="w-full bg-transparent border-none outline-none text-slate-800" />
+                   <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Type city, pincode, or shop name..." className="w-full bg-transparent border-none outline-none text-slate-800" />
                    <button className="text-emerald-600 hover:text-emerald-700 p-2"><Mic className="w-6 h-6 animate-pulse" /></button>
                 </div>
-                <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
+                <button onClick={handleSearchClick} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
                    <Search className="w-5 h-5"/> Find
                 </button>
              </div>
@@ -180,14 +180,18 @@ export default function Home() {
             {CITIES.slice(0, 7).map(city => (
               <button
                 key={city}
-                onClick={() => setSelectedCity(city)}
-                className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${selectedCity === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
+                onClick={() => {
+                  setSearchQuery(city);
+                  setSelectedCity(city);
+                  handleSearchClick();
+                }}
+                className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${searchQuery === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
               >
                 {city}
               </button>
             ))}
-            <button className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
-              + View All 500 Cities
+            <button onClick={() => document.querySelector('input')?.focus()} className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
+              + Search Anywhere In India
             </button>
           </div>
         </section>
@@ -206,16 +210,16 @@ export default function Home() {
            </div>
         </section>
 
-        {/* 5. SHOPS SECTION - DYNAMIC BY CITY */}
+        {/* 5. SHOPS SECTION - DYNAMIC */}
         <section className="mb-20">
           <div className="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
              <h2 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
-               Top Shops In <span className="text-emerald-600">{selectedCity}</span>
+               Search Results {searchQuery ? `for "${searchQuery}"` : 'Near You'}
              </h2>
           </div>
 
           {loading ? (
-             <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Loading shops in {selectedCity}...</div>
+             <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Loading shops...</div>
           ) : shops.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {shops.map((shop, i) => (
@@ -235,18 +239,11 @@ export default function Home() {
                              <Star className="w-3 h-3 fill-orange-700" /> Trust Score: {shop.trust_score || 85}
                            </span>
                         </div>
-
-                        {shop.current_deal_text && (
-                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm">
-                            <p className="font-bold text-emerald-700 flex items-center gap-1"><Flame className="w-4 h-4"/> Flash Deal!</p>
-                            <p className="text-slate-700 font-medium mt-1">{shop.current_deal_text}</p>
-                          </div>
-                        )}
                       </div>
 
                       <div className="space-y-2 mt-auto">
                         <div className="grid grid-cols-2 gap-2">
-                          <button onClick={handleAddToCart} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-1">
+                          <button onClick={() => handleWhatsAppOrder(shop)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-1">
                             Buy Now
                           </button>
                           <button onClick={handleAddToCart} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors border border-slate-200">
@@ -256,9 +253,6 @@ export default function Home() {
                         <button onClick={() => handleWhatsAppOrder(shop)} className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
                           <MessageSquare className="w-4 h-4" /> WhatsApp Order
                         </button>
-                        <button className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition-colors border border-orange-200 flex items-center justify-center gap-2">
-                          <ShoppingBag className="w-4 h-4" /> Pay After Delivery
-                        </button>
                       </div>
                    </div>
                 ))}
@@ -266,11 +260,11 @@ export default function Home() {
           ) : (
              <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-300">
                 <Store className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-slate-700 mb-2">No Shops Yet In This City</h3>
-                <p className="text-slate-500 mb-6">Be First Shop - Add Your Shop Free</p>
-                <Link href="/merchant/dashboard" className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors">
-                  Add Shop Now
-                </Link>
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No shop yet in your area</h3>
+                <p className="text-slate-500 mb-6">Be first to list - List Free</p>
+                <button onClick={() => openAdminWhatsApp("Add Shop")} className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors gap-2">
+                  <MessageSquare className="w-5 h-5" /> WhatsApp Us To List
+                </button>
              </div>
           )}
         </section>
@@ -313,9 +307,9 @@ export default function Home() {
 
       {/* 6. BOTTOM NAV - WHITE (Mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] pb-safe">
-         <Link href="/" className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></Link>
+         <button onClick={() => window.scrollTo(0,0)} className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></button>
          <Link href="/escrow" className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></Link>
-         <button onClick={() => {}} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
+         <button onClick={() => alert("Cart Drawer Opening Soon. Items: " + cartCount)} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
             <ShoppingCart className="w-6 h-6"/>
             {cartCount > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
             <span className="text-[10px] font-bold">Cart</span>
