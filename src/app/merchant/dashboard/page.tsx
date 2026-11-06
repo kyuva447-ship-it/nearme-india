@@ -1,8 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, MapPin, Zap, TrendingUp, Wallet, Save } from 'lucide-react';
-import { motion } from 'framer-motion';
 
 export default function MerchantDashboard() {
   const router = useRouter();
