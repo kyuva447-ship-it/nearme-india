@@ -42,18 +42,25 @@ export default function Home() {
     if (savedCart) {
         setCartCount(parseInt(savedCart));
     }
+    // Load initial shops
+    handleSearchClick();
   }, []);
 
   const handleSearchClick = async () => {
-    if (!searchQuery) return;
     setLoading(true);
-    // Real search based on DB
-    const { data } = await supabase
-       .from('shops_v1')
-       .select('*')
-       .or(`city.ilike.%${searchQuery}%,pincode.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%`)
-       .eq('is_active', true)
-       .limit(20);
+    let query = supabase.from('shops_v1').select('*').eq('is_active', true).limit(20);
+
+    if (selectedCity && selectedCity !== 'All') {
+       query = query.eq('city', selectedCity);
+    }
+    if (searchQuery) {
+       query = query.or(`business_name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,pincode.ilike.%${searchQuery}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+       console.error("Search error: ", error);
+    }
     setShops(data || []);
     setLoading(false);
   };
@@ -166,7 +173,7 @@ export default function Home() {
                   <option>Kannada Voice</option>
                 </select>
                 <div className="flex-1 flex items-center bg-slate-50 rounded-xl md:rounded-none px-4 py-3 md:py-0">
-                   <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Type city, pincode, or shop name..." className="w-full bg-transparent border-none outline-none text-slate-800" />
+                   <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()} placeholder="Type city, pincode, or shop name..." className="w-full bg-transparent border-none outline-none text-slate-800" />
                    <button className="text-emerald-600 hover:text-emerald-700 p-2"><Mic className="w-6 h-6 animate-pulse" /></button>
                 </div>
                 <button onClick={handleSearchClick} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
@@ -180,16 +187,15 @@ export default function Home() {
               <button
                 key={city}
                 onClick={() => {
-                  setSearchQuery(city);
                   setSelectedCity(city);
                   handleSearchClick();
                 }}
-                className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${searchQuery === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
+                className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${selectedCity === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
               >
                 {city}
               </button>
             ))}
-            <button onClick={() => document.querySelector('input')?.focus()} className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
+            <button onClick={() => { setSelectedCity('All'); handleSearchClick(); }} className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
               + Search Anywhere In India
             </button>
           </div>
@@ -199,7 +205,7 @@ export default function Home() {
         <section className="mb-16">
            <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
               {CATEGORIES.map((cat, i) => (
-                <div key={i} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group text-center">
+                <div key={i} onClick={() => { setSearchQuery(cat.name); handleSearchClick(); }} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group text-center">
                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                      {cat.icon}
                   </div>
@@ -213,7 +219,7 @@ export default function Home() {
         <section className="mb-20">
           <div className="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
              <h2 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
-               Search Results {searchQuery ? `for "${searchQuery}"` : 'Near You'}
+               Search Results {searchQuery ? `for "${searchQuery}"` : (selectedCity && selectedCity !== 'All' ? `in ${selectedCity}` : 'Near You')}
              </h2>
           </div>
 
