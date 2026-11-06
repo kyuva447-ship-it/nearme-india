@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { supabaseAdmin } from "@/lib/supabase/client"
 
 const handler = NextAuth({
   providers: [
@@ -9,11 +10,15 @@ const handler = NextAuth({
         phone: { label: "Phone", type: "text" },
         otp: { label: "OTP", type: "text" }
       },
-      async authorize(credentials, req) {
-        if (credentials?.phone === '8247831885' && credentials?.otp === '8855') {
-          return { id: "1", name: "Merchant", phone: "8247831885" }
-        }
-        return null
+      async authorize(credentials) {
+        if (!credentials?.phone || !credentials?.otp) return null;
+
+        // =========================================================================
+        // TODO: Add MSG91 / Twilio API Key Here For Real OTP - Owner Will Add Key
+        // Currently forced to fail to prevent fake OTP login bypass.
+        // Replace this return null with actual OTP verification logic.
+        // =========================================================================
+        return null;
       }
     })
   ],

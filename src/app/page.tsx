@@ -1,221 +1,328 @@
 'use client';
-import Analytics from '@/components/Analytics';
-import React, { useState } from 'react';
-import dynamic from 'next/dynamic';
-import { Search, MapPin, Mic, ShoppingBag, MessageSquare, Zap, Star, Shield, Coins, Building2, Leaf, Menu } from 'lucide-react';
-import { trackEvent } from '@/lib/analytics';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import {
+  Building2, Search, MapPin, Mic, ShoppingBag, MessageSquare, Zap,
+  Store, User, ShoppingCart, CheckCircle, Flame, Star,
+  ChevronDown, Phone, ShieldCheck
+} from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
-import MetaAIFloater from '@/components/MetaAIFloater';
+import { trackEvent } from '@/lib/analytics';
 
-const V1CreativeUI = () => (
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center text-center hover:bg-white/20 transition-all border border-purple-500/30">
-       <Zap className="w-8 h-8 text-purple-400 mb-2" />
-       <span className="text-sm font-bold text-white">Bargain AI</span>
-       <span className="text-xs text-purple-300">Negotiates for you</span>
-    </div>
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center text-center hover:bg-white/20 transition-all border border-amber-500/30">
-       <Coins className="w-8 h-8 text-amber-400 mb-2" />
-       <span className="text-sm font-bold text-white">NearMe Coins</span>
-       <span className="text-xs text-amber-300">Visit shops, earn real money</span>
-    </div>
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center text-center hover:bg-white/20 transition-all border border-emerald-500/30">
-       <Building2 className="w-8 h-8 text-emerald-400 mb-2" />
-       <span className="text-sm font-bold text-white">AI Shop Clone</span>
-       <span className="text-xs text-emerald-300">3D Digital Twin</span>
-    </div>
-    <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center justify-center text-center hover:bg-white/20 transition-all border border-pink-500/30">
-       <Leaf className="w-8 h-8 text-pink-400 mb-2" />
-       <span className="text-sm font-bold text-white">Trust DNA: 100</span>
-       <span className="text-xs text-pink-300">Verified Bangalore Merchants</span>
-    </div>
-  </div>
-);
+const CITIES = [
+  'Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Hyderabad',
+  'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow',
+  'Tirupati', 'Nellore', 'Chittoor', 'Vijayawada', 'Vizag',
+  'Guntur', 'Warangal', 'Kochi', 'Coimbatore', 'Madurai',
+  'Indore', 'Bhopal', 'Patna', 'Surat'
+];
 
-const LiveMap = dynamic(() => import('@/components/LiveMap'), { ssr: false });
+const CATEGORIES = [
+  { name: 'Kirana', icon: <ShoppingBag className="w-6 h-6" /> },
+  { name: 'Food', icon: <Flame className="w-6 h-6" /> },
+  { name: 'Medical', icon: <ShieldCheck className="w-6 h-6" /> },
+  { name: 'Mobile', icon: <Phone className="w-6 h-6" /> },
+  { name: 'Fashion', icon: <Star className="w-6 h-6" /> },
+  { name: 'Services', icon: <Zap className="w-6 h-6" /> },
+  { name: 'B2B', icon: <Building2 className="w-6 h-6" /> },
+  { name: 'All Categories', icon: <Store className="w-6 h-6" /> },
+];
 
 export default function Home() {
+  const [selectedCity, setSelectedCity] = useState('Delhi');
   const [searchQuery, setSearchQuery] = useState('');
+  const [cartCount, setCartCount] = useState(0);
+  const [shops, setShops] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  // Simulated V1 Bangalore Merchants with all industries and V1 fields
-  const [merchants, setMerchants] = useState<any[]>([
-    {
-      id: '1',
-      business_name: 'TechHub Indiranagar',
-      category: 'electronics',
-      mood: 'Fresh stock arrived!',
-      trust_score: 98,
-      coins: 50,
-      city: 'Bangalore',
-      is_currently_available: true,
-      current_deal_text: 'Buy 1 Get 1 Airpods V1',
-      latitude: 12.9784,
-      longitude: 77.6408,
-      is_gold_pin_active: true,
-      phone: "9876543210"
-    },
-    {
-      id: '2',
-      business_name: 'Koramangala Fresh Kirana',
-      category: 'grocery',
-      mood: 'Busy (Queue: 5 mins)',
-      trust_score: 100,
-      coins: 10,
-      city: 'Bangalore',
-      is_currently_available: true,
-      current_deal_text: 'Fresh organic mangoes',
-      latitude: 12.9279,
-      longitude: 77.6271,
-      is_gold_pin_active: false,
-      phone: "9876543211"
-    }
-  ]);
+  // Fetch shops dynamically based on city
+  useEffect(() => {
+    const fetchShops = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('shops_v1')
+          .select('*')
+          .eq('city', selectedCity)
+          .eq('is_active', true)
+          .limit(10);
 
-  const [selectedMerchant, setSelectedMerchant] = useState<any | null>(null);
+        if (data) {
+          setShops(data);
+        } else {
+          setShops([]); // Default fallback
+        }
+      } catch (e) {
+        console.error(e);
+        // Fallback mock if db not ready
+        setShops([]);
+      }
+      setLoading(false);
+    };
 
-  const handleLeadTrigger = async (merchant: any) => {
-    trackEvent('lead_trigger_click', { merchant_id: merchant.id });
-    console.log("Mock lead trigger via supabase RPC", merchant.id);
+    fetchShops();
+  }, [selectedCity]);
 
-    // Core Business Rule: ₹3 lead fee deduction logic
-    const { data, error } = await supabase.rpc('deduct_v2_wallet', {
-       p_seller_id: merchant.id,
-       p_amount: 3.00
-    });
+  const handleAddToCart = () => {
+    setCartCount(prev => prev + 1);
+  };
 
-    if (error) {
-       console.error("Wallet deduction failed:", error);
-       alert("Could not process request at this time.");
-       return;
-    }
-
-    // Dynamic Context-Aware WhatsApp Handoff
-    const message = encodeURIComponent(`Hi ${merchant.business_name}, I saw your flash deal: "${merchant.current_deal_text}". Are you available now?`);
-    window.open(`https://wa.me/91${merchant.phone}?text=${message}`, '_blank');
+  const handleWhatsAppOrder = (shop: any) => {
+    const message = encodeURIComponent(`Hi ${shop.business_name}, I want to place an order via NearMe India.`);
+    window.open(`https://wa.me/91${shop.phone}?text=${message}`, '_blank');
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 font-sans text-white relative overflow-x-hidden pb-20">
-      <Analytics />
+    <div className="min-h-screen bg-white text-slate-900 font-sans pb-20 md:pb-0">
 
-      {/* Soft, beautiful background elements */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-pink-500/20 to-indigo-500/20 blur-[120px] rounded-full pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-emerald-500/20 to-teal-500/20 blur-[120px] rounded-full pointer-events-none" />
+      {/* 1. TOP BAR - WHITE */}
+      <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+          {/* Logo */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-orange-500 flex items-center justify-center text-white font-black text-xl">
+              N
+            </div>
+            <span className="font-black text-xl hidden sm:block">
+              <span className="text-emerald-600">NearMe</span>
+              <span className="text-orange-500">India</span>
+            </span>
+          </div>
 
-      {/* Header */}
-      <header className="p-6 relative z-10 flex justify-between items-center max-w-7xl mx-auto">
-        <div>
-          <h1 className="text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 tracking-tight">
-            NearMe Bangalore V1
-          </h1>
-          <p className="text-pink-300 font-medium tracking-widest text-xs mt-1 uppercase">
-            The Ultimate Local Experience
-          </p>
-        </div>
-        <div className="flex gap-4">
-           <a href="/login" className="hidden md:block bg-white/10 hover:bg-white/20 backdrop-blur-lg border border-white/20 px-6 py-2 rounded-full font-bold transition-colors">Merchant Login</a>
-           <button className="md:hidden bg-white/10 p-2 rounded-lg backdrop-blur-lg"><Menu /></button>
+          {/* Search */}
+          <div className="flex-1 max-w-2xl hidden md:flex items-center bg-slate-100 rounded-full px-4 py-2 border border-slate-200 focus-within:border-emerald-500 focus-within:bg-white transition-all">
+            <Search className="w-5 h-5 text-slate-400 mr-2" />
+            <input
+              type="text"
+              placeholder="Search Shops, Food, Services In India..."
+              className="bg-transparent border-none outline-none w-full text-sm placeholder-slate-500"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          {/* Right Actions */}
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="relative group hidden sm:flex items-center cursor-pointer bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 hover:border-emerald-300">
+              <MapPin className="w-4 h-4 text-orange-500 mr-1" />
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 cursor-pointer appearance-none pr-4"
+              >
+                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                <option value="All">All India - 500 Cities</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 pointer-events-none" />
+            </div>
+
+            <button className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
+              <ShoppingCart className="w-6 h-6 text-slate-700" />
+              {cartCount > 0 && (
+                <span className="absolute top-0 right-0 w-5 h-5 bg-orange-500 text-white text-xs font-bold flex items-center justify-center rounded-full border-2 border-white">
+                  {cartCount}
+                </span>
+              )}
+            </button>
+
+            <Link href="/login" className="hidden md:flex items-center gap-1 font-bold text-slate-700 hover:text-emerald-600 transition-colors">
+              <User className="w-5 h-5" /> Login
+            </Link>
+
+            <Link href="/merchant/dashboard" className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
+              <Store className="w-4 h-4" /> Add Shop
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 relative z-10 mt-8">
-
-        {/* Soft, Easy Search Area */}
-        <div className="max-w-3xl mx-auto mb-10 text-center">
-            <h2 className="text-3xl md:text-4xl font-bold mb-6">What do you need in Bangalore today?</h2>
-
-            <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-pink-500 to-indigo-500 rounded-3xl blur opacity-30 group-hover:opacity-60 transition duration-500"></div>
-                <div className="relative bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl flex items-center p-2">
-                    <button className="p-4 bg-indigo-500 hover:bg-indigo-600 rounded-2xl transition-colors">
-                        <Mic className="w-6 h-6 text-white" />
-                    </button>
-                    <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        placeholder='Voice search Kannada slang: "Anna Bangalore li best biryani elli"'
-                        className="flex-1 bg-transparent border-none text-white px-6 py-4 text-lg placeholder-white/50 outline-none"
-                    />
-                    <button className="p-4 bg-pink-500 hover:bg-pink-600 rounded-2xl transition-colors font-bold flex items-center gap-2">
-                        <Search className="w-5 h-5" /> Find
-                    </button>
-                </div>
-            </div>
+      {/* 3. MONEY STRIP - GREEN */}
+      <div className="bg-emerald-600 text-white overflow-hidden whitespace-nowrap py-2 border-b border-emerald-700 shadow-sm relative z-40">
+        <div className="animate-marquee inline-block text-sm font-medium">
+          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
+          <span className="mx-4">✅ Verification Rs499 <Link href="/checkout?plan=verify" className="underline font-bold hover:text-orange-300 ml-1">[Buy Now]</Link></span>
+          <span className="mx-4">📢 Ads Rs99/day <Link href="/merchant/dashboard" className="underline font-bold hover:text-orange-300 ml-1">[Promote Shop]</Link></span>
+          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
         </div>
+      </div>
 
-        {/* V1 Creative Features Showcase */}
-        <V1CreativeUI />
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* 2. HERO SECTION */}
+        <section className="text-center py-10 md:py-16">
+          <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 text-slate-900">
+            NearMe India - <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-orange-500">Everything Near You</span>, All India
+          </h1>
+          <p className="text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-2xl mx-auto">
+            500 Cities | 10 Lakh Shops | Order In 10 Min
+          </p>
 
-        {/* Map Section */}
-        <div className="h-[40vh] md:h-[50vh] rounded-3xl overflow-hidden border border-white/20 shadow-2xl relative mb-12 z-0">
-          <LiveMap merchants={merchants} onMarkerClick={setSelectedMerchant} />
-        </div>
-
-        {/* V1 Bangalore Merchant Cards */}
-        <h3 className="text-2xl font-bold mb-6 flex items-center gap-2">
-            <MapPin className="text-pink-400" /> Trending in Namma Bengaluru
-        </h3>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-20">
-          {merchants.map((merchant) => (
-            <div
-              key={merchant.id}
-              className={`bg-white/5 backdrop-blur-xl p-6 rounded-3xl border-2 flex flex-col justify-between hover:bg-white/10 transition-all ${merchant.is_gold_pin_active ? 'border-amber-400' : 'border-white/10'} relative overflow-hidden`}
-            >
-              {merchant.is_gold_pin_active && (
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-yellow-500" />
-              )}
-
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-2xl font-black text-white mb-1">
-                    {merchant.business_name}
-                  </h3>
-                  <p className="text-indigo-300 capitalize text-sm">{merchant.category} • {merchant.city}</p>
+          <div className="max-w-3xl mx-auto mb-8 relative">
+             <div className="flex flex-col md:flex-row items-stretch gap-2 bg-white p-2 rounded-2xl md:rounded-full border-2 border-slate-200 shadow-lg focus-within:border-emerald-500 focus-within:shadow-xl transition-all">
+                <select className="bg-slate-50 px-4 py-3 md:py-0 md:rounded-l-full rounded-xl border border-slate-200 text-sm font-bold text-slate-700 outline-none">
+                  <option>English Voice</option>
+                  <option>Telugu Voice</option>
+                  <option>Hindi Voice</option>
+                  <option>Tamil Voice</option>
+                  <option>Kannada Voice</option>
+                </select>
+                <div className="flex-1 flex items-center bg-slate-50 rounded-xl md:rounded-none px-4 py-3 md:py-0">
+                   <input type="text" placeholder="Speak to search anything..." className="w-full bg-transparent border-none outline-none text-slate-800" />
+                   <button className="text-emerald-600 hover:text-emerald-700 p-2"><Mic className="w-6 h-6 animate-pulse" /></button>
                 </div>
-                <div className="bg-indigo-500/20 text-indigo-300 px-3 py-1 rounded-full text-xs font-bold border border-indigo-500/30">
-                    Trust DNA: {merchant.trust_score}
+                <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
+                   <Search className="w-5 h-5"/> Find
+                </button>
+             </div>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {CITIES.slice(0, 7).map(city => (
+              <button
+                key={city}
+                onClick={() => setSelectedCity(city)}
+                className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${selectedCity === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
+              >
+                {city}
+              </button>
+            ))}
+            <button className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
+              + View All 500 Cities
+            </button>
+          </div>
+        </section>
+
+        {/* 4. CATEGORIES */}
+        <section className="mb-16">
+           <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
+              {CATEGORIES.map((cat, i) => (
+                <div key={i} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group text-center">
+                  <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
+                     {cat.icon}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 whitespace-nowrap">{cat.name}</span>
                 </div>
-              </div>
+              ))}
+           </div>
+        </section>
 
-              <div className="mb-6">
-                 <p className="text-pink-400 text-sm font-bold mb-2 bg-pink-500/10 inline-block px-3 py-1 rounded-full">
-                     🔥 {merchant.current_deal_text}
-                 </p>
-                 <p className="text-emerald-400 text-sm font-bold bg-emerald-500/10 inline-block px-3 py-1 rounded-full ml-2">
-                     Mood: {merchant.mood}
-                 </p>
-              </div>
+        {/* 5. SHOPS SECTION - DYNAMIC BY CITY */}
+        <section className="mb-20">
+          <div className="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
+             <h2 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
+               Top Shops In <span className="text-emerald-600">{selectedCity}</span>
+             </h2>
+          </div>
 
-              <div className="space-y-3">
-                 <button
-                   onClick={() => handleLeadTrigger(merchant)}
-                   className="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-400 hover:to-purple-500 text-white font-bold py-4 rounded-2xl transition-all shadow-lg flex items-center justify-center gap-2"
-                 >
-                   <MessageSquare className="w-5 h-5" /> Chat via AI Broker
-                 </button>
-                 <button
-                   className="w-full bg-white/5 hover:bg-white/10 text-white font-bold py-4 rounded-2xl transition-all border border-white/10 flex items-center justify-center gap-2"
-                 >
-                   <ShoppingBag className="w-5 h-5" /> Pay After Delivery
-                 </button>
-              </div>
-            </div>
-          ))}
-        </div>
+          {loading ? (
+             <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Loading shops in {selectedCity}...</div>
+          ) : shops.length > 0 ? (
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {shops.map((shop, i) => (
+                   <div key={i} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm hover:shadow-xl hover:border-emerald-300 transition-all group flex flex-col justify-between h-full relative overflow-hidden">
+                      {shop.is_verified && (
+                        <div className="absolute top-4 right-4 bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded-full flex items-center gap-1">
+                          <CheckCircle className="w-3 h-3" /> VERIFIED
+                        </div>
+                      )}
 
+                      <div className="mb-6 mt-2">
+                        <h3 className="text-xl font-black text-slate-900 mb-1 group-hover:text-emerald-600 transition-colors">{shop.business_name}</h3>
+                        <p className="text-sm text-slate-500 font-medium capitalize mb-2">{shop.category} • {shop.city}</p>
+
+                        <div className="flex items-center gap-2 mb-4">
+                           <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-1 rounded flex items-center gap-1">
+                             <Star className="w-3 h-3 fill-orange-700" /> Trust Score: {shop.trust_score || 85}
+                           </span>
+                        </div>
+
+                        {shop.current_deal_text && (
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm">
+                            <p className="font-bold text-emerald-700 flex items-center gap-1"><Flame className="w-4 h-4"/> Flash Deal!</p>
+                            <p className="text-slate-700 font-medium mt-1">{shop.current_deal_text}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-2 mt-auto">
+                        <div className="grid grid-cols-2 gap-2">
+                          <button onClick={handleAddToCart} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-1">
+                            Buy Now
+                          </button>
+                          <button onClick={handleAddToCart} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors border border-slate-200">
+                            Add To Cart
+                          </button>
+                        </div>
+                        <button onClick={() => handleWhatsAppOrder(shop)} className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
+                          <MessageSquare className="w-4 h-4" /> WhatsApp Order
+                        </button>
+                        <button className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition-colors border border-orange-200 flex items-center justify-center gap-2">
+                          <ShoppingBag className="w-4 h-4" /> Pay After Delivery
+                        </button>
+                      </div>
+                   </div>
+                ))}
+             </div>
+          ) : (
+             <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-300">
+                <Store className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No Shops Yet In This City</h3>
+                <p className="text-slate-500 mb-6">Be First Shop - Add Your Shop Free</p>
+                <Link href="/merchant/dashboard" className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors">
+                  Add Shop Now
+                </Link>
+             </div>
+          )}
+        </section>
       </main>
 
-      <MetaAIFloater />
+      {/* 7. FOOTER - WHITE */}
+      <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+          <div>
+            <h4 className="font-black text-slate-900 mb-4">NearMe India</h4>
+            <ul className="space-y-2 text-sm text-slate-600 font-medium">
+              <li><Link href="/about" className="hover:text-emerald-600">About Us</Link></li>
+              <li><Link href="/pricing" className="hover:text-emerald-600">Premium Plans</Link></li>
+              <li><Link href="/contact" className="hover:text-emerald-600">Contact & Support</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-black text-slate-900 mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm text-slate-600 font-medium">
+              <li><Link href="/terms" className="hover:text-emerald-600">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-emerald-600">Privacy Policy</Link></li>
+              <li><Link href="/refund-policy" className="hover:text-emerald-600">Refund Policy</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-emerald-600">Shipping Policy</Link></li>
+            </ul>
+          </div>
+          <div className="col-span-2 md:col-span-2">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <h4 className="font-black text-slate-900 mb-2 flex items-center gap-2"><Phone className="w-5 h-5 text-emerald-600" /> Support</h4>
+              <p className="text-sm text-slate-600 mb-4">Need help? We're available 9 AM - 6 PM IST.</p>
+              <a href="https://wa.me/918247831885" className="inline-flex items-center gap-2 bg-[#25D366] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#1DA851] transition-colors">
+                 <MessageSquare className="w-4 h-4" /> Support WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+        <div className="text-center text-slate-400 text-xs font-bold border-t border-slate-200 pt-8">
+           © {new Date().getFullYear()} NearMe India. Built for 10000 Cr Scale.
+        </div>
+      </footer>
 
-      {/* Mobile Bottom Nav */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-slate-900/90 backdrop-blur-xl border-t border-white/10 p-4 flex justify-around items-center z-40 pb-safe">
-         <a href="/" className="text-pink-400 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></a>
-         <a href="/escrow" className="text-slate-400 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></a>
-         <a href="/merchant/dashboard" className="text-slate-400 flex flex-col items-center gap-1"><Menu className="w-6 h-6"/><span className="text-[10px] font-bold">Account</span></a>
+      {/* 6. BOTTOM NAV - WHITE (Mobile) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] pb-safe">
+         <Link href="/" className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></Link>
+         <Link href="/escrow" className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></Link>
+         <button onClick={() => {}} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
+            <ShoppingCart className="w-6 h-6"/>
+            {cartCount > 0 && <span className="absolute -top-1 -right-2 w-4 h-4 bg-orange-500 text-white text-[9px] font-bold flex items-center justify-center rounded-full">{cartCount}</span>}
+            <span className="text-[10px] font-bold">Cart</span>
+         </button>
+         <Link href="/login" className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><User className="w-6 h-6"/><span className="text-[10px] font-bold">Account</span></Link>
       </div>
+
     </div>
   );
 }
-{/* FORCE DEPLOY INDIA BUILD v1.4 */}
