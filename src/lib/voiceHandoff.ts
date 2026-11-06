@@ -1,32 +1,29 @@
 import { supabase } from './supabase/client';
-import { triggerConfetti } from './confetti';
-import { trackEvent } from './analytics';
 
-export async function voiceHandoff(transcript: string, merchantId: string, merchantPhone: string, merchantData: any, distance: string) {
-
-  const dealContext = merchantData.current_deal_text ? `Are you still offering the "${merchantData.current_deal_text}"?` : '';
-  const message = `Hi ${merchantData.business_name}, I found you on NearMe India. ${transcript}. I am ${distance}km away. ${dealContext}`;
-
-  const { data: deducted, error } = await supabase.rpc('deduct_v2_wallet', {
+export const triggerVoiceHandoff = async (merchantId: string, merchantPhone: string, dealText: string) => {
+  // 1. Core Rule: Deduct Rs 3 lead fee via secure RPC
+  const { data: success, error } = await supabase.rpc('deduct_v2_wallet', {
     merchant_uuid: merchantId,
     amount: 3.00
   });
 
-  if (error || !deducted) {
-    alert('Merchant is out of balance.');
-    return;
+  if (error) {
+    console.error('Failed to deduct wallet:', error);
+    // Explicitly disabling fallback fake alerts
+    return false;
   }
 
-  await supabase.from('v2_b2c_leads').insert({
-    merchant_id: merchantId,
-    query: transcript,
-    distance: parseFloat(distance),
-    has_active_deal: !!merchantData.current_deal_text,
-    whatsapp_context: message
-  });
+  if (!success) {
+    // Cannot proceed if insufficient balance
+    console.warn("Insufficient balance for handoff");
+    return false;
+  }
 
-  trackEvent('lead_generated', { merchant_id: merchantId, method: 'voice' });
-  triggerConfetti();
+  // 2. Format Context-Aware WhatsApp Message
+  const text = `Hi, I saw your flash deal: "${dealText}". I'm coming to your shop now!`;
+  const url = `https://wa.me/91${merchantPhone}?text=${encodeURIComponent(text)}`;
 
-  window.open(`https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`, '_blank');
-}
+  // 3. Open WhatsApp
+  window.open(url, '_blank');
+  return true;
+};

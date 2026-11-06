@@ -23,11 +23,7 @@ export default function FrictionlessLogin() {
              <p className="text-sm">We are currently integrating a new secure SMS gateway. Direct merchant login is temporarily disabled.</p>
           </div>
 
-          <a href="https://wa.me/918247831885?text=I%20want%20to%20list%20my%20shop" target="_blank" rel="noreferrer" className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white font-bold py-4 rounded-xl flex items-center justify-center transition-colors shadow-md shadow-[#25D366]/30 mb-4">
-            Order Via WhatsApp
-          </a>
-
-          <Link href="/" className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-4 rounded-xl flex items-center justify-center transition-colors">
+          <Link href="/" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl flex items-center justify-center transition-colors shadow-md shadow-emerald-500/30">
             Return to Homepage
           </Link>
         </div>

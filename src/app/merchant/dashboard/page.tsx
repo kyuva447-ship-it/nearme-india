@@ -6,7 +6,6 @@ export default function MerchantDashboard() {
   const router = useRouter();
 
   useEffect(() => {
-     // OTP IS DISABLED. DIRECT ACCESS IS PROTECTED.
      router.push('/');
   }, [router]);
 

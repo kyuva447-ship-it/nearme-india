@@ -112,7 +112,7 @@ export default function Home() {
                 className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 cursor-pointer appearance-none pr-4"
               >
                 {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
-                <option value="All">Serving All India</option>
+                <option value="All">All India - 500 Cities</option>
               </select>
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 pointer-events-none" />
             </div>
@@ -154,7 +154,7 @@ export default function Home() {
             NearMe India - <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-orange-500">Everything Near You</span>, All India
           </h1>
           <p className="text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-2xl mx-auto">
-            Serving All India - Every City, Town, Village & Pincode
+            500 Cities | 10 Lakh Shops | Order In 10 Min
           </p>
 
           <div className="max-w-3xl mx-auto mb-8 relative">
@@ -187,7 +187,7 @@ export default function Home() {
               </button>
             ))}
             <button className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
-              + Search Anywhere In India
+              + View All 500 Cities
             </button>
           </div>
         </section>
