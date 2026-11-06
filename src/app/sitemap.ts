@@ -1,27 +1,30 @@
 import { MetadataRoute } from 'next';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://www.nearme-india.org';
-
-  const routes = [
-    '',
-    '/leaderboard',
-    '/escrow',
-    '/edge',
-    '/pricing',
-    '/about',
-    '/contact',
-    '/terms',
-    '/privacy',
-    '/refund-policy',
-    '/shipping-policy',
-    '/login'
+  return [
+    {
+      url: 'https://www.nearme-india.org',
+      lastModified: new Date(),
+      changeFrequency: 'always',
+      priority: 1,
+    },
+    {
+      url: 'https://www.nearme-india.org/about',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.8,
+    },
+    {
+      url: 'https://www.nearme-india.org/pricing',
+      lastModified: new Date(),
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
+      url: 'https://www.nearme-india.org/contact',
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.5,
+    },
   ];
-
-  return routes.map((route) => ({
-    url: `${baseUrl}${route}`,
-    lastModified: new Date(),
-    changeFrequency: 'weekly',
-    priority: route === '' ? 1 : 0.8,
-  }));
 }
