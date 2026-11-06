@@ -4,9 +4,22 @@ import { useRouter } from 'next/navigation';
 import { User, MapPin, Zap, TrendingUp, Wallet, Save } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { supabase } from '@/lib/supabase/client';
+import { useSession } from 'next-auth/react';
 
 export default function MerchantDashboard() {
   const router = useRouter();
+
+  // Safe destructuring as mandated in rules to prevent prerender crash
+  const sessionResponse = useSession({
+      required: false,
+      onUnauthenticated() {
+          router.push('/login');
+      }
+  });
+
+  const session = sessionResponse?.data;
+  const status = sessionResponse?.status;
+
   const [profile, setProfile] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -18,37 +31,65 @@ export default function MerchantDashboard() {
   });
 
   useEffect(() => {
+    if (status === 'unauthenticated') {
+        router.push('/login');
+        return;
+    }
+
     const fetchProfile = async () => {
-      // Mock session fallback handling
-      const mockPhone = '918247831885';
+      const userPhone = (session?.user as any)?.phone;
+      if (!userPhone) return;
+
       try {
-        const { data, error } = await supabase
-          .from('sellers')
-          .select('*')
-          .eq('phone_number', mockPhone)
+        const { data: user } = await supabase
+          .from('users_v1')
+          .select('id')
+          .eq('phone', userPhone)
           .single();
 
-        if (data) {
-          setProfile(data);
-          setFormData({
-            business_name: data.business_name || '',
-            address: data.address || '',
-            category: data.category || '',
-            flash_deal: data.current_deal_text || '',
-            is_open: data.is_currently_available || true
-          });
+        if (user) {
+          const { data, error } = await supabase
+            .from('shops_v1')
+            .select('*')
+            .eq('owner_id', user.id)
+            .single();
+
+          if (data) {
+            setProfile(data);
+            setFormData({
+              business_name: data.business_name || '',
+              address: data.city || '',
+              category: data.category || '',
+              flash_deal: data.current_deal_text || '',
+              is_open: data.is_active || true
+            });
+          }
         }
       } catch (error) {
-        console.warn("Using mock data.");
-        setProfile({ wallet_balance: 1500 });
+        console.error("Error fetching profile", error);
       }
     };
-    fetchProfile();
-  }, []);
+
+    if (session?.user) {
+       fetchProfile();
+    }
+  }, [session, status, router]);
 
   const handleSave = async () => {
+    if (!profile?.id) return;
+
     setIsEditing(false);
-    // Mock save
+    try {
+        await supabase.from('shops_v1').update({
+            business_name: formData.business_name,
+            city: formData.address,
+            category: formData.category,
+            current_deal_text: formData.flash_deal,
+            is_active: formData.is_open
+        }).eq('id', profile.id);
+    } catch(e) {
+        console.error(e);
+    }
   };
 
   return (
@@ -91,11 +132,11 @@ export default function MerchantDashboard() {
               {isEditing ? (
                 <input type="text" value={formData.category} onChange={(e) => setFormData({...formData, category: e.target.value})} className="w-full border-b-2 border-emerald-500 pb-1 font-bold text-slate-900 outline-none" />
               ) : (
-                <p className="font-bold text-slate-900">{formData.category || 'e.g. Grocery, Electronics'}</p>
+                <p className="font-bold text-slate-900">{formData.category || 'e.g. Kirana, Mobile'}</p>
               )}
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Address</label>
+              <label className="block text-xs font-bold text-slate-500 uppercase mb-1">City</label>
               {isEditing ? (
                 <input type="text" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} className="w-full border-b-2 border-emerald-500 pb-1 font-bold text-slate-900 outline-none" />
               ) : (
@@ -135,14 +176,14 @@ export default function MerchantDashboard() {
              <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-3">
                <TrendingUp className="w-6 h-6" />
              </div>
-             <p className="text-2xl font-black text-slate-900">124</p>
+             <p className="text-2xl font-black text-slate-900">0</p>
              <p className="text-xs font-bold text-slate-500 uppercase mt-1">Profile Views</p>
            </div>
            <div className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
              <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-3">
                <User className="w-6 h-6" />
              </div>
-             <p className="text-2xl font-black text-slate-900">45</p>
+             <p className="text-2xl font-black text-slate-900">0</p>
              <p className="text-xs font-bold text-slate-500 uppercase mt-1">Leads Today</p>
            </div>
         </motion.div>

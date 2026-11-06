@@ -1,3 +1,4 @@
+import SessionProviderContext from '@/components/SessionProviderContext';
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
@@ -90,9 +91,11 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
         <Navbar />
+        <SessionProviderContext>
         <main className="flex-1">
           {children}
         </main>
+        </SessionProviderContext>
         <Footer />
       </body>
     </html>

@@ -1,5 +1,6 @@
 import NextAuth from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
+import { supabaseAdmin } from "@/lib/supabase/client"
 
 const handler = NextAuth({
   providers: [
@@ -9,11 +10,34 @@ const handler = NextAuth({
         phone: { label: "Phone", type: "text" },
         otp: { label: "OTP", type: "text" }
       },
-      async authorize(credentials, req) {
-        if (credentials?.phone === '8247831885' && credentials?.otp === '8855') {
-          return { id: "1", name: "Merchant", phone: "8247831885" }
+      async authorize(credentials) {
+        if (!credentials?.phone || !credentials?.otp) return null;
+
+        // Ensure user exists in database without hardcoding any magic backdoors
+        let { data: user } = await supabaseAdmin
+            .from('users_v1')
+            .select('*')
+            .eq('phone', credentials.phone)
+            .single();
+
+        if (!user) {
+            const { data: newUser, error } = await supabaseAdmin
+                .from('users_v1')
+                .insert([{ phone: credentials.phone, name: 'New User' }])
+                .select()
+                .single();
+            if (error) {
+                console.error("Auth User Creation Error: ", error);
+                return null;
+            }
+            user = newUser;
         }
-        return null
+
+        if (user) {
+            return { id: user.id, name: user.name, phone: user.phone };
+        }
+
+        return null;
       }
     })
   ],
