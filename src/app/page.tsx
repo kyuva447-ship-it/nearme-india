@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Building2, Search, MapPin, Mic, ShoppingBag, MessageSquare, Zap,
   Store, User, ShoppingCart, CheckCircle, Flame, Star,
-  ChevronDown, Phone, ShieldCheck, Share2, Copy
+  ChevronDown, Phone, ShieldCheck
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
 import { trackEvent } from '@/lib/analytics';
@@ -30,55 +30,47 @@ const CATEGORIES = [
 ];
 
 export default function Home() {
+  const [selectedCity, setSelectedCity] = useState('Delhi');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
   const [cartCount, setCartCount] = useState(0);
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Fetch shops dynamically based on city
   useEffect(() => {
-    // Load cart from local storage
-    const savedCart = localStorage.getItem('nearme_cart_count');
-    if (savedCart) {
-        setCartCount(parseInt(savedCart));
-    }
-    // Load initial shops
-    handleSearchClick();
-  }, []);
+    const fetchShops = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('shops_v1')
+          .select('*')
+          .eq('city', selectedCity)
+          .eq('is_active', true)
+          .limit(10);
 
-  const handleSearchClick = async () => {
-    setLoading(true);
-    let query = supabase.from('shops_v1').select('*').eq('is_active', true).limit(20);
+        if (data) {
+          setShops(data);
+        } else {
+          setShops([]); // Default fallback
+        }
+      } catch (e) {
+        console.error(e);
+        // Fallback mock if db not ready
+        setShops([]);
+      }
+      setLoading(false);
+    };
 
-    if (selectedCity && selectedCity !== 'All') {
-       query = query.eq('city', selectedCity);
-    }
-    if (searchQuery) {
-       query = query.or(`business_name.ilike.%${searchQuery}%,category.ilike.%${searchQuery}%,city.ilike.%${searchQuery}%,pincode.ilike.%${searchQuery}%`);
-    }
-
-    const { data, error } = await query;
-    if (error) {
-       console.error("Search error: ", error);
-    }
-    setShops(data || []);
-    setLoading(false);
-  };
+    fetchShops();
+  }, [selectedCity]);
 
   const handleAddToCart = () => {
-    const newCount = cartCount + 1;
-    setCartCount(newCount);
-    localStorage.setItem('nearme_cart_count', newCount.toString());
+    setCartCount(prev => prev + 1);
   };
 
   const handleWhatsAppOrder = (shop: any) => {
     const message = encodeURIComponent(`Hi ${shop.business_name}, I want to place an order via NearMe India.`);
-    window.open(`https://wa.me/918247831885?text=${message}`, '_blank');
-  };
-
-  const openAdminWhatsApp = (plan: string) => {
-    const message = encodeURIComponent(`Hi NearMe India, I want to activate the ${plan} plan.`);
-    window.open(`https://wa.me/918247831885?text=${message}`, '_blank');
+    window.open(`https://wa.me/91${shop.phone}?text=${message}`, '_blank');
   };
 
   return (
@@ -107,7 +99,6 @@ export default function Home() {
               className="bg-transparent border-none outline-none w-full text-sm placeholder-slate-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
             />
           </div>
 
@@ -115,13 +106,15 @@ export default function Home() {
           <div className="flex items-center gap-3 md:gap-6">
             <div className="relative group hidden sm:flex items-center cursor-pointer bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 hover:border-emerald-300">
               <MapPin className="w-4 h-4 text-orange-500 mr-1" />
-              <input
-                 type="text"
-                 placeholder="Any City / Pincode"
-                 value={selectedCity}
-                 onChange={(e) => setSelectedCity(e.target.value)}
-                 className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 w-32"
-              />
+              <select
+                value={selectedCity}
+                onChange={(e) => setSelectedCity(e.target.value)}
+                className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 cursor-pointer appearance-none pr-4"
+              >
+                {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                <option value="All">All India - 500 Cities</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 pointer-events-none" />
             </div>
 
             <button className="relative p-2 hover:bg-slate-100 rounded-full transition-colors">
@@ -137,9 +130,9 @@ export default function Home() {
               <User className="w-5 h-5" /> Login
             </Link>
 
-            <button onClick={() => openAdminWhatsApp("Add Shop")} className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
-              <Store className="w-4 h-4" /> List Your Shop FREE
-            </button>
+            <Link href="/merchant/dashboard" className="hidden md:flex bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-full font-bold text-sm transition-colors items-center gap-1 shadow-md shadow-emerald-200">
+              <Store className="w-4 h-4" /> Add Shop
+            </Link>
           </div>
         </div>
       </header>
@@ -147,9 +140,10 @@ export default function Home() {
       {/* 3. MONEY STRIP - GREEN */}
       <div className="bg-emerald-600 text-white overflow-hidden whitespace-nowrap py-2 border-b border-emerald-700 shadow-sm relative z-40">
         <div className="animate-marquee inline-block text-sm font-medium">
-          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <button onClick={() => openAdminWhatsApp("Premium")} className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</button></span>
-          <span className="mx-4">✅ Verification Rs499 <button onClick={() => openAdminWhatsApp("Verification")} className="underline font-bold hover:text-orange-300 ml-1">[Buy Now]</button></span>
-          <span className="mx-4">📢 Ads Rs99/day <button onClick={() => openAdminWhatsApp("Ads")} className="underline font-bold hover:text-orange-300 ml-1">[Promote Shop]</button></span>
+          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
+          <span className="mx-4">✅ Verification Rs499 <Link href="/checkout?plan=verify" className="underline font-bold hover:text-orange-300 ml-1">[Buy Now]</Link></span>
+          <span className="mx-4">📢 Ads Rs99/day <Link href="/merchant/dashboard" className="underline font-bold hover:text-orange-300 ml-1">[Promote Shop]</Link></span>
+          <span className="mx-4">🌟 Premium Rs999 / Rs1999 / Rs4999 <Link href="/pricing" className="underline font-bold hover:text-orange-300 ml-1">[View Plans]</Link></span>
         </div>
       </div>
 
@@ -160,7 +154,7 @@ export default function Home() {
             NearMe India - <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-orange-500">Everything Near You</span>, All India
           </h1>
           <p className="text-lg md:text-xl text-slate-500 font-medium mb-10 max-w-2xl mx-auto">
-            Serving All India - Every City, Town, Village & Pincode
+            500 Cities | 10 Lakh Shops | Order In 10 Min
           </p>
 
           <div className="max-w-3xl mx-auto mb-8 relative">
@@ -173,10 +167,10 @@ export default function Home() {
                   <option>Kannada Voice</option>
                 </select>
                 <div className="flex-1 flex items-center bg-slate-50 rounded-xl md:rounded-none px-4 py-3 md:py-0">
-                   <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()} placeholder="Type city, pincode, or shop name..." className="w-full bg-transparent border-none outline-none text-slate-800" />
+                   <input type="text" placeholder="Speak to search anything..." className="w-full bg-transparent border-none outline-none text-slate-800" />
                    <button className="text-emerald-600 hover:text-emerald-700 p-2"><Mic className="w-6 h-6 animate-pulse" /></button>
                 </div>
-                <button onClick={handleSearchClick} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
+                <button className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-8 py-4 md:py-0 rounded-xl md:rounded-r-full transition-colors flex items-center justify-center gap-2">
                    <Search className="w-5 h-5"/> Find
                 </button>
              </div>
@@ -186,17 +180,14 @@ export default function Home() {
             {CITIES.slice(0, 7).map(city => (
               <button
                 key={city}
-                onClick={() => {
-                  setSelectedCity(city);
-                  handleSearchClick();
-                }}
+                onClick={() => setSelectedCity(city)}
                 className={`px-4 py-1.5 rounded-full text-sm font-bold border transition-colors ${selectedCity === city ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600 hover:text-emerald-600'}`}
               >
                 {city}
               </button>
             ))}
-            <button onClick={() => { setSelectedCity('All'); handleSearchClick(); }} className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
-              + Search Anywhere In India
+            <button className="px-4 py-1.5 rounded-full text-sm font-bold bg-orange-100 text-orange-700 border border-orange-200 hover:bg-orange-200">
+              + View All 500 Cities
             </button>
           </div>
         </section>
@@ -205,7 +196,7 @@ export default function Home() {
         <section className="mb-16">
            <div className="grid grid-cols-4 md:grid-cols-8 gap-4">
               {CATEGORIES.map((cat, i) => (
-                <div key={i} onClick={() => { setSearchQuery(cat.name); handleSearchClick(); }} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group text-center">
+                <div key={i} className="bg-white border border-slate-100 shadow-sm rounded-2xl p-4 flex flex-col items-center justify-center gap-2 hover:shadow-md hover:border-emerald-200 transition-all cursor-pointer group text-center">
                   <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
                      {cat.icon}
                   </div>
@@ -215,16 +206,16 @@ export default function Home() {
            </div>
         </section>
 
-        {/* 5. SHOPS SECTION - DYNAMIC */}
+        {/* 5. SHOPS SECTION - DYNAMIC BY CITY */}
         <section className="mb-20">
           <div className="flex items-center justify-between mb-8 border-b border-slate-200 pb-4">
              <h2 className="text-2xl md:text-3xl font-black text-slate-900 flex items-center gap-2">
-               Search Results {searchQuery ? `for "${searchQuery}"` : (selectedCity && selectedCity !== 'All' ? `in ${selectedCity}` : 'Near You')}
+               Top Shops In <span className="text-emerald-600">{selectedCity}</span>
              </h2>
           </div>
 
           {loading ? (
-             <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Loading shops...</div>
+             <div className="text-center py-20 text-slate-500 font-bold animate-pulse">Loading shops in {selectedCity}...</div>
           ) : shops.length > 0 ? (
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {shops.map((shop, i) => (
@@ -244,11 +235,18 @@ export default function Home() {
                              <Star className="w-3 h-3 fill-orange-700" /> Trust Score: {shop.trust_score || 85}
                            </span>
                         </div>
+
+                        {shop.current_deal_text && (
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-sm">
+                            <p className="font-bold text-emerald-700 flex items-center gap-1"><Flame className="w-4 h-4"/> Flash Deal!</p>
+                            <p className="text-slate-700 font-medium mt-1">{shop.current_deal_text}</p>
+                          </div>
+                        )}
                       </div>
 
                       <div className="space-y-2 mt-auto">
                         <div className="grid grid-cols-2 gap-2">
-                          <button onClick={() => handleWhatsAppOrder(shop)} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-1">
+                          <button onClick={handleAddToCart} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-1">
                             Buy Now
                           </button>
                           <button onClick={handleAddToCart} className="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-3 rounded-xl text-sm transition-colors border border-slate-200">
@@ -258,14 +256,9 @@ export default function Home() {
                         <button onClick={() => handleWhatsAppOrder(shop)} className="w-full bg-[#25D366] hover:bg-[#1DA851] text-white font-bold py-3 rounded-xl text-sm transition-colors flex items-center justify-center gap-2">
                           <MessageSquare className="w-4 h-4" /> WhatsApp Order
                         </button>
-                        <div className="grid grid-cols-2 gap-2 mt-2">
-                          <button onClick={() => { const url = `https://wa.me/?text=Check out ${shop.business_name} in ${shop.city} on NearMe India! https://www.nearme-india.org`; window.open(url, "_blank"); }} className="w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1">
-                            <Share2 className="w-4 h-4" /> Share
-                          </button>
-                          <button onClick={() => { navigator.clipboard.writeText(`https://www.nearme-india.org`); console.log("Link Copied!"); }} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2 rounded-xl text-xs transition-colors flex items-center justify-center gap-1">
-                            <Copy className="w-4 h-4" /> Copy Link
-                          </button>
-                        </div>
+                        <button className="w-full bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold py-3 rounded-xl text-sm transition-colors border border-orange-200 flex items-center justify-center gap-2">
+                          <ShoppingBag className="w-4 h-4" /> Pay After Delivery
+                        </button>
                       </div>
                    </div>
                 ))}
@@ -273,11 +266,11 @@ export default function Home() {
           ) : (
              <div className="text-center py-20 bg-slate-50 rounded-3xl border border-dashed border-slate-300">
                 <Store className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-xl font-bold text-slate-700 mb-2">No shop yet in your area</h3>
-                <p className="text-slate-500 mb-6">Be first to list - List Free</p>
-                <button onClick={() => openAdminWhatsApp("Add Shop")} className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors gap-2">
-                  <MessageSquare className="w-5 h-5" /> List Your Shop FREE
-                </button>
+                <h3 className="text-xl font-bold text-slate-700 mb-2">No Shops Yet In This City</h3>
+                <p className="text-slate-500 mb-6">Be First Shop - Add Your Shop Free</p>
+                <Link href="/merchant/dashboard" className="inline-flex bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 px-8 rounded-full transition-colors">
+                  Add Shop Now
+                </Link>
              </div>
           )}
         </section>
@@ -312,16 +305,6 @@ export default function Home() {
               </a>
             </div>
           </div>
-
-          <div className="col-span-2 md:col-span-4 mt-8">
-            <div className="bg-emerald-50 p-6 rounded-2xl border border-emerald-100 text-center">
-              <h4 className="font-black text-emerald-900 mb-2">Love NearMe India? Tell Your Friends!</h4>
-              <p className="text-sm text-emerald-700 mb-4">Share our platform and help local shops grow.</p>
-              <button onClick={() => window.open(`https://wa.me/?text=I found this amazing app for local shops in India! Check out NearMe India: https://www.nearme-india.org`, "_blank")} className="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#1DA851] transition-colors shadow-lg shadow-[#25D366]/30">
-                 <Share2 className="w-4 h-4" /> Share via WhatsApp
-              </button>
-            </div>
-          </div>
         </div>
         <div className="text-center text-slate-400 text-xs font-bold border-t border-slate-200 pt-8">
            © {new Date().getFullYear()} NearMe India. Built for 10000 Cr Scale.
@@ -330,7 +313,7 @@ export default function Home() {
 
       {/* 6. BOTTOM NAV - WHITE (Mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] pb-safe">
-         <button onClick={() => window.scrollTo(0,0)} className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></button>
+         <Link href="/" className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></Link>
          <Link href="/escrow" className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></Link>
          <button onClick={() => {}} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1 relative">
             <ShoppingCart className="w-6 h-6"/>
