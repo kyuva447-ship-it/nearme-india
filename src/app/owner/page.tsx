@@ -2,8 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { Lock, Store, Users, IndianRupee, ShieldCheck, CheckCircle, XCircle } from 'lucide-react';
+import { Lock, Store, Users, IndianRupee, ShieldCheck, CheckCircle, XCircle, MapPin } from 'lucide-react';
 import Link from 'next/link';
+
+const CITIES = [
+  'All India', 'Tirupati', 'Nellore', 'Chittoor', 'Vijayawada', 'Visakhapatnam',
+  'Hyderabad', 'Chennai', 'Bangalore', 'Kochi', 'Coimbatore', 'Madurai',
+  'Mumbai', 'Pune', 'Delhi', 'Kolkata', 'Ahmedabad', 'Jaipur', 'Lucknow',
+  'Indore', 'Patna', 'Bhopal', 'Chandigarh', 'Guwahati', 'Bhubaneswar'
+];
 
 export default function OwnerPortal() {
   const [session, setSession] = useState<any>(null);
@@ -11,9 +18,10 @@ export default function OwnerPortal() {
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
+  const [selectedCityFilter, setSelectedCityFilter] = useState('All India');
 
   // Dashboard Stats
-  const [stats, setStats] = useState({ shops: 0, users: 0, revenue: 0 });
+  const [stats, setStats] = useState({ shops: 0, users: 0, revenue: 0, citiesActive: 0 });
   const [pendingShops, setPendingShops] = useState<any[]>([]);
 
   useEffect(() => {
@@ -30,15 +38,29 @@ export default function OwnerPortal() {
 
   const fetchDashboardData = async () => {
      // Fetch aggregates safely for the owner
-     const { count: shopCount } = await supabase.from('shops').select('*', { count: 'exact', head: true });
+     let shopQuery = supabase.from('shops').select('*', { count: 'exact', head: true });
+     let pendingQuery = supabase.from('shops').select('*').eq('is_verified', false).limit(10);
+
+     if (selectedCityFilter !== 'All India') {
+         shopQuery = shopQuery.eq('city', selectedCityFilter);
+         pendingQuery = pendingQuery.eq('city', selectedCityFilter);
+     }
+
+     const { count: shopCount } = await shopQuery;
      const { count: userCount } = await supabase.from('users').select('*', { count: 'exact', head: true });
+     const { data } = await pendingQuery;
 
-     // Fetch pending approvals
-     const { data } = await supabase.from('shops').select('*').eq('is_verified', false).limit(10);
+     // Get unique cities count (simplified for demo)
+     const { data: citiesData } = await supabase.from('shops').select('city');
+     const uniqueCities = new Set(citiesData?.map(s => s.city));
 
-     setStats({ shops: shopCount || 0, users: userCount || 0, revenue: 0 }); // Revenue logic here later
+     setStats({ shops: shopCount || 0, users: userCount || 0, revenue: 0, citiesActive: uniqueCities.size });
      setPendingShops(data || []);
   };
+
+  useEffect(() => {
+     if (session) fetchDashboardData();
+  }, [selectedCityFilter]);
 
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,18 +127,28 @@ export default function OwnerPortal() {
   return (
     <div className="min-h-screen bg-slate-50 font-sans">
       <header className="bg-slate-900 text-white p-6 sticky top-0 z-20 shadow-lg">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-2xl font-black flex items-center gap-2"><ShieldCheck className="text-emerald-500" /> Control Room</h1>
-          <button onClick={() => { supabase.auth.signOut(); setSession(null); }} className="text-slate-400 hover:text-white text-sm font-bold transition-colors">Lock</button>
+
+          <div className="flex items-center gap-4">
+             <select
+               value={selectedCityFilter}
+               onChange={(e) => setSelectedCityFilter(e.target.value)}
+               className="bg-slate-800 border border-slate-700 text-white rounded-lg px-4 py-2 outline-none font-bold text-sm"
+             >
+               {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+             </select>
+             <button onClick={() => { supabase.auth.signOut(); setSession(null); }} className="text-slate-400 hover:text-white text-sm font-bold transition-colors">Lock</button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto p-4 py-8">
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-4">
                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center"><Store className="w-8 h-8" /></div>
                <div>
-                  <p className="text-sm font-bold text-slate-500 uppercase">Total Shops</p>
+                  <p className="text-sm font-bold text-slate-500 uppercase">Shops ({selectedCityFilter})</p>
                   <p className="text-4xl font-black text-slate-900">{stats.shops}</p>
                </div>
             </div>
@@ -134,13 +166,20 @@ export default function OwnerPortal() {
                   <p className="text-4xl font-black text-slate-900">{stats.users}</p>
                </div>
             </div>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex items-center gap-4">
+               <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center"><MapPin className="w-8 h-8" /></div>
+               <div>
+                  <p className="text-sm font-bold text-slate-500 uppercase">Cities Active</p>
+                  <p className="text-4xl font-black text-slate-900">{stats.citiesActive}</p>
+               </div>
+            </div>
          </div>
 
          <div className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
             <h2 className="text-xl font-black text-slate-900 mb-6">Pending Approvals ({pendingShops.length})</h2>
 
             {pendingShops.length === 0 ? (
-               <p className="text-slate-500 font-bold text-center py-8">No pending shops to review.</p>
+               <p className="text-slate-500 font-bold text-center py-8">No pending shops to review in {selectedCityFilter}.</p>
             ) : (
                <div className="space-y-4">
                   {pendingShops.map((shop) => (

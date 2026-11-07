@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS shops_v1 (
     is_verified BOOLEAN DEFAULT false,
     verification_date TIMESTAMPTZ,
     city TEXT DEFAULT 'Bangalore',
-    pincode TEXT CHECK (pincode ~ '^560[0-1][0-9]{2}$'), -- Basic check for Bangalore pincodes
+    pincode TEXT CHECK (pincode ~ '^[1-9][0-9]{5}$'), -- Basic check for Bangalore pincodes
     lat DOUBLE PRECISION,
     lng DOUBLE PRECISION,
     category TEXT,
