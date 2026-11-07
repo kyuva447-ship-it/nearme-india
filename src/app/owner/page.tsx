@@ -43,7 +43,7 @@ export default function OwnerPortal() {
   const handleSendOTP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (email !== process.env.NEXT_PUBLIC_OWNER_EMAIL) {
-       alert("Access Denied");
+       console.error("Access Denied");
        return;
     }
     setLoading(true);
@@ -63,7 +63,7 @@ export default function OwnerPortal() {
         fetchDashboardData();
     } else {
         supabase.auth.signOut();
-        alert("Invalid OTP or Access Denied");
+        console.error("Invalid OTP or Access Denied");
     }
   };
 

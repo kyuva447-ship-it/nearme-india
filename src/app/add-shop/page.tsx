@@ -36,7 +36,7 @@ export default function AddShopPage() {
 
     if (error) {
         console.error(error);
-        alert("Failed to add shop. Please try again.");
+        console.error("Failed to add shop. Please try again.");
     } else {
         router.push('/');
     }
@@ -100,7 +100,7 @@ export default function AddShopPage() {
 
         <div className="mt-8 text-center space-y-4">
            <p className="text-sm font-bold text-slate-500">Need help onboarding?</p>
-           <button onClick={() => window.open('https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=I%20need%20help%20adding%20my%20shop', '_blank')} className="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#1DA851] transition-colors shadow-md">
+           <button onClick={() => window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=I%20need%20help%20adding%20my%20shop`, '_blank')} className="inline-flex items-center gap-2 bg-[#25D366] text-white px-6 py-3 rounded-full font-bold text-sm hover:bg-[#1DA851] transition-colors shadow-md">
               <MessageSquare className="w-4 h-4" /> Chat with AI Onboarding Agent
            </button>
            <div className="block mt-4">

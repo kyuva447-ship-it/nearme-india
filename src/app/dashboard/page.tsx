@@ -63,7 +63,7 @@ export default function DashboardPage() {
                  <div className="bg-amber-100 text-amber-800 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm border border-amber-200">
                     <Coins className="w-4 h-4" /> {user.points || 0} Points
                  </div>
-                 <button onClick={() => { navigator.clipboard.writeText(`https://www.nearme-india.org/r/${user.id.substring(0,8)}`); alert("Referral Link Copied!"); }} className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm border border-slate-200 transition-colors">
+                 <button onClick={() => { navigator.clipboard.writeText(`https://www.nearme-india.org/r/${user.id.substring(0,8)}`); console.log("Referral Link Copied!"); }} className="bg-slate-100 text-slate-700 hover:bg-slate-200 px-4 py-2 rounded-xl flex items-center gap-2 font-bold text-sm border border-slate-200 transition-colors">
                     Copy Referral Link
                  </button>
               </div>

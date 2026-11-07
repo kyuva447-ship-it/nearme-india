@@ -10,7 +10,7 @@ export default function BoloVoiceSearch({ onResult }: { onResult: (t: string) =>
   const startListening = () => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert("Your browser does not support voice search.");
+        console.log("Your browser does not support voice search.");
         return;
     }
 

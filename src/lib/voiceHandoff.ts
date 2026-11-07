@@ -13,7 +13,7 @@ export async function voiceHandoff(transcript: string, merchantId: string, merch
   });
 
   if (error || !deducted) {
-    alert('Merchant is out of balance.');
+    console.error('Merchant is out of balance.');
     return;
   }
 
