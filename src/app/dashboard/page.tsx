@@ -2,29 +2,47 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase/client';
-import { User, LogOut, Award, ShoppingBag, Link as LinkIcon, Home } from 'lucide-react';
+import { User, LogOut, Award, ShoppingBag, Link as LinkIcon, Home, Store, Pencil, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [shops, setShops] = useState<any[]>([]);
   const router = useRouter();
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setLoading(false);
+
       if (!session) {
           router.push('/login');
+      } else {
+          fetchMyShops(session.user.id);
       }
     });
   }, [router]);
+
+  const fetchMyShops = async (userId: string) => {
+      const { data, error } = await supabase.from('shops_v1').select('*').eq('owner_id', userId);
+      if (!error && data) {
+          setShops(data);
+      }
+      setLoading(false);
+  }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/');
   };
+
+  const handleDeleteShop = async (shopId: string) => {
+      if (confirm('Are you sure you want to delete this shop?')) {
+          await supabase.from('shops_v1').delete().eq('id', shopId);
+          setShops(shops.filter(s => s.id !== shopId));
+      }
+  }
 
   if (loading) {
       return <div className="min-h-screen flex items-center justify-center font-bold text-slate-500 bg-slate-50">Loading Dashboard...</div>;
@@ -68,12 +86,30 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
-                <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2"><ShoppingBag className="w-5 h-5 text-slate-400" /> My Orders</h2>
-                <div className="text-center py-8 text-slate-500 font-medium bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                   No orders yet.
-                   <br/>
-                   <Link href="/" className="inline-flex mt-4 text-emerald-600 font-bold hover:underline">Start Shopping</Link>
-                </div>
+                <h2 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-2"><Store className="w-5 h-5 text-slate-400" /> My Shops</h2>
+
+                {shops.length === 0 ? (
+                    <div className="text-center py-8 text-slate-500 font-medium bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                       No shops yet.
+                       <br/>
+                       <Link href="/add-shop" className="inline-flex mt-4 text-emerald-600 font-bold hover:underline">Add Your First Shop</Link>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {shops.map(shop => (
+                            <div key={shop.id} className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-slate-900">{shop.name}</h3>
+                                    <p className="text-xs text-slate-500">{shop.city} • {shop.category}</p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <button onClick={() => handleDeleteShop(shop.id)} className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                                </div>
+                            </div>
+                        ))}
+                        <Link href="/add-shop" className="block text-center mt-4 text-emerald-600 font-bold hover:underline text-sm">+ Add Another Shop</Link>
+                    </div>
+                )}
              </div>
 
              <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
@@ -92,16 +128,6 @@ export default function DashboardPage() {
                    </button>
                 </div>
              </div>
-          </div>
-
-          <div className="bg-slate-900 rounded-3xl p-8 text-white flex items-center justify-between">
-             <div>
-                <h3 className="text-xl font-black mb-2">Own a shop?</h3>
-                <p className="text-slate-400 font-medium">List it for free and reach thousands of local customers.</p>
-             </div>
-             <Link href="/add-shop" className="bg-white text-slate-900 font-black px-6 py-3 rounded-xl hover:bg-slate-100 transition-colors whitespace-nowrap">
-                Add Shop
-             </Link>
           </div>
        </main>
     </div>

@@ -26,6 +26,7 @@ export default function Home() {
   const [cartCount, setCartCount] = useState(0);
   const [shops, setShops] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const savedCart = localStorage.getItem('nearme_cart_count');
@@ -41,7 +42,7 @@ export default function Home() {
   const fetchShops = async () => {
     setLoading(true);
     let { data, error } = await supabase
-      .from('shops')
+      .from('shops_v1')
       .select('*')
       .eq('city', selectedCity)
       .eq('is_active', true)
@@ -59,27 +60,63 @@ export default function Home() {
   };
 
   const handleWhatsAppOrder = (shop: any) => {
-    const message = `Hi ${shop.business_name},\nI want to place an order via NearMe India.`;
+    const message = `Hi ${shop.name},\nI want to place an order via NearMe India.`;
     window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=${encodeURIComponent(message)}`, '_blank');
   };
+
+  const showToast = (msg: string) => {
+      setToastMessage(msg);
+      setTimeout(() => setToastMessage(null), 3000);
+  }
 
   const requestLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
-          window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=Hi%2C%20I%20am%20at%20Lat%3A%20${position.coords.latitude}%2C%20Lng%3A%20${position.coords.longitude}%2E%20Please%20help%20me%20find%20shops%20near%20me%2E`, '_blank');
+        async (position) => {
+          try {
+              const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${position.coords.latitude}&lon=${position.coords.longitude}`);
+              const data = await res.json();
+
+              let detectedCity = data.address.city || data.address.town || data.address.village;
+              if (detectedCity) {
+                  // Standardize formatting or mapping if necessary, for now we match exactly or default
+                  const matchingCity = CITIES.find(c => c.toLowerCase() === detectedCity.toLowerCase());
+                  if (matchingCity) {
+                      setSelectedCity(matchingCity);
+                      showToast(`Location Found: ${matchingCity}`);
+                  } else {
+                      // If it's a new city not in the top array, we can still set it to fetch data
+                      setSelectedCity(detectedCity);
+                      showToast(`Location Found: ${detectedCity}`);
+                  }
+              } else {
+                  showToast("Location detected, but city name not found. Please select manually.");
+              }
+          } catch (e) {
+              console.error("Reverse geocoding failed", e);
+              showToast("Failed to detect city. Please select manually.");
+          }
         },
         (error) => {
           console.error("Error getting location", error);
+          showToast("Location denied - Please select city manually");
         }
       );
     } else {
       console.error("Geolocation is not supported by this browser.");
+      showToast("Browser does not support location - Please select city manually");
     }
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 font-sans pb-20 md:pb-0">
+    <div className="min-h-screen bg-white text-slate-900 font-sans pb-20 md:pb-0 relative">
+
+      {/* TOAST */}
+      {toastMessage && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-slate-900 text-white px-6 py-3 rounded-full font-bold text-sm z-[100] shadow-xl animate-bounce">
+            {toastMessage}
+        </div>
+      )}
 
       {/* TOP BAR */}
       <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-sm">
@@ -117,6 +154,7 @@ export default function Home() {
                 className="bg-transparent border-none outline-none text-sm font-bold text-slate-700 cursor-pointer appearance-none pr-4 max-w-[100px] sm:max-w-none truncate"
               >
                 {CITIES.map(city => <option key={city} value={city}>{city}</option>)}
+                {!CITIES.includes(selectedCity) && <option value={selectedCity}>{selectedCity}</option>}
                 <option value="other">Add Your City</option>
               </select>
               <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2 pointer-events-none" />
@@ -203,7 +241,7 @@ export default function Home() {
                       )}
 
                       <div className="mb-6 mt-2">
-                        <h3 className="text-xl font-black text-slate-900 mb-1 group-hover:text-emerald-600 transition-colors">{shop.business_name}</h3>
+                        <h3 className="text-xl font-black text-slate-900 mb-1 group-hover:text-emerald-600 transition-colors">{shop.name}</h3>
                         <p className="text-sm text-slate-500 font-medium capitalize mb-2">{shop.category} • {shop.city}</p>
 
                         <div className="flex items-center gap-2 mb-4">
@@ -253,7 +291,42 @@ export default function Home() {
 
       </main>
 
-      {/* BOTTOM NAV - WHITE (Mobile) */}
+      {/* 7. FOOTER - WHITE */}
+      <footer className="bg-slate-50 border-t border-slate-200 pt-16 pb-8">
+        <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
+          <div>
+            <h4 className="font-black text-slate-900 mb-4">NearMe India</h4>
+            <ul className="space-y-2 text-sm text-slate-600 font-medium">
+              <li><Link href="/about" className="hover:text-emerald-600">About Us</Link></li>
+              <li><Link href="/pricing" className="hover:text-emerald-600">Premium Plans</Link></li>
+              <li><Link href="/contact" className="hover:text-emerald-600">Contact & Support</Link></li>
+            </ul>
+          </div>
+          <div>
+            <h4 className="font-black text-slate-900 mb-4">Legal</h4>
+            <ul className="space-y-2 text-sm text-slate-600 font-medium">
+              <li><Link href="/terms" className="hover:text-emerald-600">Terms of Service</Link></li>
+              <li><Link href="/privacy" className="hover:text-emerald-600">Privacy Policy</Link></li>
+              <li><Link href="/refund-policy" className="hover:text-emerald-600">Refund Policy</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-emerald-600">Shipping Policy</Link></li>
+            </ul>
+          </div>
+          <div className="col-span-2 md:col-span-2">
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+              <h4 className="font-black text-slate-900 mb-2 flex items-center gap-2"><Phone className="w-5 h-5 text-emerald-600" /> Support</h4>
+              <p className="text-sm text-slate-600 mb-4">Need help? We're available 9 AM - 6 PM IST.</p>
+              <a href={`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}`} className="inline-flex items-center gap-2 bg-[#25D366] text-white px-4 py-2 rounded-lg font-bold text-sm hover:bg-[#1DA851] transition-colors">
+                 <MessageSquare className="w-4 h-4" /> Support WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+        <div className="text-center text-slate-400 text-xs font-bold border-t border-slate-200 pt-8">
+           © {new Date().getFullYear()} NearMe India. Made in India | For Every City, Every Colony, Every Shop
+        </div>
+      </footer>
+
+      {/* 6. BOTTOM NAV - WHITE (Mobile) */}
       <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 p-3 flex justify-around items-center z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)] pb-safe">
          <Link href="/search" className="text-emerald-600 flex flex-col items-center gap-1"><Search className="w-6 h-6"/><span className="text-[10px] font-bold">Discover</span></Link>
          <button onClick={() => window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=I%20want%20to%20start%20a%20bargain%20battle`, '_blank')} className="text-slate-400 hover:text-slate-600 flex flex-col items-center gap-1"><Zap className="w-6 h-6"/><span className="text-[10px] font-bold">Bargain AI</span></button>
