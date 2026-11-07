@@ -6,7 +6,7 @@ export default function PricingPage() {
   const handlePurchase = (planName: string, amount: number) => {
     // Explicit route to WhatsApp since real payment keys aren't seeded in client
     const message = encodeURIComponent(`Hi NearMe India, I want to purchase the ${planName} plan for ₹${amount}. Please send payment details.`);
-    window.open(`https://wa.me/918247831885?text=${message}`, '_blank');
+    window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=${message}`, '_blank');
   };
 
   return (

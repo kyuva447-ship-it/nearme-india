@@ -74,7 +74,7 @@ export default function RootLayout({
         },
         "contactPoint": {
           "@type": "ContactPoint",
-          "telephone": "+91-8247831885",
+          "telephone": "Phone number protected",
           "email": "contact@nearme-india.org",
           "contactType": "customer service"
         }
