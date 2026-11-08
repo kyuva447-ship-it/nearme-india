@@ -1,18 +1,16 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.nearme-india.org'),
   title: {
-    default: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
+    default: 'NearMe India - Cheapest Shops Near You | Kirana, Food, Medical Near Me',
     template: '%s | NearMe India',
   },
-  description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
+  description: 'Find cheapest Kirana, Food, Medical, Mobile shops near you in any city in India. Bargain, Auction, Group Buy. Made in India.',
   icons: {
     icon: [
       { url: '/favicon.ico?v=5', sizes: '48x48', type: 'image/x-icon' },
@@ -30,16 +28,16 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   openGraph: {
-    title: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
-    description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
+    title: 'NearMe India - Cheapest Shops Near You | Kirana, Food, Medical Near Me',
+    description: 'Find cheapest Kirana, Food, Medical, Mobile shops near you in any city in India. Bargain, Auction, Group Buy. Made in India.',
     url: 'https://www.nearme-india.org',
     siteName: 'NearMe India',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'NearMe India — Verified Local Services, Live Deals & B2B Marketplace',
-    description: 'NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India.',
+    title: 'NearMe India - Cheapest Shops Near You | Kirana, Food, Medical Near Me',
+    description: 'Find cheapest Kirana, Food, Medical, Mobile shops near you in any city in India. Bargain, Auction, Group Buy. Made in India.',
   },
   robots: {
     index: true,
@@ -60,7 +58,7 @@ export default function RootLayout({
         "@id": "https://www.nearme-india.org/#website",
         "url": "https://www.nearme-india.org",
         "name": "NearMe India",
-        "description": "NearMe India is a verified hyper-local marketplace and B2B procurement network. Connect instantly with trusted local merchants via WhatsApp, claim live flash deals, and track B2B orders across India."
+        "description": "Find cheapest Kirana, Food, Medical, Mobile shops near you in any city in India. Bargain, Auction, Group Buy. Made in India."
       },
       {
         "@type": "Organization",
@@ -74,7 +72,7 @@ export default function RootLayout({
         },
         "contactPoint": {
           "@type": "ContactPoint",
-          "telephone": "+91-8247831885",
+          "telephone": "Phone number protected",
           "email": "contact@nearme-india.org",
           "contactType": "customer service"
         }
@@ -89,11 +87,14 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
-        <Navbar />
         <main className="flex-1">
           {children}
         </main>
-        <Footer />
+        <footer className="bg-slate-900 text-slate-400 py-8 text-center text-sm font-medium pb-24 md:pb-8">
+           NearMe India - Cheapest Shops Near You - From Tirupati To Whole India<br/>
+           Made in India | For Every City, Every Colony, Every Shop<br/>
+           contact@nearme-india.org
+        </footer>
       </body>
     </html>
   );

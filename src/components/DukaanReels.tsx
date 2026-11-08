@@ -6,10 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function DukaanReels({ merchants }: { merchants: any[] }) {
   const [activeReel, setActiveReel] = useState<string | null>(null);
 
-  const merchantsWithReels = merchants.filter(m => m.reel_url || Math.random() > 0.5).map(m => ({
-      ...m,
-      reel_url: m.reel_url || 'https://www.w3schools.com/html/mov_bbb.mp4' // mock
-  }));
+  const merchantsWithReels = merchants.filter(m => m.reel_url);
 
   if (merchantsWithReels.length === 0) return null;
 

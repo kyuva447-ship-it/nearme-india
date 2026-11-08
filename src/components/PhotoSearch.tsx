@@ -2,7 +2,6 @@
 import { useState, useRef } from 'react';
 import { Camera, X, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/lib/supabase/client';
 
 export default function PhotoSearch({ onResult }: { onResult: (results: any[]) => void }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -24,24 +23,12 @@ export default function PhotoSearch({ onResult }: { onResult: (results: any[]) =
 
     setIsUploading(true);
 
-    // Mock upload and vision logic
-    setTimeout(() => {
-        const fileName = file.name.toLowerCase();
-        let detectedCategory = 'general';
-        if (fileName.includes('pipe')) detectedCategory = 'plumber';
-        if (fileName.includes('wire')) detectedCategory = 'electrician';
+    // Redirect to WhatsApp with the photo request since AI processing isn't fully implemented
+    window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=Hi%2C%20I%20have%20a%20photo%20to%20search%20for%20products`, '_blank');
 
-        // Mock results
-        const mockResults = [
-            { id: '1', business_name: 'Fast Fix Plumbers', category: detectedCategory, distance: 1.2 },
-            { id: '2', business_name: 'Local Experts', category: detectedCategory, distance: 2.4 }
-        ];
-
-        onResult(mockResults);
-        setIsUploading(false);
-        setIsOpen(false);
-        setPreview(null);
-    }, 2000);
+    setIsUploading(false);
+    setIsOpen(false);
+    setPreview(null);
   };
 
   return (
@@ -89,7 +76,7 @@ export default function PhotoSearch({ onResult }: { onResult: (results: any[]) =
                     disabled={isUploading}
                     className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2"
                   >
-                    {isUploading ? 'Analyzing AI Vision...' : 'Find Merchants'}
+                    {isUploading ? 'Sending to Support...' : 'Find Merchants'}
                   </button>
                 </div>
               )}
