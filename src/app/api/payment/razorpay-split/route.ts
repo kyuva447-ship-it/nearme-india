@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import Razorpay from 'razorpay';
 
 export async function POST(req: Request) {
   try {
@@ -25,9 +26,26 @@ export async function POST(req: Request) {
       }, { status: 200 });
     }
 
-    // Production Razorpay Route Transfer initialization logic would go here
+    // Wire Razorpay SDK with actual Transfers logic
+    const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
+
+    const order = await instance.orders.create({
+      amount: amount_inr * 100, // total amount in paisa
+      currency: "INR",
+      transfers: [
+        {
+          account: merchant_account_id,
+          amount: merchantAmount * 100, // merchant share in paisa
+          currency: "INR",
+          notes: {
+            purpose: "NearMe Automated Split Processing"
+          }
+        }
+      ]
+    });
+
     return NextResponse.json({
-        order_id: `rzp_order_live_${Date.now()}`,
+        order_id: order.id,
         status: 'created',
         split: {
           platform_fee: platformFee,
