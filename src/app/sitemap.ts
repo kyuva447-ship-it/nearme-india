@@ -3,14 +3,25 @@ import { MetadataRoute } from 'next';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.nearme-india.org';
 
-  return [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'always',
-      priority: 1,
-    },
-    // The rest of the programmatic routes would be generated here dynamically
-    // querying the `pincode_clusters` and categories from Supabase.
+  const routes = [
+    '',
+    '/leaderboard',
+    '/escrow',
+    '/edge',
+    '/pricing',
+    '/about',
+    '/contact',
+    '/terms',
+    '/privacy',
+    '/refund-policy',
+    '/shipping-policy',
+    '/login'
   ];
+
+  return routes.map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'weekly',
+    priority: route === '' ? 1 : 0.8,
+  }));
 }
