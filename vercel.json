@@ -4,7 +4,7 @@
   "outputDirectory": ".next",
   "crons": [
     {
-      "path": "/api/cron",
+      "path": "/api/cron/revenue-recovery",
       "schedule": "0 0 * * *"
     }
   ]

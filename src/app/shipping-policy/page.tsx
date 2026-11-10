@@ -1,32 +1,22 @@
-export default function ShippingPolicyPage() {
+import React from 'react';
+import { Truck } from 'lucide-react';
+
+export default function ShippingPolicy() {
   return (
-    <div className="min-h-screen bg-slate-50 py-16">
-      <div className="max-w-4xl mx-auto px-6 bg-white p-12 rounded-3xl shadow-lg prose prose-slate max-w-none">
-        <h1 className="text-4xl font-black text-slate-900 mb-6">Shipping & Delivery Policy</h1>
-        <p className="text-sm text-slate-500 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
-
-        <h2>1. Delivery of Digital Services</h2>
-        <p>
-          NearMe India delivers 100% digital SaaS directory listings and lead wallet credits. We do not sell or ship
-          any physical goods.
-        </p>
-
-        <h2>2. Delivery Timeline</h2>
-        <p>
-          Upon successful payment confirmation via our payment gateway partner, all digital services, subscriptions,
-          and wallet credits are activated <strong>instantaneously (within 0–5 minutes)</strong> on the merchant dashboard.
-        </p>
-
-        <h2>3. Shipping Charges</h2>
-        <p>
-          Because our services are entirely digital, there are <strong>no physical shipping or handling charges</strong>.
-        </p>
-
-        <h2>4. Support</h2>
-        <p>
-          If your digital wallet or subscription is not activated within the stated timeframe, please contact our
-          support team immediately at contact@nearme-india.org.
-        </p>
+    <div className="min-h-screen bg-gray-950 text-white p-8 sm:p-16 font-sans">
+      <div className="max-w-3xl mx-auto space-y-8 bg-gray-900 p-8 sm:p-12 rounded-3xl border border-gray-800 shadow-2xl">
+        <div className="flex items-center gap-4 border-b border-gray-800 pb-6">
+          <Truck className="w-10 h-10 text-blue-500" />
+          <h1 className="text-3xl font-black">Shipping & Delivery Policy</h1>
+        </div>
+        <div className="prose prose-invert prose-lg text-gray-300">
+          <p>
+            <strong>Instant Digital Delivery:</strong> NearMe-India is a 100% digital marketplace. All bookings, Swarm Pool passes, and AI Apps are delivered instantly via in-app QR code and automated WhatsApp fulfillment.
+          </p>
+          <p>
+            Physical goods are fulfilled directly by the local merchant at their registered location. NearMe-India does not physically ship products. Please present your Digital QR Pass to the merchant for physical redemption.
+          </p>
+        </div>
       </div>
     </div>
   );

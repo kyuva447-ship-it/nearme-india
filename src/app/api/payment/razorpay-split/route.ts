@@ -4,22 +4,29 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 
 export async function POST(req: Request) {
   try {
-    const { order_id, slot_id, user_phone } = await req.json();
+    const { slot_id, action_type, user_phone, custom_amount } = await req.json();
 
     if (!user_phone) {
-        return NextResponse.json({ error: 'User phone required for checkout' }, { status: 400 });
+        return NextResponse.json({ error: 'User phone required' }, { status: 400 });
     }
 
-    let finalAmount = 1000;
-    let platformFeePct = 10;
+    let finalAmount = custom_amount || 1000;
+    let platformFeePct = 4; // Default 4% dynamic cut for Engine logic
     let merchantAccount = 'acc_dummy';
+    let source = action_type || 'live_checkout';
 
     if (slot_id) {
        const { data } = await supabaseAdmin.from('expiring_slots_ticker').select('*').eq('id', slot_id).single();
        if (data) {
            finalAmount = data.current_live_price_inr;
-           platformFeePct = data.drop_pct_per_min || 10;
+           platformFeePct = 4; // 4% platform cut on Dead-Time items
+           merchantAccount = 'acc_dummy'; // Would map to merchant_autopilot_nodes dynamically
        }
+    }
+
+    // Subscriptions have a 100% platform take-rate (Direct SaaS revenue)
+    if (action_type === 'merchant_sub' || action_type === 'spawn_app') {
+       platformFeePct = 100;
     }
 
     const platformFee = Math.round(finalAmount * (platformFeePct / 100));
@@ -28,32 +35,50 @@ export async function POST(req: Request) {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
+    // Secure Ledger Logging First (Intent creation)
+    const { data: ledgerEntry } = await supabaseAdmin.from('autonomous_treasury_ledger').insert({
+          engine_source: source,
+          gross_inr: finalAmount,
+          net_platform_profit_inr: platformFee,
+          merchant_payout_inr: merchantAmount,
+          status: 'PENDING',
+          user_phone: user_phone
+    }).select().single();
+
     if (!keyId || !keySecret) {
-      return NextResponse.json({ error: 'Razorpay keys not configured' }, { status: 500 });
+      return NextResponse.json({
+        order_id: `rzp_order_sim_${ledgerEntry?.id}`,
+        status: 'created',
+        demo_mode: true
+      }, { status: 200 });
     }
 
     const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
-    const order = await instance.orders.create({
-      amount: Math.round(finalAmount * 100),
-      currency: "INR",
-      transfers: [
-        {
-          account: merchantAccount,
-          amount: Math.round(merchantAmount * 100),
-          currency: "INR",
-          notes: { purpose: "NearMe Automated Split Processing" }
-        }
-      ]
-    });
+    // Build Payload depending on routing
+    const payload: any = {
+        amount: Math.round(finalAmount * 100),
+        currency: "INR",
+        receipt: ledgerEntry?.id
+    };
 
-    await supabaseAdmin.from('autonomous_treasury_ledger').insert({
-          engine_source: 'live_checkout',
-          gross_inr: finalAmount,
-          net_platform_profit_inr: platformFee,
-          merchant_payout_inr: merchantAmount,
+    if (platformFeePct < 100) {
+        payload.transfers = [
+            {
+              account: merchantAccount,
+              amount: Math.round(merchantAmount * 100),
+              currency: "INR",
+              notes: { purpose: "NearMe Automated Split Payout" },
+              on_hold: false
+            }
+        ];
+    }
+
+    const order = await instance.orders.create(payload);
+
+    await supabaseAdmin.from('autonomous_treasury_ledger').update({
           razorpay_order_id: order.id
-    });
+    }).eq('id', ledgerEntry?.id);
 
     return NextResponse.json({
         order_id: order.id,
@@ -62,6 +87,6 @@ export async function POST(req: Request) {
       }, { status: 200 });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to create split payment' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
   }
 }
