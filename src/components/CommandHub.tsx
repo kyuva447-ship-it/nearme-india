@@ -144,7 +144,8 @@ export default function CommandHub() {
           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: 9900,
           currency: "INR",
-          name: "Publish App",
+          name: "NearMe India",
+          description: "AI-Driven Local Commerce",
           prefill: { contact: userPhone },
           handler: function () { toast(`Published Live at ${spawnedApp.url}`, 'success'); }
       });
@@ -169,7 +170,8 @@ export default function CommandHub() {
            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
            amount: Math.round(amount * 100),
            currency: "INR",
-           name: "NearMe Deal Lock",
+           name: "NearMe India",
+           description: "AI-Driven Local Commerce",
            prefill: { contact: userPhone },
            handler: function () { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); }
        });

@@ -33,7 +33,8 @@ export default function MicroPass() {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: 5000,
             currency: "INR",
-            name: "Micro-Pass Top-up",
+            name: "NearMe India",
+        description: "AI-Driven Local Commerce",
             prefill: { contact: userPhone },
             handler: function () {
                 setIsPassActive(true);
@@ -62,7 +63,8 @@ export default function MicroPass() {
             key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: 49900,
             currency: "INR",
-            name: "Auto-Bidder Pro",
+            name: "NearMe India",
+        description: "AI-Driven Local Commerce",
             prefill: { contact: userPhone },
             handler: function () {
                 toast("SaaS Auto-Bidder Activated!", 'success');

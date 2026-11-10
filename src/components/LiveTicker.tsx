@@ -34,8 +34,8 @@ export default function LiveTicker() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_dummy',
         amount: Math.round(amount * 100),
         currency: "INR",
-        name: "NearMe-India",
-        description: "Locking Expiring Inventory",
+        name: "NearMe India",
+        description: "AI-Driven Local Commerce",
         order_id: data.order_id.startsWith('rzp_order_sim') ? undefined : data.order_id,
         prefill: { contact: userPhone },
         handler: function (response: any) {
