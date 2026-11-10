@@ -3,8 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Timer, ArrowDownRight, Loader2, Share2, QrCode } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import PhoneAuthModal from './PhoneAuthModal';
-import UpiFallbackModal from './UpiFallbackModal';
-import { useToast } from './Toast';
 
 const mockSlots = [
   { id: 1, title: 'MRI Scan (Empty Slot)', sector: 'Healthcare', original: 8000, current: 4500, time: '12:45' },
@@ -17,8 +15,6 @@ export default function LiveTicker() {
   const [purchasedId, setPurchasedId] = useState<number | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
-  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     loadRazorpay();
@@ -30,39 +26,32 @@ export default function LiveTicker() {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ custom_amount: amount, platform_fee_pct: 10, merchant_account_id: 'acc_dummy', slot_id: id, user_phone: userPhone })
+        body: JSON.stringify({ amount_inr: amount, platform_fee_pct: 10, merchant_account_id: 'acc_dummy', slot_id: id, user_phone: userPhone })
       });
       const data = await res.json();
 
-      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
-         setFallbackAmount(amount);
-         return;
-      }
-
       const options = {
-        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_dummy',
         amount: Math.round(amount * 100),
         currency: "INR",
-        name: "NearMe-India",
-        description: "Locking Expiring Inventory",
-        order_id: data.order_id,
+        name: "NearMe India",
+        description: "AI-Driven Local Commerce",
+        order_id: data.order_id.startsWith('rzp_order_sim') ? undefined : data.order_id,
         prefill: { contact: userPhone },
-        handler: function () {
-            toast('Payment successful!', 'success');
+        handler: function (response: any) {
             setPurchasedId(id);
         },
         theme: { color: "#3B82F6" }
       };
 
-      const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function () {
-         setFallbackAmount(amount);
-      });
-      rzp.open();
-
+      if (data.demo_mode) {
+         setPurchasedId(id);
+      } else {
+         const rzp = new (window as any).Razorpay(options);
+         rzp.open();
+      }
     } catch (err) {
-      toast('API disconnected. Switching to secure lock.', 'info');
-      setFallbackAmount(amount);
+      alert('Failed to initiate payment.');
     } finally {
       setLoadingId(null);
     }
@@ -90,8 +79,6 @@ export default function LiveTicker() {
   return (
     <div className="w-full mt-16 px-4">
       {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Deal Locked!', 'success'); if(pendingAction) setPurchasedId(pendingAction.id); else setPurchasedId(1); }} />}
-
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white flex items-center gap-2">
           <Timer className="w-6 h-6 text-orange-500" />

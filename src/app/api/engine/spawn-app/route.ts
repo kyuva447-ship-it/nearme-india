@@ -5,36 +5,32 @@ export async function POST(req: Request) {
   try {
     const { idea, phone } = await req.json();
 
-    const slug = idea.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20) || 'instant-app';
+    // Simulate App Spawning logic / Gemini logic
+    const slug = idea.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20);
 
-    try {
-        await supabaseAdmin.from('spawned_mini_apps').insert({
-            slug: slug,
-            owner_phone: phone || 'anonymous',
-            app_name: idea || 'My App',
-            category: 'AI_Spawned',
-            schema_json: { generated: true }
-        });
-    } catch (dbError) {
-        console.error("DB Insert silently failed in spawn-app");
+    // Bypass RLS using Admin Client
+    const { error } = await supabaseAdmin.from('spawned_mini_apps').insert({
+        slug: slug,
+        owner_phone: phone,
+        app_name: idea,
+        category: 'AI_Spawned',
+        schema_json: { generated: true }
+    });
+
+    if (error) {
+        throw new Error(error.message);
     }
 
-    return NextResponse.json({
+    const simulatedResponse = {
       status: 'created',
       slug,
       url: `/live/${slug}`,
       commission_pct: 1.5,
       message: `App generated successfully for ${phone}`
-    }, { status: 200 });
+    };
+
+    return NextResponse.json(simulatedResponse, { status: 200 });
   } catch (error) {
-    console.error("Spawn App Error:", error);
-    // Bulletproof Fallback
-    return NextResponse.json({
-      status: 'created',
-      slug: 'fallback-app',
-      url: `/live/fallback-app`,
-      commission_pct: 1.5,
-      message: `App generated successfully (Fallback)`
-    }, { status: 200 });
+    return NextResponse.json({ error: 'Failed to spawn app' }, { status: 500 });
   }
 }

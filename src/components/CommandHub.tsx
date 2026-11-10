@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2 } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import PhoneAuthModal from './PhoneAuthModal';
-import UpiFallbackModal from './UpiFallbackModal';
 import { useToast } from './Toast';
 
 export default function CommandHub() {
@@ -19,7 +18,6 @@ export default function CommandHub() {
   const [swarmJoined, setSwarmJoined] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
-  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
   const { toast } = useToast();
 
   useEffect(() => { loadRazorpay(); }, []);
@@ -132,6 +130,7 @@ export default function CommandHub() {
 
   const payForSpawnApp = async () => {
     const userPhone = localStorage.getItem('nearme_user_phone');
+    if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
@@ -139,28 +138,24 @@ export default function CommandHub() {
         body: JSON.stringify({ action_type: 'spawn_app', custom_amount: 99, user_phone: userPhone })
       });
       const data = await res.json();
-
-      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
-          setFallbackAmount(99);
-          return;
-      }
+      if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
 
       const rzp = new (window as any).Razorpay({
-          key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: 9900,
           currency: "INR",
-          name: "Publish App",
-          order_id: data.order_id,
+          name: "NearMe India",
+          description: "AI-Driven Local Commerce",
           prefill: { contact: userPhone },
           handler: function () { toast(`Published Live at ${spawnedApp.url}`, 'success'); }
       });
-      rzp.on('payment.failed', function () { setFallbackAmount(99); });
       rzp.open();
-    } catch(err) { setFallbackAmount(99); }
+    } catch(err) { toast('Error launching checkout', 'error'); }
   };
 
   const handleLockBid = async (amount: number) => {
      const userPhone = localStorage.getItem('nearme_user_phone');
+     if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
      toast(`Locking local deal for ₹${amount}...`, 'info');
      try {
        const res = await fetch('/api/payment/razorpay-split', {
@@ -169,30 +164,24 @@ export default function CommandHub() {
          body: JSON.stringify({ custom_amount: amount, action_type: 'bid_lock', user_phone: userPhone })
        });
        const data = await res.json();
-
-       if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
-          setFallbackAmount(amount);
-          return;
-       }
+       if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
 
        const rzp = new (window as any).Razorpay({
-           key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
            amount: Math.round(amount * 100),
            currency: "INR",
-           name: "NearMe Deal Lock",
-           order_id: data.order_id,
+           name: "NearMe India",
+           description: "AI-Driven Local Commerce",
            prefill: { contact: userPhone },
            handler: function () { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); }
        });
-       rzp.on('payment.failed', function () { setFallbackAmount(amount); });
        rzp.open();
-     } catch(err) { setFallbackAmount(amount); }
+     } catch(err) { toast('Error launching checkout', 'error'); }
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl relative">
       {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Transaction Completed!', 'success'); if (fallbackAmount===99) toast(`Published at ${spawnedApp?.url}`, 'success'); else setBidLocked(true); }} />}
 
       {loadingMsg && (
         <div className="absolute inset-0 z-50 bg-gray-950/80 flex flex-col items-center justify-center backdrop-blur-sm">
