@@ -1,11 +1,25 @@
 import { NextResponse } from 'next/server';
+import { supabaseAdmin } from '@/lib/supabase/client';
 
 export async function POST(req: Request) {
   try {
     const { idea, phone } = await req.json();
 
-    // Simulate App Spawning logic
+    // Simulate App Spawning logic / Gemini logic
     const slug = idea.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 20);
+
+    // Bypass RLS using Admin Client
+    const { error } = await supabaseAdmin.from('spawned_mini_apps').insert({
+        slug: slug,
+        owner_phone: phone,
+        app_name: idea,
+        category: 'AI_Spawned',
+        schema_json: { generated: true }
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
 
     const simulatedResponse = {
       status: 'created',
