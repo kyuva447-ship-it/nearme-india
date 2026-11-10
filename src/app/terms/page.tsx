@@ -1,40 +1,22 @@
+import React from 'react';
+import { FileText } from 'lucide-react';
+
 export default function TermsPage() {
   return (
-    <div className="min-h-screen bg-slate-50 py-16">
-      <div className="max-w-4xl mx-auto px-6 bg-white p-12 rounded-3xl shadow-lg prose prose-slate max-w-none">
-        <h1 className="text-4xl font-black text-slate-900 mb-6">Terms and Conditions</h1>
-        <p className="text-sm text-slate-500 mb-8">Last Updated: {new Date().toLocaleDateString()}</p>
-
-        <h2>1. Introduction</h2>
-        <p>
-          Welcome to NearMe India. These Terms and Conditions govern your use of the NearMe India website and platform,
-          which is an IT/SaaS directory and lead-generation service operated by NearMe India (Proprietorship).
-        </p>
-
-        <h2>2. Services Provided</h2>
-        <p>
-          NearMe India provides a digital directory connecting consumers with local service providers and facilitates
-          B2B SaaS workflow tracking. We do not provide the underlying physical services (e.g., plumbing, electrical work)
-          and are not liable for the quality of services rendered by third-party merchants listed on our platform.
-        </p>
-
-        <h2>3. Payments and Wallet Credits</h2>
-        <p>
-          Merchants may purchase lead wallet credits or SaaS subscriptions via our authorized payment gateway (Razorpay).
-          Wallet credits are consumed on a pay-as-you-go basis (e.g., ₹2 per WhatsApp lead handoff).
-        </p>
-
-        <h2>4. User Obligations</h2>
-        <p>
-          Merchants must provide accurate business information. We reserve the right to suspend or terminate accounts
-          that provide false information or engage in fraudulent activities.
-        </p>
-
-        <h2>5. Governing Law and Jurisdiction</h2>
-        <p>
-          These terms are governed by the laws of India. Any disputes arising out of or in connection with these terms
-          shall be subject to the exclusive jurisdiction of the courts in Bengaluru, Karnataka.
-        </p>
+    <div className="min-h-screen bg-gray-950 text-white p-8 sm:p-16 font-sans">
+      <div className="max-w-3xl mx-auto space-y-8 bg-gray-900 p-8 sm:p-12 rounded-3xl border border-gray-800 shadow-2xl">
+        <div className="flex items-center gap-4 border-b border-gray-800 pb-6">
+          <FileText className="w-10 h-10 text-purple-500" />
+          <h1 className="text-3xl font-black">Terms of Service</h1>
+        </div>
+        <div className="prose prose-invert prose-lg text-gray-300">
+          <p>
+            <strong>NearMe-India Terms of Service.</strong> By using our AI routing platform, you agree to our automated bidding rules.
+          </p>
+          <p>
+            The platform success fee (2% to 20%) is automatically split via Razorpay Route. All 60-second reverse-bids and AI App spawns are automated and final.
+          </p>
+        </div>
       </div>
     </div>
   );
