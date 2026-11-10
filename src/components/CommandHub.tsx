@@ -3,23 +3,22 @@ import React, { useState, useEffect } from 'react';
 import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2 } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import PhoneAuthModal from './PhoneAuthModal';
+import { useToast } from './Toast';
 
 export default function CommandHub() {
   const [activeTab, setActiveTab] = useState<'voice' | 'camera' | 'spawn'>('voice');
   const [loadingMsg, setLoadingMsg] = useState('');
   const [spawnInput, setSpawnInput] = useState('');
-
   const [bids, setBids] = useState<any[]>([]);
   const [showSwarmModal, setShowSwarmModal] = useState(false);
   const [phone, setPhone] = useState('');
   const [billResult, setBillResult] = useState<any>(null);
   const [spawnedApp, setSpawnedApp] = useState<any>(null);
-
   const [bidLocked, setBidLocked] = useState(false);
   const [swarmJoined, setSwarmJoined] = useState(false);
-
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
+  const { toast } = useToast();
 
   useEffect(() => { loadRazorpay(); }, []);
 
@@ -52,24 +51,26 @@ export default function CommandHub() {
         body: JSON.stringify({ voice_query: query, pincode: localStorage.getItem('user_pincode') || '560001' })
       });
       const data = await res.json();
-      setBids(data.bids || []);
-    } catch (err) {} finally {
+      if(data.bids) setBids(data.bids);
+      else toast('Failed to fetch bids', 'error');
+    } catch (err) { toast('Error reaching bidding AI', 'error'); } finally {
       setLoadingMsg('');
     }
   };
 
   const handleSwarmJoin = async () => {
     const userPhone = localStorage.getItem('nearme_user_phone') || phone;
-    if (!userPhone || userPhone.length !== 10) return alert("Enter valid 10-digit phone number");
+    if (!userPhone || userPhone.length !== 10) return toast("Enter valid 10-digit phone number", "error");
     try {
       await fetch('/api/engine/swarm-join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone: userPhone })
       });
+      toast('Joined Swarm successfully!', 'success');
       setSwarmJoined(true);
       setShowSwarmModal(false);
-    } catch (err) {}
+    } catch (err) { toast('Failed to join swarm', 'error'); }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,8 +98,9 @@ export default function CommandHub() {
         });
         const data = await res.json();
         setBillResult(data);
+        toast('Bill Analysis Complete', 'success');
       } catch (err) {
-        alert('Failed to process document');
+        toast('Failed to process document', 'error');
       } finally {
         setLoadingMsg('');
       }
@@ -117,8 +119,9 @@ export default function CommandHub() {
       });
       const data = await res.json();
       setSpawnedApp(data);
+      toast('Mini-App Generated', 'success');
     } catch (err) {
-      alert('Failed to spawn app');
+      toast('Failed to spawn app', 'error');
     } finally {
       setLoadingMsg('');
       setSpawnInput('');
@@ -127,30 +130,51 @@ export default function CommandHub() {
 
   const payForSpawnApp = async () => {
     const userPhone = localStorage.getItem('nearme_user_phone');
+    if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 99, platform_fee_pct: 100, merchant_account_id: 'platform', user_phone: userPhone })
+        body: JSON.stringify({ action_type: 'spawn_app', custom_amount: 99, user_phone: userPhone })
       });
       const data = await res.json();
-      if(data.demo_mode) { alert(`Published: ${spawnedApp.url}`); }
-      else {
-        const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_dummy',
-            amount: 9900,
-            currency: "INR",
-            name: "Publish App",
-            prefill: { contact: userPhone },
-            handler: function () { alert(`Published Live at ${spawnedApp.url}`); }
-        });
-        rzp.open();
-      }
-    } catch(err) {}
+      if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
+
+      const rzp = new (window as any).Razorpay({
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          amount: 9900,
+          currency: "INR",
+          name: "Publish App",
+          prefill: { contact: userPhone },
+          handler: function () { toast(`Published Live at ${spawnedApp.url}`, 'success'); }
+      });
+      rzp.open();
+    } catch(err) { toast('Error launching checkout', 'error'); }
   };
 
-  const handleLockBid = (amount: number) => {
-     setBidLocked(true);
+  const handleLockBid = async (amount: number) => {
+     const userPhone = localStorage.getItem('nearme_user_phone');
+     if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
+     toast(`Locking local deal for ₹${amount}...`, 'info');
+     try {
+       const res = await fetch('/api/payment/razorpay-split', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ custom_amount: amount, action_type: 'bid_lock', user_phone: userPhone })
+       });
+       const data = await res.json();
+       if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
+
+       const rzp = new (window as any).Razorpay({
+           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+           amount: Math.round(amount * 100),
+           currency: "INR",
+           name: "NearMe Deal Lock",
+           prefill: { contact: userPhone },
+           handler: function () { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); }
+       });
+       rzp.open();
+     } catch(err) { toast('Error launching checkout', 'error'); }
   }
 
   return (

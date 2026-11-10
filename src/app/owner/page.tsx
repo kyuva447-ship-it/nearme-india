@@ -1,11 +1,13 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Activity, IndianRupee, Cpu } from 'lucide-react';
+import { Activity, IndianRupee, Cpu, Rocket } from 'lucide-react';
 import { supabase } from '@/lib/supabase/client';
+import { useToast } from '@/components/Toast';
 
 export default function OwnerGodMode() {
   const [pin, setPin] = useState('');
   const [auth, setAuth] = useState(false);
+  const { toast } = useToast();
 
   const [stats, setStats] = useState({
       gross: 0,
@@ -21,7 +23,6 @@ export default function OwnerGodMode() {
   }, [auth]);
 
   const fetchStats = async () => {
-      // Aggregate live data from Supabase
       const { data: ledger } = await supabase.from('autonomous_treasury_ledger').select('*');
       let gross = 0; let net = 0;
       if (ledger) {
@@ -42,9 +43,20 @@ export default function OwnerGodMode() {
   const handleLogin = () => {
     if (pin === (process.env.NEXT_PUBLIC_OWNER_PIN || '2026')) {
       setAuth(true);
+      toast("God Mode Unlocked", "success");
     } else {
-      alert("Invalid Admin PIN");
+      toast("Invalid Admin PIN", "error");
     }
+  };
+
+  const triggerMasterCron = async () => {
+      toast("Triggering Master Cron...", "info");
+      try {
+         const res = await fetch('/api/cron/revenue-recovery');
+         const data = await res.json();
+         if(res.ok) toast(`Cron Success! Carts processed: ${data.carts_processed}`, "success");
+         else toast("Cron failed", "error");
+      } catch (e) { toast("Cron request failed", "error"); }
   };
 
   if (!auth) {
@@ -67,10 +79,13 @@ export default function OwnerGodMode() {
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-8 font-sans">
       <div className="max-w-6xl mx-auto space-y-8">
-        <h1 className="text-3xl font-black flex items-center gap-3">
-          <Activity className="w-8 h-8 text-red-500" />
-          Autonomous Enterprise Console
-        </h1>
+        <div className="flex justify-between items-center">
+            <h1 className="text-3xl font-black flex items-center gap-3">
+            <Activity className="w-8 h-8 text-red-500" />
+            Autonomous Enterprise Console
+            </h1>
+            <button onClick={triggerMasterCron} className="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-lg font-bold flex items-center gap-2"><Rocket className="w-4 h-4"/> Run Master Cron</button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
            <div className="bg-gray-900 border border-gray-800 p-6 rounded-2xl">
@@ -96,8 +111,8 @@ export default function OwnerGodMode() {
            <div className="flex items-center gap-4 p-4 bg-gray-800 rounded-xl">
              <div className="w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
              <div>
-               <p className="font-bold text-white">Autonomous Marketing Cron</p>
-               <p className="text-xs text-gray-400">Running efficiently. SEO routes auto-regenerating every 24h.</p>
+               <p className="font-bold text-white">Master Cron Engine</p>
+               <p className="text-xs text-gray-400">Running efficiently. Abandoned carts recovered & deals auto-refreshed every 24h.</p>
              </div>
            </div>
         </div>
