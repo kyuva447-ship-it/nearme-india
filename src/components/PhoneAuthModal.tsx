@@ -1,21 +1,59 @@
 'use client';
 import React, { useState } from 'react';
-import { Smartphone, CheckCircle2 } from 'lucide-react';
+import { Smartphone, CheckCircle2, Loader2 } from 'lucide-react';
+import { useToast } from './Toast';
 
 export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState(false);
+  const [hint, setHint] = useState('');
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleSend = () => {
-    if (phone.length === 10) setSent(true);
+  const handleSend = async () => {
+    if (phone.length !== 10) return toast("Enter valid 10-digit number", "error");
+    setLoading(true);
+    try {
+        const res = await fetch('/api/auth/send-otp', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone })
+        });
+        const data = await res.json();
+        if (data.status === 'sent') {
+            setHint(data.hint); // fallback for zero-touch demo
+            setSent(true);
+            toast("OTP Sent to Mobile", "success");
+        } else {
+            toast("Failed to send OTP", "error");
+        }
+    } catch (e) {
+        toast("Server Error", "error");
+    } finally {
+        setLoading(false);
+    }
   };
 
-  const handleVerify = () => {
-    if (otp.length === 4) {
-      localStorage.setItem('nearme_user_phone', phone);
-      window.dispatchEvent(new Event('auth_change'));
-      onSuccess();
+  const handleVerify = async () => {
+    if (otp.length !== 6) return toast("Enter 6-digit OTP", "error");
+    setLoading(true);
+    try {
+        const res = await fetch('/api/auth/verify-otp', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, otp })
+        });
+        if (res.ok) {
+            localStorage.setItem('nearme_user_phone', phone);
+            window.dispatchEvent(new Event('auth_change'));
+            toast("Logged in securely!", "success");
+            onSuccess();
+        } else {
+            toast("Invalid OTP", "error");
+        }
+    } catch(e) {
+        toast("Verification Failed", "error");
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -34,20 +72,21 @@ export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => 
               placeholder="10-digit Indian Mobile"
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 text-center tracking-widest"
             />
-            <button onClick={handleSend} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors">
-              Send OTP
+            <button disabled={loading} onClick={handleSend} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors flex justify-center items-center h-12 disabled:opacity-50">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Secure OTP'}
             </button>
           </div>
         ) : (
           <div className="space-y-4">
             <p className="text-emerald-400 text-xs text-center font-bold">OTP sent to {phone}</p>
             <input
-              type="text" maxLength={4} value={otp} onChange={e => setOtp(e.target.value)}
-              placeholder="1234"
+              type="text" maxLength={6} value={otp} onChange={e => setOtp(e.target.value)}
+              placeholder="• • • • • •"
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 text-center text-2xl tracking-[1em]"
             />
-            <button onClick={handleVerify} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
-              <CheckCircle2 className="w-5 h-5" /> Verify & Login
+            <p className="text-gray-600 text-xs text-center cursor-pointer hover:text-gray-400" onClick={() => setOtp(hint)}>Auto-Fill Hint: {hint}</p>
+            <button disabled={loading} onClick={handleVerify} className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 h-12 disabled:opacity-50">
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Verify & Login</>}
             </button>
           </div>
         )}

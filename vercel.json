@@ -4,8 +4,12 @@
   "outputDirectory": ".next",
   "crons": [
     {
-      "path": "/api/cron",
+      "path": "/api/cron/autonomous-marketing",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/revenue-recovery",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
