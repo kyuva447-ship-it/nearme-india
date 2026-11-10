@@ -4,6 +4,7 @@ import { Wifi, Dumbbell, Coffee, BatteryCharging, CheckCircle2, QrCode } from 'l
 import { loadRazorpay } from '@/lib/razorpayClient';
 import { useRouter } from 'next/navigation';
 import PhoneAuthModal from './PhoneAuthModal';
+import { useToast } from './Toast';
 
 export default function MicroPass() {
   const [activeTile, setActiveTile] = useState<string>('Gyms');
@@ -11,6 +12,7 @@ export default function MicroPass() {
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<'pass' | 'merchant' | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   useEffect(() => { loadRazorpay(); }, []);
 
@@ -19,24 +21,28 @@ export default function MicroPass() {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 50, platform_fee_pct: 5, merchant_account_id: 'acc_dummy', user_phone: userPhone })
+        body: JSON.stringify({ custom_amount: 50, action_type: 'live_checkout', user_phone: userPhone })
       });
       const data = await res.json();
+      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
       if (data.demo_mode) {
          setIsPassActive(true);
       } else {
          const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_dummy',
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: 5000,
             currency: "INR",
             name: "Micro-Pass Top-up",
             prefill: { contact: userPhone },
-            handler: function () { setIsPassActive(true); }
+            handler: function () {
+                setIsPassActive(true);
+                toast('Pass Activated Successfully!', 'success');
+            }
          });
          rzp.open();
       }
-    } catch (err) {}
+    } catch (err) { toast('Error launching checkout', 'error'); }
   };
 
   const executeMerchant = async (userPhone: string) => {
@@ -44,24 +50,28 @@ export default function MicroPass() {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 499, platform_fee_pct: 100, merchant_account_id: 'platform_only', user_phone: userPhone })
+        body: JSON.stringify({ custom_amount: 499, action_type: 'merchant_sub', user_phone: userPhone })
       });
       const data = await res.json();
+      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
       if (data.demo_mode) {
          router.push('/dashboard');
       } else {
          const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_dummy',
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
             amount: 49900,
             currency: "INR",
             name: "Auto-Bidder Pro",
             prefill: { contact: userPhone },
-            handler: function () { router.push('/dashboard'); }
+            handler: function () {
+                toast("SaaS Auto-Bidder Activated!", 'success');
+                router.push('/dashboard');
+            }
          });
          rzp.open();
       }
-    } catch (err) {}
+    } catch (err) { toast('Error launching checkout', 'error'); }
   };
 
   const handleAction = (action: 'pass' | 'merchant') => {

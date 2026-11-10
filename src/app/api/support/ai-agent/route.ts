@@ -9,15 +9,17 @@ export async function POST(req: Request) {
 
     let dbContext = "No account connected.";
     if (phone) {
-        // Fetch contextual user data via Admin bypass
-        const { data: userOrders } = await supabaseAdmin.from('autonomous_treasury_ledger').select('*').limit(3);
-        dbContext = `User Phone: ${phone}. Context: Active user in vault.`;
+        // Fetch contextual user data via Admin bypass (only for the calling user)
+        const { data: userOrders } = await supabaseAdmin
+            .from('autonomous_treasury_ledger')
+            .select('*')
+            .eq('user_phone', phone)
+            .limit(3);
+        dbContext = `User Phone: ${phone}. Context: Active user in vault. Recent orders: ${JSON.stringify(userOrders)}`;
     }
 
     if (!apiKey) {
-       return NextResponse.json({
-         reply: `[Fallback Mode] I am the Autonomous Agent. I received your query: "${query}". ${dbContext}`,
-       }, { status: 200 });
+       return NextResponse.json({ error: 'AI Agent is currently offline (API key missing)' }, { status: 500 });
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
