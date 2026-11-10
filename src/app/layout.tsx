@@ -1,6 +1,7 @@
 import './globals.css';
 import { Inter } from 'next/font/google';
 import AutonomousSupportOrb from '@/components/AutonomousSupportOrb';
+import ReferralTracker from '@/components/ReferralTracker';
 import Link from 'next/link';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -18,6 +19,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.className} bg-gray-950 text-white min-h-screen flex flex-col`}>
+        <ReferralTracker />
         <div className="flex-1">
           {children}
         </div>
