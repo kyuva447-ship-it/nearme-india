@@ -4,25 +4,27 @@ import { supabaseAdmin } from '@/lib/supabase/client';
 
 export async function POST(req: Request) {
   try {
-    const { slot_id, action_type, user_phone, custom_amount } = await req.json();
+    const { slot_id, action_type, user_phone, custom_amount, merchant_account_id } = await req.json();
 
     if (!user_phone) {
         return NextResponse.json({ error: 'User phone required' }, { status: 400 });
     }
 
-    let finalAmount = custom_amount || 1000;
+    let finalAmount = Number(custom_amount) || 1000;
     let platformFeePct = 4; // Default 4% dynamic cut for Engine logic
-    let merchantAccount = 'acc_dummy'; // In production, fetch dynamically
+    let merchantAccount = merchant_account_id || null;
     let source = action_type || 'live_checkout';
 
     if (slot_id) {
        const { data } = await supabaseAdmin.from('expiring_slots_ticker').select('*').eq('id', slot_id).single();
        if (data) {
-           finalAmount = data.current_live_price_inr;
+           finalAmount = Number(data.current_live_price_inr);
            platformFeePct = 4;
+           // In production, you would fetch merchantAccount from 'merchant_autopilot_nodes' here
        }
     }
 
+    // 100% platform take-rate for direct SaaS revenue
     if (action_type === 'merchant_sub' || action_type === 'spawn_app') {
        platformFeePct = 100;
     }
@@ -48,13 +50,18 @@ export async function POST(req: Request) {
 
     const instance = new Razorpay({ key_id: keyId, key_secret: keySecret });
 
+    // Ensure amount is strictly an integer in paise
     const payload: any = {
         amount: Math.round(finalAmount * 100),
         currency: "INR",
         receipt: ledgerEntry?.id || 'manual_fallback_receipt'
     };
 
-    if (platformFeePct < 100) {
+    // FALLBACK LOGIC: Only apply transfers if a valid Razorpay Linked Account exists.
+    // 'acc_dummy' or null will crash the Razorpay API Route.
+    const isValidMerchantAccount = merchantAccount && merchantAccount.startsWith('acc_') && merchantAccount !== 'acc_dummy';
+
+    if (platformFeePct < 100 && isValidMerchantAccount) {
         payload.transfers = [
             {
               account: merchantAccount,
@@ -81,6 +88,8 @@ export async function POST(req: Request) {
       }, { status: 200 });
 
   } catch (error) {
-    return NextResponse.json({ error: 'Failed to create payment' }, { status: 500 });
+    // STOP SWALLOWING ERRORS: Log exact SDK trace so Vercel can display it
+    console.error("Razorpay Split Error:", error);
+    return NextResponse.json({ error: 'Failed to create payment', details: (error as any)?.message || String(error) }, { status: 500 });
   }
 }
