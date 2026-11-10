@@ -11,8 +11,3 @@ body {
   color: var(--foreground);
   background: var(--background);
 }
-
-/* Custom utility for Framer Motion morphing wrappers if needed */
-.morph-container {
-  will-change: transform, opacity;
-}
