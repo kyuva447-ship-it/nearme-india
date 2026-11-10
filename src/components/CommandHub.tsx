@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2 } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
+import PhoneAuthModal from './PhoneAuthModal';
 
 export default function CommandHub() {
   const [activeTab, setActiveTab] = useState<'voice' | 'camera' | 'spawn'>('voice');
   const [loadingMsg, setLoadingMsg] = useState('');
   const [spawnInput, setSpawnInput] = useState('');
 
-  // States for dynamic rendering
   const [bids, setBids] = useState<any[]>([]);
   const [showSwarmModal, setShowSwarmModal] = useState(false);
   const [phone, setPhone] = useState('');
@@ -18,7 +18,28 @@ export default function CommandHub() {
   const [bidLocked, setBidLocked] = useState(false);
   const [swarmJoined, setSwarmJoined] = useState(false);
 
+  const [showAuth, setShowAuth] = useState(false);
+  const [pendingAction, setPendingAction] = useState<any>(null);
+
   useEffect(() => { loadRazorpay(); }, []);
+
+  const requireAuth = (actionFn: () => void, metadata: any) => {
+    const userPhone = localStorage.getItem('nearme_user_phone');
+    if (!userPhone) {
+      setPendingAction({ fn: actionFn, metadata });
+      setShowAuth(true);
+    } else {
+      actionFn();
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuth(false);
+    if (pendingAction) {
+      pendingAction.fn();
+      setPendingAction(null);
+    }
+  };
 
   const triggerReverseBid = async (query: string) => {
     setLoadingMsg('Calculating local bids...');
@@ -38,14 +59,14 @@ export default function CommandHub() {
   };
 
   const handleSwarmJoin = async () => {
-    if (!phone || phone.length !== 10) return alert("Enter valid 10-digit phone number");
+    const userPhone = localStorage.getItem('nearme_user_phone') || phone;
+    if (!userPhone || userPhone.length !== 10) return alert("Enter valid 10-digit phone number");
     try {
       await fetch('/api/engine/swarm-join', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone })
+        body: JSON.stringify({ phone: userPhone })
       });
-      alert('Joined Swarm successfully!');
       setSwarmJoined(true);
       setShowSwarmModal(false);
     } catch (err) {}
@@ -92,7 +113,7 @@ export default function CommandHub() {
       const res = await fetch('/api/engine/spawn-app', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea: spawnInput, phone: '9999900000' })
+        body: JSON.stringify({ idea: spawnInput, phone: localStorage.getItem('nearme_user_phone') || '9999900000' })
       });
       const data = await res.json();
       setSpawnedApp(data);
@@ -105,11 +126,12 @@ export default function CommandHub() {
   };
 
   const payForSpawnApp = async () => {
+    const userPhone = localStorage.getItem('nearme_user_phone');
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 99, platform_fee_pct: 100, merchant_account_id: 'platform' })
+        body: JSON.stringify({ amount_inr: 99, platform_fee_pct: 100, merchant_account_id: 'platform', user_phone: userPhone })
       });
       const data = await res.json();
       if(data.demo_mode) { alert(`Published: ${spawnedApp.url}`); }
@@ -119,6 +141,7 @@ export default function CommandHub() {
             amount: 9900,
             currency: "INR",
             name: "Publish App",
+            prefill: { contact: userPhone },
             handler: function () { alert(`Published Live at ${spawnedApp.url}`); }
         });
         rzp.open();
@@ -128,11 +151,11 @@ export default function CommandHub() {
 
   const handleLockBid = (amount: number) => {
      setBidLocked(true);
-     alert(`Locked local deal for ₹${amount}! Redirecting to checkout...`);
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl relative">
+      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
 
       {loadingMsg && (
         <div className="absolute inset-0 z-50 bg-gray-950/80 flex flex-col items-center justify-center backdrop-blur-sm">
@@ -141,7 +164,6 @@ export default function CommandHub() {
         </div>
       )}
 
-      {/* SWARM MODAL */}
       {showSwarmModal && (
         <div className="absolute inset-0 z-50 bg-gray-950/90 flex flex-col items-center justify-center backdrop-blur-md p-8">
            <ShieldCheck className="w-16 h-16 text-blue-500 mb-4" />
@@ -153,7 +175,7 @@ export default function CommandHub() {
                placeholder="10-digit mobile" maxLength={10}
                className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500"
              />
-             <button onClick={handleSwarmJoin} className="bg-blue-600 hover:bg-blue-500 font-bold px-6 rounded-r-xl">Join</button>
+             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 font-bold px-6 rounded-r-xl">Join</button>
            </div>
            <button onClick={() => setShowSwarmModal(false)} className="mt-4 text-sm text-gray-500 hover:text-white">Cancel</button>
         </div>
@@ -176,17 +198,17 @@ export default function CommandHub() {
           <div className="flex flex-col items-center text-center space-y-6">
             <h2 className="text-2xl font-black text-white">Speak Your Price</h2>
             <p className="text-gray-400">Merchants within 5km will fight for your order in real-time.</p>
-            <button onClick={() => triggerReverseBid("General Request")} className="w-24 h-24 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.5)] transition-all">
+            <button onClick={() => requireAuth(() => triggerReverseBid("General Request"), 'bid')} className="w-24 h-24 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.5)] transition-all">
               <Mic className="w-10 h-10 text-white" />
             </button>
             <div className="flex flex-wrap justify-center gap-3 mt-4">
-              <span onClick={() => triggerReverseBid("1.5T Split AC")} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"1.5T Split AC"</span>
-              <span onClick={() => triggerReverseBid("Full Body MRI")} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"Full Body MRI"</span>
-              <span onClick={() => triggerReverseBid("10g 24K Gold")} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"10g 24K Gold"</span>
+              <span onClick={() => requireAuth(() => triggerReverseBid("1.5T Split AC"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"1.5T Split AC"</span>
+              <span onClick={() => requireAuth(() => triggerReverseBid("Full Body MRI"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"Full Body MRI"</span>
+              <span onClick={() => requireAuth(() => triggerReverseBid("10g 24K Gold"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"10g 24K Gold"</span>
             </div>
 
             {!swarmJoined ? (
-               <button onClick={() => setShowSwarmModal(true)} className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-700 to-indigo-700 text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90">
+               <button onClick={() => requireAuth(() => setShowSwarmModal(true), 'modal')} className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-700 to-indigo-700 text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90">
                  <ShieldCheck className="w-5 h-5" /> Join National Swarm Pool (Extra 15% Off)
                </button>
             ) : (
@@ -211,7 +233,7 @@ export default function CommandHub() {
                         </div>
                         <div className="flex items-center gap-4">
                            <span className="text-xl font-black text-emerald-400">₹{b.offer}</span>
-                           <button onClick={() => handleLockBid(b.offer)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold">Lock Deal</button>
+                           <button onClick={() => requireAuth(() => handleLockBid(b.offer), 'lock')} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold">Lock Deal</button>
                         </div>
                      </div>
                    ))}
@@ -237,7 +259,7 @@ export default function CommandHub() {
 
             {!billResult ? (
               <label className="w-full max-w-md h-48 border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center bg-gray-800/50 cursor-pointer hover:border-emerald-500 hover:bg-gray-800 transition-all">
-                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => requireAuth(() => handleFileUpload(e), 'file')} />
                 <Camera className="w-12 h-12 text-gray-400 mb-2" />
                 <span className="text-emerald-400 font-bold">Tap to Scan Document</span>
                 <span className="text-xs text-gray-500 mt-1">Hospital • Auto Repair • Showroom • Loans</span>
@@ -273,7 +295,7 @@ export default function CommandHub() {
                   placeholder="e.g. 'Token queue & UPI app for my clinic'"
                   className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl py-4 pl-4 pr-4 text-white outline-none focus:border-purple-500"
                 />
-                <button onClick={handleSpawnApp} className="px-6 bg-purple-600 rounded-r-xl hover:bg-purple-500 font-bold flex items-center gap-2">
+                <button onClick={() => requireAuth(handleSpawnApp, 'spawn')} className="px-6 bg-purple-600 rounded-r-xl hover:bg-purple-500 font-bold flex items-center gap-2">
                   <Zap className="w-5 h-5 text-white" /> Build
                 </button>
               </div>
@@ -281,7 +303,7 @@ export default function CommandHub() {
               <div className="w-full max-w-md p-6 bg-purple-900/20 border border-purple-500/30 rounded-xl">
                  <h3 className="text-lg font-bold text-white mb-2">App Generated!</h3>
                  <p className="text-gray-400 mb-6 font-mono text-sm">{spawnedApp.url}</p>
-                 <button onClick={payForSpawnApp} className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl mb-4">
+                 <button onClick={() => requireAuth(payForSpawnApp, 'pay')} className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl mb-4">
                     Pay ₹99 to Publish App
                  </button>
                  <a

@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Timer, ArrowDownRight, Loader2, Share2 } from 'lucide-react';
+import { Timer, ArrowDownRight, Loader2, Share2, QrCode } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
+import PhoneAuthModal from './PhoneAuthModal';
 
 const mockSlots = [
   { id: 1, title: 'MRI Scan (Empty Slot)', sector: 'Healthcare', original: 8000, current: 4500, time: '12:45' },
@@ -12,18 +13,20 @@ const mockSlots = [
 export default function LiveTicker() {
   const [loadingId, setLoadingId] = useState<number | null>(null);
   const [purchasedId, setPurchasedId] = useState<number | null>(null);
+  const [showAuth, setShowAuth] = useState(false);
+  const [pendingAction, setPendingAction] = useState<any>(null);
 
   useEffect(() => {
     loadRazorpay();
   }, []);
 
-  const handleLockUPI = async (id: number, amount: number) => {
+  const executeLock = async (id: number, amount: number, userPhone: string) => {
     setLoadingId(id);
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: amount, platform_fee_pct: 10, merchant_account_id: 'acc_dummy', slot_id: id })
+        body: JSON.stringify({ amount_inr: amount, platform_fee_pct: 10, merchant_account_id: 'acc_dummy', slot_id: id, user_phone: userPhone })
       });
       const data = await res.json();
 
@@ -34,15 +37,14 @@ export default function LiveTicker() {
         name: "NearMe-India",
         description: "Locking Expiring Inventory",
         order_id: data.order_id.startsWith('rzp_order_sim') ? undefined : data.order_id,
+        prefill: { contact: userPhone },
         handler: function (response: any) {
-            alert(`Payment successful! ID: ${response.razorpay_payment_id}`);
             setPurchasedId(id);
         },
         theme: { color: "#3B82F6" }
       };
 
       if (data.demo_mode) {
-         alert(`Simulated Lock via Demo Order: ${data.order_id}`);
          setPurchasedId(id);
       } else {
          const rzp = new (window as any).Razorpay(options);
@@ -55,8 +57,28 @@ export default function LiveTicker() {
     }
   };
 
+  const handleLockUPI = (id: number, amount: number) => {
+    const userPhone = localStorage.getItem('nearme_user_phone');
+    if (!userPhone) {
+      setPendingAction({ id, amount });
+      setShowAuth(true);
+    } else {
+      executeLock(id, amount, userPhone);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuth(false);
+    const userPhone = localStorage.getItem('nearme_user_phone');
+    if (pendingAction && userPhone) {
+      executeLock(pendingAction.id, pendingAction.amount, userPhone);
+      setPendingAction(null);
+    }
+  };
+
   return (
     <div className="w-full mt-16 px-4">
+      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white flex items-center gap-2">
           <Timer className="w-6 h-6 text-orange-500" />
@@ -96,8 +118,8 @@ export default function LiveTicker() {
                     {loadingId === slot.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lock via UPI'}
                   </button>
                 ) : (
-                  <div className="px-4 py-2 bg-emerald-900/50 text-emerald-400 font-bold rounded-lg border border-emerald-500/50">
-                    Locked
+                  <div className="flex items-center gap-2 bg-emerald-900/50 text-emerald-400 font-bold rounded-lg border border-emerald-500/50 px-4 py-2">
+                    <QrCode className="w-5 h-5" /> Pass Ready
                   </div>
                 )}
               </div>

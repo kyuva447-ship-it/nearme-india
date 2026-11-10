@@ -3,20 +3,23 @@ import React, { useState, useEffect } from 'react';
 import { Wifi, Dumbbell, Coffee, BatteryCharging, CheckCircle2, QrCode } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import { useRouter } from 'next/navigation';
+import PhoneAuthModal from './PhoneAuthModal';
 
 export default function MicroPass() {
   const [activeTile, setActiveTile] = useState<string>('Gyms');
   const [isPassActive, setIsPassActive] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+  const [pendingAction, setPendingAction] = useState<'pass' | 'merchant' | null>(null);
   const router = useRouter();
 
   useEffect(() => { loadRazorpay(); }, []);
 
-  const handleActivatePass = async () => {
+  const executePass = async (userPhone: string) => {
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 50, platform_fee_pct: 5, merchant_account_id: 'acc_dummy' })
+        body: JSON.stringify({ amount_inr: 50, platform_fee_pct: 5, merchant_account_id: 'acc_dummy', user_phone: userPhone })
       });
       const data = await res.json();
 
@@ -28,6 +31,7 @@ export default function MicroPass() {
             amount: 5000,
             currency: "INR",
             name: "Micro-Pass Top-up",
+            prefill: { contact: userPhone },
             handler: function () { setIsPassActive(true); }
          });
          rzp.open();
@@ -35,17 +39,16 @@ export default function MicroPass() {
     } catch (err) {}
   };
 
-  const handleMerchantSub = async () => {
+  const executeMerchant = async (userPhone: string) => {
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount_inr: 499, platform_fee_pct: 100, merchant_account_id: 'platform_only' })
+        body: JSON.stringify({ amount_inr: 499, platform_fee_pct: 100, merchant_account_id: 'platform_only', user_phone: userPhone })
       });
       const data = await res.json();
 
       if (data.demo_mode) {
-         alert("SaaS Auto-Bidder Activated!");
          router.push('/dashboard');
       } else {
          const rzp = new (window as any).Razorpay({
@@ -53,11 +56,31 @@ export default function MicroPass() {
             amount: 49900,
             currency: "INR",
             name: "Auto-Bidder Pro",
+            prefill: { contact: userPhone },
             handler: function () { router.push('/dashboard'); }
          });
          rzp.open();
       }
     } catch (err) {}
+  };
+
+  const handleAction = (action: 'pass' | 'merchant') => {
+    const userPhone = localStorage.getItem('nearme_user_phone');
+    if (!userPhone) {
+      setPendingAction(action);
+      setShowAuth(true);
+    } else {
+      action === 'pass' ? executePass(userPhone) : executeMerchant(userPhone);
+    }
+  };
+
+  const handleAuthSuccess = () => {
+    setShowAuth(false);
+    const userPhone = localStorage.getItem('nearme_user_phone');
+    if (pendingAction && userPhone) {
+      pendingAction === 'pass' ? executePass(userPhone) : executeMerchant(userPhone);
+      setPendingAction(null);
+    }
   };
 
   const tiles = [
@@ -69,6 +92,7 @@ export default function MicroPass() {
 
   return (
     <div className="w-full mt-16 px-4 pb-16">
+      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
       <div className="bg-gradient-to-r from-gray-900 to-indigo-950 border border-indigo-500/30 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Wifi className="w-48 h-48" />
@@ -93,11 +117,11 @@ export default function MicroPass() {
 
           {!isPassActive ? (
             <div className="flex flex-col sm:flex-row gap-4">
-               <button onClick={handleActivatePass} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
+               <button onClick={() => handleAction('pass')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
                  <CheckCircle2 className="w-5 h-5" />
                  Activate ₹0.25/min Pass
                </button>
-               <button onClick={handleMerchantSub} className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors border border-gray-700 hover:border-gray-500">
+               <button onClick={() => handleAction('merchant')} className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors border border-gray-700 hover:border-gray-500">
                  Merchant Auto-Bidder (₹499/mo)
                </button>
             </div>
