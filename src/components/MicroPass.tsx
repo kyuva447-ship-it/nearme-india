@@ -4,12 +4,14 @@ import { Wifi, Dumbbell, Coffee, BatteryCharging, CheckCircle2, QrCode } from 'l
 import { loadRazorpay } from '@/lib/razorpayClient';
 import { useRouter } from 'next/navigation';
 import PhoneAuthModal from './PhoneAuthModal';
+import UpiFallbackModal from './UpiFallbackModal';
 import { useToast } from './Toast';
 
 export default function MicroPass() {
   const [activeTile, setActiveTile] = useState<string>('Gyms');
   const [isPassActive, setIsPassActive] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<'pass' | 'merchant' | null>(null);
   const router = useRouter();
   const { toast } = useToast();
@@ -24,25 +26,28 @@ export default function MicroPass() {
         body: JSON.stringify({ custom_amount: 50, action_type: 'live_checkout', user_phone: userPhone })
       });
       const data = await res.json();
-      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
-      if (data.demo_mode) {
-         setIsPassActive(true);
-      } else {
-         const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: 5000,
-            currency: "INR",
-            name: "Micro-Pass Top-up",
-            prefill: { contact: userPhone },
-            handler: function () {
-                setIsPassActive(true);
-                toast('Pass Activated Successfully!', 'success');
-            }
-         });
-         rzp.open();
+      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+         setFallbackAmount(50);
+         return;
       }
-    } catch (err) { toast('Error launching checkout', 'error'); }
+
+      const rzp = new (window as any).Razorpay({
+        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: 5000,
+        currency: "INR",
+        name: "Micro-Pass Top-up",
+        order_id: data.order_id,
+        prefill: { contact: userPhone },
+        handler: function () {
+            setIsPassActive(true);
+            toast('Pass Activated Successfully!', 'success');
+        }
+      });
+      rzp.on('payment.failed', function () { setFallbackAmount(50); });
+      rzp.open();
+
+    } catch (err) { setFallbackAmount(50); }
   };
 
   const executeMerchant = async (userPhone: string) => {
@@ -53,25 +58,28 @@ export default function MicroPass() {
         body: JSON.stringify({ custom_amount: 499, action_type: 'merchant_sub', user_phone: userPhone })
       });
       const data = await res.json();
-      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
-      if (data.demo_mode) {
-         router.push('/dashboard');
-      } else {
-         const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: 49900,
-            currency: "INR",
-            name: "Auto-Bidder Pro",
-            prefill: { contact: userPhone },
-            handler: function () {
-                toast("SaaS Auto-Bidder Activated!", 'success');
-                router.push('/dashboard');
-            }
-         });
-         rzp.open();
+      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+         setFallbackAmount(499);
+         return;
       }
-    } catch (err) { toast('Error launching checkout', 'error'); }
+
+      const rzp = new (window as any).Razorpay({
+        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: 49900,
+        currency: "INR",
+        name: "Auto-Bidder Pro",
+        order_id: data.order_id,
+        prefill: { contact: userPhone },
+        handler: function () {
+            toast("SaaS Auto-Bidder Activated!", 'success');
+            router.push('/dashboard');
+        }
+      });
+      rzp.on('payment.failed', function () { setFallbackAmount(499); });
+      rzp.open();
+
+    } catch (err) { setFallbackAmount(499); }
   };
 
   const handleAction = (action: 'pass' | 'merchant') => {
@@ -103,6 +111,7 @@ export default function MicroPass() {
   return (
     <div className="w-full mt-16 px-4 pb-16">
       {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { if (fallbackAmount===50) setIsPassActive(true); else { toast('Subscribed!','success'); router.push('/dashboard'); } }} />}
       <div className="bg-gradient-to-r from-gray-900 to-indigo-950 border border-indigo-500/30 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Wifi className="w-48 h-48" />
