@@ -19,17 +19,46 @@ export default function CommandHub() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setLoadingMsg('Scanning document...');
+    setLoadingMsg('Compressing & Scanning document...');
 
-    // Convert to base64
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      const base64Data = event.target?.result as string;
+    // Client-side Image Compression (Canvas API)
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = async () => {
+      const MAX_WIDTH = 1200;
+      const MAX_HEIGHT = 1200;
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height) {
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+      } else {
+        if (height > MAX_HEIGHT) {
+          width = Math.round((width * MAX_HEIGHT) / height);
+          height = MAX_HEIGHT;
+        }
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+      }
+
+      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7); // Compress to 70% quality JPEG
+      URL.revokeObjectURL(objectUrl); // Clean up
+
       try {
         const res = await fetch('/api/engine/bill-slasher', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_data: base64Data, pincode: '560001' })
+          body: JSON.stringify({ image_data: compressedBase64, pincode: '560001' })
         });
         const data = await res.json();
         alert(`Bill Scanned! Fair Price: ₹${data.ai_audited_fair_price_inr}. Saved: ₹${data.user_savings_inr}`);
@@ -39,7 +68,8 @@ export default function CommandHub() {
         setLoadingMsg('');
       }
     };
-    reader.readAsDataURL(file);
+
+    img.src = objectUrl;
   };
 
   const handleSpawnApp = async () => {
@@ -71,7 +101,6 @@ export default function CommandHub() {
         </div>
       )}
 
-      {/* TABS */}
       <div className="flex border-b border-gray-800">
         <button
           onClick={() => setActiveTab('voice')}
@@ -96,7 +125,6 @@ export default function CommandHub() {
         </button>
       </div>
 
-      {/* CONTENT */}
       <div className="p-8">
         {activeTab === 'voice' && (
           <div className="flex flex-col items-center text-center space-y-6">
