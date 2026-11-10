@@ -3,12 +3,17 @@ import { MetadataRoute } from 'next';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.nearme-india.org';
 
-  const highIntentRoutes = [
-    '/in/560001/medical',
-    '/in/560001/ac-repair',
-    '/in/500001/hospital',
-    '/in/400001/loans'
-  ];
+  // Cross-multiplying key hubs and categories for automated Google indexing
+  const hubs = ['560001', '600001', '500001', '400001', '110001', '517325'];
+  const categories = ['mri-scan', 'ac-repair', 'dental', 'tailoring', 'hostels', 'bus-seats', 'salons', 'wholesale'];
+
+  const highIntentRoutes: string[] = [];
+
+  hubs.forEach(hub => {
+      categories.forEach(cat => {
+          highIntentRoutes.push(`/in/${hub}/${cat}`);
+      });
+  });
 
   const sitemapRoutes = highIntentRoutes.map(route => ({
       url: `${baseUrl}${route}`,
