@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Script from "next/script";
 import { ToastProvider } from "@/components/Toast";
+import AgenticConcierge from "@/components/AgenticConcierge";
+import TelemetryBar from "@/components/TelemetryBar";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -25,7 +27,9 @@ export default function RootLayout({
         className={`${inter.className} antialiased bg-gray-950 text-white min-h-screen`}
       >
         <ToastProvider>
+          <TelemetryBar />
           {children}
+          <AgenticConcierge />
         </ToastProvider>
       </body>
     </html>

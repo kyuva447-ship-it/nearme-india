@@ -8,10 +8,10 @@ import LiveActivityTicker from '@/components/LiveTicker';
 
 export default function Home() {
   const topCategories = [
-    { name: "Medical / Scans", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/services/all-india/medical" },
-    { name: "Electronics", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/services/all-india/electronics" },
-    { name: "Auto Repair", icon: <Wrench className="w-6 h-6 text-amber-400" />, href: "/services/all-india/auto" },
-    { name: "Real Estate", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/services/all-india/real-estate" },
+    { name: "Medical / Scans", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/search?q=Hospitals" },
+    { name: "Electronics", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/search?q=Electronics" },
+    { name: "Auto Repair", icon: <Wrench className="w-6 h-6 text-amber-400" />, href: "/search?q=Auto%20Repair" },
+    { name: "Real Estate", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/search?q=Real%20Estate" },
   ];
 
   return (
