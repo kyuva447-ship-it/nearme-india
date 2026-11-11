@@ -23,27 +23,38 @@ export default function MicroPass() {
         { id: 'ev', name: 'EV Fast Charging', price: 199, icon: <BatteryCharging className="w-5 h-5" />, color: 'yellow' },
     ];
 
-    const requireAuth = (actionFn: () => void, pass: any) => {
-        const userPhone = localStorage.getItem('nearme_user_phone');
-        if (!userPhone) {
-            setPendingAction({ fn: actionFn, pass });
-            setShowAuth(true);
-        } else {
-            actionFn();
+    const executeWithWatchdog = (actionFn: () => void, passId: string) => {
+        setLoadingPass(passId);
+
+        // Hard 3-second watchdog timer to prevent infinite "Processing..." freezes
+        setTimeout(() => {
+            setLoadingPass(null);
+        }, 3000);
+
+        try {
+            const userPhone = localStorage.getItem('nearme_user_phone');
+            if (!userPhone) {
+                setLoadingPass(null);
+                setPendingAction(() => actionFn);
+                setShowAuth(true);
+            } else {
+                actionFn();
+            }
+        } catch (e) {
+            setLoadingPass(null);
         }
     };
 
     const handleAuthSuccess = () => {
         setShowAuth(false);
         if (pendingAction) {
-            pendingAction.fn();
+            pendingAction();
             setPendingAction(null);
         }
     };
 
     const handleBuyPass = (facility: any) => {
         if (!facility) return;
-        setLoadingPass(facility.id);
 
         triggerNearMeCheckout({
             itemName: `${facility.name} Pass`,
@@ -67,8 +78,6 @@ export default function MicroPass() {
     };
 
     const handleMerchantBidder = () => {
-        setLoadingPass('merchant_bidder');
-
         triggerNearMeCheckout({
             itemName: `Merchant Auto-Bidder`,
             amountInRupees: 499,
@@ -97,8 +106,8 @@ export default function MicroPass() {
 
     return (
         <section className="py-12 px-4 relative z-10 w-full max-w-4xl mx-auto">
-            {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-            {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={handleFallbackSuccess} />}
+            {showAuth && <PhoneAuthModal onClose={() => { setShowAuth(false); setLoadingPass(null); }} onSuccess={handleAuthSuccess} />}
+            {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => { setFallbackAmount(null); setLoadingPass(null); }} onSuccess={handleFallbackSuccess} />}
             {activePass && !fallbackAmount && !showAuth && <SavingsPassModal amount={activePass.price * 10} service={activePass.name} onClose={() => setActivePass(null)} />}
 
             <div className="flex items-center justify-between mb-8">
@@ -106,8 +115,8 @@ export default function MicroPass() {
                     <Sparkles className="w-6 h-6 text-purple-400" />
                     <h3 className="text-xl font-black text-white">Instant Micro-Passes</h3>
                 </div>
-                <button onClick={() => requireAuth(handleMerchantBidder, 'merchant_bidder')} className="bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
-                    <Zap className="w-4 h-4" /> Merchant Auto-Bidder (₹499/mo)
+                <button onClick={() => executeWithWatchdog(handleMerchantBidder, 'merchant_bidder')} className="bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
+                    {loadingPass === 'merchant_bidder' ? <Loader2 className="w-4 h-4 animate-spin"/> : <Zap className="w-4 h-4" />} Merchant Auto-Bidder (₹499/mo)
                 </button>
             </div>
 
@@ -129,7 +138,7 @@ export default function MicroPass() {
 
             <button
                 disabled={!selectedFacility || loadingPass === selectedFacility}
-                onClick={() => requireAuth(() => handleBuyPass(activeFacilityData), activeFacilityData)}
+                onClick={() => executeWithWatchdog(() => handleBuyPass(activeFacilityData), activeFacilityData?.id || '')}
                 className={`w-full py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all ${selectedFacility ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-xl shadow-purple-600/20' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
             >
                 {loadingPass === selectedFacility ? (
