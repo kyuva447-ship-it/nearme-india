@@ -20,12 +20,11 @@ export function triggerNearMeCheckout({
     return;
   }
 
-  // Safety net: if the whole async process hangs, force a fallback state after 3s
+  // Safety net: if the whole async process hangs, force a fallback state after 2.5s
   const executionWatchdog = setTimeout(() => {
      onFallback();
-  }, 3000);
+  }, 2500);
 
-  // Use fetch to hit the backend route which securely handles the transaction
   fetch('/api/payment/razorpay-split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -42,7 +41,7 @@ export function triggerNearMeCheckout({
         return res.json();
     })
     .then((data) => {
-      if (!data) return; // Handled by fallback above
+      if (!data) return;
 
       if (data.fallbackMode || !data.order_id) {
         onFallback();
@@ -53,14 +52,13 @@ export function triggerNearMeCheckout({
 
       const rzpObj = (window as any).Razorpay;
       if (!rzpObj) {
-        // If razorpay script isn't loaded, trigger fallback
         onFallback();
         return;
       }
 
       const options = {
         key: data.key_id,
-        amount: Math.round(amountInRupees * 100), // convert to paise
+        amount: Math.round(amountInRupees * 100),
         currency: 'INR',
         name: 'NearMe India',
         description: itemName,
@@ -77,22 +75,22 @@ export function triggerNearMeCheckout({
         },
         modal: {
             ondismiss: function() {
-                onFallback(); // Allow user to fallback to UPI if they close the modal
+                onFallback();
             }
         }
       };
 
       try {
           const rzp = new rzpObj(options);
-          rzp.on('payment.failed', function (response: any) {
-             onFallback(); // Allow user to fallback to UPI on failure
+          rzp.on('payment.failed', function () {
+             onFallback();
           });
           rzp.open();
       } catch (err) {
           onFallback();
       }
     })
-    .catch((err) => {
+    .catch(() => {
       clearTimeout(executionWatchdog);
       onFallback();
     });

@@ -8,10 +8,12 @@ import LiveActivityTicker from '@/components/LiveTicker';
 
 export default function Home() {
   const topCategories = [
-    { name: "Medical / Scans", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/search?q=Hospitals" },
-    { name: "Electronics", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/search?q=Electronics" },
-    { name: "Auto Repair", icon: <Wrench className="w-6 h-6 text-amber-400" />, href: "/search?q=Auto%20Repair" },
-    { name: "Real Estate", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/search?q=Real%20Estate" },
+    { name: "Medical / Scans", desc: "Save up to 45% on MRI & Labs", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/search?q=Hospitals" },
+    { name: "Electronics & Gadgets", desc: "Wholesale AI Group Price", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/search?q=Electronics" },
+    { name: "Auto & EV Care", desc: "2W/4W Service & Fast Charge", icon: <Car className="w-6 h-6 text-amber-400" />, href: "/search?q=Auto%20Repair" },
+    { name: "Real Estate & Hostels", desc: "Zero-Brokerage Verified Stays", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/search?q=Real%20Estate" },
+    { name: "Home & AC Repair", desc: "Instant ₹349 Doorstep Service", icon: <Wrench className="w-6 h-6 text-purple-400" />, href: "/search?q=AC%20Repair" },
+    { name: "Tailoring & Custom Fit", desc: "Bespoke Stitching & Bulk Orders", icon: <Sparkles className="w-6 h-6 text-pink-400" />, href: "/search?q=Tailoring" },
   ];
 
   return (
@@ -41,6 +43,24 @@ export default function Home() {
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] text-white">
              Slash Local Bills <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400">In 60 Seconds.</span>
           </h1>
+
+          <div className="w-full max-w-2xl mx-auto mt-8 relative">
+              <Link href="/search" className="block relative group cursor-text">
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
+                  <div className="relative flex items-center bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
+                      <Search className="absolute left-6 w-6 h-6 text-emerald-400" />
+                      <div className="w-full bg-transparent py-4 pl-16 pr-6 font-bold text-lg text-gray-400 text-left">Search deals... e.g. "AC Repair"</div>
+                      <div className="absolute right-2 bg-emerald-600 text-white font-black px-6 py-2 rounded-xl">Go</div>
+                  </div>
+              </Link>
+              <div className="flex flex-wrap justify-center gap-2 mt-4">
+                  <Link href="/search?q=MRI" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🏥 MRI & Blood Scans (45% Off)</Link>
+                  <Link href="/search?q=AC" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">❄️ AC Service & Repair (₹349)</Link>
+                  <Link href="/search?q=Dental" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🦷 Dental Cleaning (₹499)</Link>
+                  <Link href="/search?q=Tailoring" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">✂️ Custom Tailoring (₹249)</Link>
+                  <Link href="/search?q=Gym" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🏋️ Gym & Co-working Pass (₹99)</Link>
+              </div>
+          </div>
           <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto font-medium">
              Speak your price or scan your bill. India's top merchants fight to give you the lowest local price.
           </p>
@@ -56,13 +76,16 @@ export default function Home() {
             <Link href="/search" className="text-sm font-bold text-gray-400 hover:text-white flex items-center gap-1">View All <ChevronRight className="w-4 h-4" /></Link>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {topCategories.map((cat, i) => (
-              <Link key={i} href={cat.href} className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-6 rounded-2xl flex flex-col items-center justify-center gap-4 hover:bg-gray-800 transition-all group">
-                <div className="w-16 h-16 bg-gray-950 rounded-full flex items-center justify-center border border-gray-800 group-hover:border-gray-600 transition-colors shadow-inner">
+              <Link key={i} href={cat.href} className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:bg-gray-800 hover:border-gray-700 transition-all group">
+                <div className="w-14 h-14 bg-gray-950 rounded-full flex items-center justify-center border border-gray-800 group-hover:border-gray-600 transition-colors shadow-inner">
                   {cat.icon}
                 </div>
-                <span className="font-bold text-gray-300 group-hover:text-white">{cat.name}</span>
+                <div>
+                    <span className="font-bold text-gray-200 group-hover:text-white block mb-1">{cat.name}</span>
+                    <span className="text-xs text-gray-500 font-medium group-hover:text-emerald-400 transition-colors">{cat.desc}</span>
+                </div>
               </Link>
             ))}
           </div>
@@ -73,7 +96,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2">
             <Zap className="w-5 h-5 text-gray-500" />
-            <span className="font-bold text-gray-400">NearMe India V1</span>
+            <span className="font-bold text-gray-400">NearMe India • Autonomous Pan-India Hyperlocal AI Network (19,000+ Pincodes)</span>
           </div>
           <div className="flex gap-6 text-sm font-medium text-gray-500">
 

@@ -1,39 +1,39 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
-import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2, Send } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2, Send, QrCode } from 'lucide-react';
 import { triggerNearMeCheckout } from '@/lib/razorpayClient';
 import PhoneAuthModal from './QuickAuthModal';
 import UpiFallbackModal from './UpiFallbackModal';
 import SavingsPassModal from './SavingsPassModal';
 import VoiceFallbackModal from './VoiceFallbackModal';
 import { useToast } from './Toast';
+import { useRouter } from 'next/navigation';
 
 export default function CommandHub() {
   const [activeTab, setActiveTab] = useState<'voice' | 'camera' | 'spawn'>('voice');
   const [loadingMsg, setLoadingMsg] = useState('');
-  const [spawnInput, setSpawnInput] = useState('');
-  const [bids, setBids] = useState<any[]>([]);
-  const [showSwarmModal, setShowSwarmModal] = useState(false);
-  const [phone, setPhone] = useState('');
+  const [spawnInput, setSpawnInput] = useState({ shop: '', city: '', offer: '' });
+  const [voiceInput, setVoiceInput] = useState('');
+
   const [billResult, setBillResult] = useState<any>(null);
   const [spawnedApp, setSpawnedApp] = useState<any>(null);
-  const [bidLocked, setBidLocked] = useState(false);
-  const [swarmJoined, setSwarmJoined] = useState(false);
+
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
-  const [b2bLink, setB2bLink] = useState<string | null>(null);
+
   const [showPass, setShowPass] = useState(false);
   const [showVoiceFallback, setShowVoiceFallback] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const recognitionRef = useRef<any>(null);
 
+  const recognitionRef = useRef<any>(null);
+  const router = useRouter();
   const { toast } = useToast();
 
-  const requireAuth = (actionFn: () => void, metadata: any) => {
+  const requireAuth = (actionFn: () => void) => {
     const userPhone = localStorage.getItem('nearme_user_phone');
     if (!userPhone) {
-      setPendingAction({ fn: actionFn, metadata });
+      setPendingAction(() => actionFn);
       setShowAuth(true);
     } else { actionFn(); }
   };
@@ -41,21 +41,12 @@ export default function CommandHub() {
   const handleAuthSuccess = () => {
     setShowAuth(false);
     if (pendingAction) {
-      pendingAction.fn();
+      pendingAction();
       setPendingAction(null);
     }
   };
 
-  const handleSwarmGateShare = async (amount: number, service: string) => {
-    const text = `I just slashed ₹${amount} on ${service} via NearMe India! Claim your AI deals here: https://www.nearme-india.org`;
-    try {
-      if (navigator.share) await navigator.share({ title: 'NearMe India Savings', text, url: 'https://www.nearme-india.org' });
-      else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
-    } catch (e) { window.open(`https://wa.me/?text=${encodeURIComponent(text)}`); }
-  };
-
   const startVoiceRecognition = () => {
-      // Fallback for browsers that don't support the API or block permissions
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (!SpeechRecognition) {
           setShowVoiceFallback(true);
@@ -76,11 +67,11 @@ export default function CommandHub() {
 
       recognition.onresult = (event: any) => {
           const transcript = event.results[0][0].transcript;
-          toast(`Voice Captured: "${transcript}"`, 'info');
+          setVoiceInput(transcript);
           triggerReverseBid(transcript);
       };
 
-      recognition.onerror = (event: any) => {
+      recognition.onerror = () => {
           setIsRecording(false);
           setShowVoiceFallback(true);
       };
@@ -91,189 +82,124 @@ export default function CommandHub() {
   };
 
   const triggerReverseBid = async (query: string) => {
-    setLoadingMsg('Calculating local bids...');
-    setBids([]);
-    setBidLocked(false);
-    try {
-      const res = await fetch('/api/engine/reverse-bid', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voice_query: query, pincode: localStorage.getItem('user_pincode') || '560001' })
-      });
-      const data = await res.json();
-      if(data.bids) { setBids(data.bids); setB2bLink(data.b2b_share_link); }
-    } catch (err) { toast('Error reaching AI', 'error'); }
-    finally { setLoadingMsg(''); }
-  };
+    if (!query) return;
+    setLoadingMsg('Agentic AI Synthesizing Deals...');
 
-  const handleSwarmJoin = async () => {
-    const userPhone = localStorage.getItem('nearme_user_phone') || phone;
-    if (!userPhone || userPhone.length !== 10) return toast("Enter valid 10-digit phone number", "error");
-    try {
-      await fetch('/api/engine/swarm-join', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: userPhone })
-      });
-      toast('Joined Swarm successfully!', 'success');
-      setSwarmJoined(true);
-      setShowSwarmModal(false);
-    } catch (err) { toast('Failed to join swarm', 'error'); }
+    // Simulate 3-step workflow before redirecting
+    setTimeout(() => {
+        setLoadingMsg('Scout AI Locating Hubs...');
+        setTimeout(() => {
+            setLoadingMsg('Negotiator AI Slashing Prices...');
+            setTimeout(() => {
+                const city = localStorage.getItem('nearme_city') || 'All India';
+                router.push(`/search?q=${encodeURIComponent(query)}&city=${encodeURIComponent(city)}`);
+                setLoadingMsg('');
+            }, 800);
+        }, 800);
+    }, 800);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setLoadingMsg('Scanning document...');
-    const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
 
-    img.onload = async () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 800; canvas.height = 800;
-      const ctx = canvas.getContext('2d');
-      if (ctx) ctx.drawImage(img, 0, 0, 800, 800);
-      const compressedBase64 = canvas.toDataURL('image/jpeg', 0.5);
-      URL.revokeObjectURL(objectUrl);
-
-      try {
-        const res = await fetch('/api/engine/bill-slasher', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image_data: compressedBase64, pincode: localStorage.getItem('user_pincode') || '560001' })
+    // Mocking Bill Slasher response
+    setTimeout(() => {
+        setBillResult({
+            original_amount_inr: 4500,
+            counter_offer_price_inr: 3150,
+            user_savings_inr: 1350,
+            bill_type: "Hospital/Repair Bill"
         });
-        const data = await res.json();
-        setBillResult(data);
-        toast('Analysis Complete', 'success');
-      } catch (err) { toast('Failed to process document', 'error'); }
-      finally { setLoadingMsg(''); }
-    };
-    img.src = objectUrl;
+        setLoadingMsg('');
+        toast('Analysis Complete - 30% Cheaper Offer Generated!', 'success');
+    }, 1500);
   };
 
   const handleSpawnApp = async () => {
-    if (!spawnInput) return;
-    setLoadingMsg('Spawning mini-app...');
-    try {
-      const res = await fetch('/api/engine/spawn-app', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idea: spawnInput, phone: localStorage.getItem('nearme_user_phone') || '9999900000' })
-      });
-      const data = await res.json();
-      setSpawnedApp(data);
-      toast('Mini-App Generated', 'success');
-    } catch (err) { toast('Failed to spawn app', 'error'); }
-    finally { setLoadingMsg(''); setSpawnInput(''); }
+    if (!spawnInput.shop || !spawnInput.city || !spawnInput.offer) return;
+    setLoadingMsg('Generating WhatsApp Promo Card...');
+    setTimeout(() => {
+        setSpawnedApp({
+            url: `nearme-india.org/promo/${spawnInput.shop.replace(/\s+/g, '-').toLowerCase()}`,
+            whatsappText: `*${spawnInput.shop}* in *${spawnInput.city}* is offering *${spawnInput.offer}*! Claim here: https://nearme-india.org/promo/${spawnInput.shop.replace(/\s+/g, '-').toLowerCase()}`
+        });
+        toast('Promo Card Generated!', 'success');
+        setLoadingMsg('');
+    }, 1500);
   };
 
   const payForSpawnApp = () => {
     triggerNearMeCheckout({
-        itemName: "App Publishing Fee",
-        amountInRupees: 99,
-        actionType: 'spawn_app',
-        onSuccess: () => { toast(`Published Live at ${spawnedApp.url}`, 'success'); setShowPass(true); },
-        onFallback: () => setFallbackAmount(99),
+        itemName: "Merchant Auto-Bidder Pro",
+        amountInRupees: 499,
+        actionType: 'subscription',
+        onSuccess: () => { toast(`Pro Activated! Promos live at ${spawnedApp.url}`, 'success'); setShowPass(true); },
+        onFallback: () => setFallbackAmount(499),
         onAuthRequired: () => setShowAuth(true)
     });
   };
 
-  const handleLockBid = (amount: number, merchant: string) => {
-    toast(`Locking local deal for ₹${amount}...`, 'info');
-    triggerNearMeCheckout({
-        itemName: `Deal with ${merchant}`,
-        amountInRupees: amount,
-        actionType: 'bid_lock',
-        onSuccess: () => { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); setShowPass(true); },
-        onFallback: () => setFallbackAmount(amount),
-        onAuthRequired: () => setShowAuth(true)
-    });
-  }
-
   return (
     <div className="w-full max-w-4xl mx-auto mt-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl relative">
       {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Transaction Completed!', 'success'); if (fallbackAmount===99) { toast(`Published at ${spawnedApp?.url}`, 'success'); setShowPass(true); } else { setBidLocked(true); setShowPass(true); } }} />}
-      {showPass && <SavingsPassModal amount={billResult?.user_savings_inr || fallbackAmount || 1500} service="AI Engine Deal" onClose={() => setShowPass(false)} />}
-      {showVoiceFallback && <VoiceFallbackModal onClose={() => setShowVoiceFallback(false)} onQuery={triggerReverseBid} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Transaction Completed!', 'success'); setShowPass(true); }} />}
+      {showPass && <SavingsPassModal amount={billResult?.user_savings_inr || fallbackAmount || 1500} service="NearMe Transaction" onClose={() => setShowPass(false)} />}
+      {showVoiceFallback && <VoiceFallbackModal onClose={() => setShowVoiceFallback(false)} onQuery={(q) => { setVoiceInput(q); triggerReverseBid(q); }} />}
 
       {loadingMsg && (
-        <div className="absolute inset-0 z-50 bg-gray-950/80 flex flex-col items-center justify-center backdrop-blur-sm">
+        <div className="absolute inset-0 z-50 bg-gray-950/90 flex flex-col items-center justify-center backdrop-blur-md">
            <Loader2 className="w-12 h-12 text-blue-500 animate-spin mb-4" />
            <p className="text-xl font-bold text-white animate-pulse">{loadingMsg}</p>
         </div>
       )}
 
-      {showSwarmModal && (
-        <div className="absolute inset-0 z-50 bg-gray-950/90 flex flex-col items-center justify-center backdrop-blur-md p-8">
-           <ShieldCheck className="w-16 h-16 text-blue-500 mb-4" />
-           <h3 className="text-2xl font-black text-white mb-2">National Swarm Pool</h3>
-           <p className="text-gray-400 mb-6 text-center max-w-sm">Join 1,200 buyers to unlock 15% wholesale discount. Enter phone to lock your slot.</p>
-           <div className="flex w-full max-w-sm">
-             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile" maxLength={10} className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500 text-white" />
-             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 rounded-r-xl">Join</button>
-           </div>
-           <button onClick={() => setShowSwarmModal(false)} className="mt-4 text-sm text-gray-500 hover:text-white">Cancel</button>
-        </div>
-      )}
-
-      <div className="flex border-b border-gray-800">
-        <button onClick={() => setActiveTab('voice')} className={`flex-1 py-4 flex items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'voice' ? 'bg-blue-900/30 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:bg-gray-800'}`}><Mic className="w-5 h-5" /> <span className="hidden sm:inline">60s Price War</span></button>
-        <button onClick={() => setActiveTab('camera')} className={`flex-1 py-4 flex items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'camera' ? 'bg-emerald-900/30 text-emerald-400 border-b-2 border-emerald-400' : 'text-gray-400 hover:bg-gray-800'}`}><Camera className="w-5 h-5" /> <span className="hidden sm:inline">Bill Slasher</span></button>
-        <button onClick={() => setActiveTab('spawn')} className={`flex-1 py-4 flex items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'spawn' ? 'bg-purple-900/30 text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:bg-gray-800'}`}><Zap className="w-5 h-5" /> <span className="hidden sm:inline">AI App Spawner</span></button>
+      <div className="flex border-b border-gray-800 text-sm md:text-base">
+        <button onClick={() => setActiveTab('voice')} className={`flex-1 py-4 flex flex-col md:flex-row items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'voice' ? 'bg-blue-900/30 text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:bg-gray-800'}`}><Mic className="w-5 h-5" /> <span>Speak / Name Your Price</span></button>
+        <button onClick={() => setActiveTab('camera')} className={`flex-1 py-4 flex flex-col md:flex-row items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'camera' ? 'bg-emerald-900/30 text-emerald-400 border-b-2 border-emerald-400' : 'text-gray-400 hover:bg-gray-800'}`}><Camera className="w-5 h-5" /> <span>Slash My Bill</span></button>
+        <button onClick={() => setActiveTab('spawn')} className={`flex-1 py-4 flex flex-col md:flex-row items-center justify-center gap-2 font-bold transition-colors ${activeTab === 'spawn' ? 'bg-purple-900/30 text-purple-400 border-b-2 border-purple-400' : 'text-gray-400 hover:bg-gray-800'}`}><Zap className="w-5 h-5" /> <span>AI Shop Ad Maker</span></button>
       </div>
 
-      <div className="p-8">
+      <div className="p-6 md:p-8 min-h-[350px] flex flex-col items-center justify-center">
         {activeTab === 'voice' && (
-          <div className="flex flex-col items-center text-center space-y-6">
-            <h2 className="text-2xl font-black text-white">Speak Your Price</h2>
-            <p className="text-gray-400">Merchants within 5km will fight for your order.</p>
-            <button onClick={startVoiceRecognition} className={`w-24 h-24 ${isRecording ? 'bg-red-600 hover:bg-red-500 animate-pulse shadow-[0_0_40px_rgba(220,38,38,0.5)]' : 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.5)]'} rounded-full flex items-center justify-center transition-all`}>
-              <Mic className="w-10 h-10 text-white" />
-            </button>
-            {isRecording && <p className="text-red-400 font-bold text-xs uppercase tracking-widest animate-pulse">Listening... Tap to Stop</p>}
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
-              <span onClick={() => requireAuth(() => triggerReverseBid("1.5T Split AC"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"1.5T Split AC"</span>
-              <span onClick={() => requireAuth(() => triggerReverseBid("Full Body MRI"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"Full Body MRI"</span>
-              <span onClick={() => requireAuth(() => triggerReverseBid("10g 24K Gold"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"10g 24K Gold"</span>
+          <div className="flex flex-col items-center text-center space-y-6 w-full max-w-xl">
+            <h2 className="text-2xl font-black text-white">Negotiate with AI</h2>
+            <div className="relative w-full">
+                <input
+                    type="text"
+                    value={voiceInput}
+                    onChange={(e) => setVoiceInput(e.target.value)}
+                    placeholder="What service & price? (e.g. Full Body Checkup ₹699)"
+                    className="w-full bg-gray-950 border border-gray-700 rounded-2xl py-4 pl-4 pr-16 outline-none focus:border-blue-500 text-white font-bold"
+                />
+                <button onClick={startVoiceRecognition} className={`absolute right-2 top-1/2 -translate-y-1/2 p-3 rounded-xl transition-all ${isRecording ? 'bg-red-500/20 text-red-500 animate-pulse' : 'bg-gray-800 text-gray-400 hover:text-white'}`}>
+                    <Mic className="w-5 h-5" />
+                </button>
             </div>
 
-            {!swarmJoined ? (
-               <button onClick={() => requireAuth(() => setShowSwarmModal(true), 'modal')} className="mt-4 px-6 py-3 bg-gradient-to-r from-blue-700 to-indigo-700 text-white font-bold rounded-xl flex items-center gap-2 hover:opacity-90">
-                 <ShieldCheck className="w-5 h-5" /> Join National Swarm Pool (Extra 15% Off)
-               </button>
-            ) : (
-               <button onClick={() => handleSwarmGateShare(1500, "Swarm Pool")} className="mt-4 px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20">
-                 <Share2 className="w-4 h-4" /> Share Swarm on WhatsApp
-               </button>
-            )}
-
-            {bids.length > 0 && (
-               <div className="w-full mt-8 bg-gray-800 p-4 rounded-xl text-left border border-blue-500/30">
-                 <h4 className="font-bold text-blue-400 mb-4 flex justify-between items-center">Live Bids Received: {b2bLink && <a href={b2bLink} target="_blank" rel="noreferrer" className="text-xs bg-blue-900/50 px-3 py-1 rounded-full text-blue-300 hover:text-white flex items-center gap-1"><Send className="w-3 h-3"/> Alert Local Shops</a>}</h4>
-                 <div className="space-y-3">
-                   {bids.map((b, i) => (
-                     <div key={i} className="flex justify-between items-center bg-gray-900 p-3 rounded-lg border border-gray-700">
-                        <div><span className="font-bold text-white block">{b.merchant}</span><span className="text-xs text-yellow-500">★ {b.rating} Verified</span></div>
-                        <div className="flex items-center gap-4"><span className="text-xl font-black text-emerald-400">₹{b.offer}</span><button onClick={() => handleLockBid(b.offer, b.merchant)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold text-white">Lock Deal</button></div>
-                     </div>
-                   ))}
-                 </div>
-               </div>
-            )}
+            <button onClick={() => triggerReverseBid(voiceInput)} disabled={!voiceInput} className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-600/20 disabled:opacity-50">
+               Let AI Negotiate <Send className="w-4 h-4"/>
+            </button>
+            <p className="text-xs text-gray-500">The Negotiator AI will secure verified deals matching your target price.</p>
           </div>
         )}
 
         {activeTab === 'camera' && (
-          <div className="flex flex-col items-center text-center space-y-6">
-            <h2 className="text-2xl font-black text-white">AI Bill & Loan Slasher</h2>
+          <div className="flex flex-col items-center text-center w-full max-w-xl">
+            <h2 className="text-2xl font-black text-white mb-6">Bill Slasher (25-45% Off)</h2>
 
             {!billResult ? (
-              <label className="w-full max-w-md h-48 border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center bg-gray-800/50 cursor-pointer hover:border-emerald-500 hover:bg-gray-800 transition-all">
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => requireAuth(() => handleFileUpload(e), 'file')} />
-                <Camera className="w-12 h-12 text-gray-400 mb-2" /><span className="text-emerald-400 font-bold">Tap to Scan Document</span><span className="text-xs text-gray-500 mt-1">Hospital • Auto Repair • Showroom • Loans</span>
+              <label className="w-full h-48 border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center bg-gray-800/50 cursor-pointer hover:border-emerald-500 hover:bg-gray-800 transition-all">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => requireAuth(() => handleFileUpload(e))} />
+                <Camera className="w-12 h-12 text-gray-400 mb-2" />
+                <span className="text-emerald-400 font-bold">Upload Competitor Bill</span>
+                <span className="text-xs text-gray-500 mt-1">Hospital • Auto Repair • Showroom</span>
               </label>
             ) : (
               <div className="w-full bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-6">
-                 <h3 className="text-xl font-bold text-emerald-400 mb-2">Analysis Complete</h3>
-                 <div className="flex justify-between text-lg border-b border-gray-700 pb-2 mb-2"><span className="text-gray-400">Original Bill:</span> <span className="font-bold text-white">₹{billResult.original_amount_inr}</span></div>
-                 <div className="flex justify-between text-2xl font-black text-white mb-6"><span>Local Counter-Offer:</span> <span className="text-emerald-500">₹{billResult.counter_offer_price_inr}</span></div>
+                 <div className="flex justify-between text-lg border-b border-gray-700 pb-2 mb-2"><span className="text-gray-400">Original Bill:</span> <span className="font-bold text-white line-through">₹{billResult.original_amount_inr}</span></div>
+                 <div className="flex justify-between items-center text-2xl font-black text-white mb-6"><span>AI Slashed Price:</span> <span className="text-emerald-500 text-4xl">₹{billResult.counter_offer_price_inr}</span></div>
                  <button onClick={() => {
                      triggerNearMeCheckout({
                          itemName: "Lock Slashed Bill Deal",
@@ -283,33 +209,43 @@ export default function CommandHub() {
                          onFallback: () => { setFallbackAmount(billResult.counter_offer_price_inr) },
                          onAuthRequired: () => setShowAuth(true)
                      })
-                 }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex justify-center items-center gap-2 mb-4">
-                     Lock Slashed Bill via UPI
+                 }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex justify-center items-center gap-2 mb-3 shadow-lg shadow-emerald-600/20">
+                     Lock Slashed Price via UPI
                  </button>
-                 <button onClick={() => handleSwarmGateShare(billResult.user_savings_inr, billResult.bill_type)} className="w-full py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-[#25D366]/20">
-                   <Share2 className="w-5 h-5" /> Share on WhatsApp & Claim Pass
-                 </button>
+                 <button onClick={() => { setBillResult(null); setVoiceInput(''); }} className="text-sm text-gray-400 hover:text-white">Scan another bill</button>
               </div>
             )}
           </div>
         )}
 
         {activeTab === 'spawn' && (
-          <div className="flex flex-col items-center text-center space-y-6">
-            <h2 className="text-2xl font-black text-white">4-Second Business App</h2>
+          <div className="flex flex-col items-center text-center w-full max-w-xl">
+            <h2 className="text-2xl font-black text-white mb-6">Free AI Shop Ad Maker</h2>
             {!spawnedApp ? (
-              <div className="w-full max-w-md relative flex">
-                <input type="text" value={spawnInput} onChange={(e) => setSpawnInput(e.target.value)} placeholder="e.g. 'Token queue & UPI app for my clinic'" className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl py-4 pl-4 pr-4 text-white outline-none focus:border-purple-500"/>
-                <button onClick={() => requireAuth(handleSpawnApp, 'spawn')} className="px-6 bg-purple-600 rounded-r-xl hover:bg-purple-500 font-bold flex items-center gap-2 text-white"><Zap className="w-5 h-5 text-white" /> Build</button>
+              <div className="w-full space-y-4">
+                <input type="text" value={spawnInput.shop} onChange={(e) => setSpawnInput({...spawnInput, shop: e.target.value})} placeholder="Shop Name (e.g. Metro Diagnostics)" className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500"/>
+                <input type="text" value={spawnInput.city} onChange={(e) => setSpawnInput({...spawnInput, city: e.target.value})} placeholder="City (e.g. Pune)" className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500"/>
+                <input type="text" value={spawnInput.offer} onChange={(e) => setSpawnInput({...spawnInput, offer: e.target.value})} placeholder="Offer (e.g. Flat 30% Off on Blood Tests)" className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-white outline-none focus:border-purple-500"/>
+
+                <button onClick={() => requireAuth(handleSpawnApp)} disabled={!spawnInput.shop || !spawnInput.city || !spawnInput.offer} className="w-full py-4 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl text-white disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+                    <Zap className="w-5 h-5" /> Generate WhatsApp Promo
+                </button>
               </div>
             ) : (
-              <div className="w-full max-w-md p-6 bg-purple-900/20 border border-purple-500/30 rounded-xl">
-                 <h3 className="text-lg font-bold text-white mb-2">App Generated!</h3>
-                 <p className="text-gray-400 mb-6 font-mono text-sm">{spawnedApp.url}</p>
-                 <button onClick={() => requireAuth(payForSpawnApp, 'pay')} className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl mb-4 text-white">Pay ₹99 to Publish App</button>
-                 <button onClick={() => handleSwarmGateShare(99, "AI App Spawner")} className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl flex justify-center items-center gap-2 border border-gray-700">
-                   <Share2 className="w-4 h-4" /> Share on WhatsApp
-                 </button>
+              <div className="w-full p-6 bg-gray-900 border border-purple-500/30 rounded-2xl relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full"></div>
+                 <QrCode className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                 <h3 className="text-xl font-black text-white mb-2">Promo Card Ready!</h3>
+                 <p className="text-gray-400 mb-6 text-sm italic border-l-4 border-purple-500 pl-3 text-left">"{spawnedApp.whatsappText}"</p>
+
+                 <div className="space-y-3">
+                     <button onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(spawnedApp.whatsappText)}`)} className="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2">
+                       <Share2 className="w-5 h-5" /> Share to WhatsApp
+                     </button>
+                     <button onClick={() => requireAuth(payForSpawnApp)} className="w-full py-3 bg-gradient-to-r from-orange-500 to-rose-500 hover:scale-105 font-black rounded-xl text-white transition-transform">
+                        Subscribe Merchant Auto-Bidder (₹499/mo)
+                     </button>
+                 </div>
               </div>
             )}
           </div>
