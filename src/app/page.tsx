@@ -1,3 +1,4 @@
+// V20 Build Stamp: 2026-11-11T05:56:23.030Z
 import Image from "next/image";
 import Link from "next/link";
 import { Search, MapPin, Store, Sparkles, TrendingUp, Zap, ChevronRight, CheckCircle2, ShieldCheck, HeartPulse, Stethoscope, Car, Wrench, Building } from "lucide-react";
