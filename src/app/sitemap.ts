@@ -3,32 +3,32 @@ import { MetadataRoute } from 'next';
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = 'https://www.nearme-india.org';
 
-  // Cross-multiplying key hubs and categories for automated Google indexing
-  const hubs = ['560001', '600001', '500001', '400001', '110001', '517325'];
-  const categories = ['mri-scan', 'ac-repair', 'dental', 'tailoring', 'hostels', 'bus-seats', 'salons', 'wholesale'];
-
-  const highIntentRoutes: string[] = [];
-
-  hubs.forEach(hub => {
-      categories.forEach(cat => {
-          highIntentRoutes.push(`/in/${hub}/${cat}`);
-      });
-  });
-
-  const sitemapRoutes = highIntentRoutes.map(route => ({
-      url: `${baseUrl}${route}`,
-      lastModified: new Date(),
-      changeFrequency: 'daily' as const,
-      priority: 0.9,
+  // Base routes
+  const routes = [
+    '',
+    '/owner',
+    '/search',
+    '/account',
+    '/dashboard'
+  ].map((route) => ({
+    url: `${baseUrl}${route}`,
+    lastModified: new Date(),
+    changeFrequency: 'daily' as const,
+    priority: route === '' ? 1 : 0.8,
   }));
 
-  return [
-    {
-      url: baseUrl,
+  // Programmatic SEO Routes (Top Bangalore Pincodes * Categories)
+  const pincodes = ['560001', '560034', '560095', '560100', '560103'];
+  const categories = ['medical', 'auto-repair', 'electronics', 'fashion', 'real-estate'];
+
+  const programmaticRoutes = pincodes.flatMap(pincode =>
+    categories.map(category => ({
+      url: `${baseUrl}/in/${pincode}/${category}`,
       lastModified: new Date(),
-      changeFrequency: 'always',
-      priority: 1,
-    },
-    ...sitemapRoutes
-  ];
+      changeFrequency: 'weekly' as const,
+      priority: 0.6,
+    }))
+  );
+
+  return [...routes, ...programmaticRoutes];
 }
