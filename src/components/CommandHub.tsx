@@ -1,8 +1,10 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2 } from 'lucide-react';
+import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2, Send } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import PhoneAuthModal from './PhoneAuthModal';
+import UpiFallbackModal from './UpiFallbackModal';
+import SavingsPassModal from './SavingsPassModal';
 import { useToast } from './Toast';
 
 export default function CommandHub() {
@@ -18,6 +20,9 @@ export default function CommandHub() {
   const [swarmJoined, setSwarmJoined] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
+  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
+  const [b2bLink, setB2bLink] = useState<string | null>(null);
+  const [showPass, setShowPass] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => { loadRazorpay(); }, []);
@@ -40,6 +45,16 @@ export default function CommandHub() {
     }
   };
 
+  const handleSwarmGateShare = async (amount: number, service: string) => {
+    const text = `I just slashed ₹${amount} on ${service} via NearMe India! Claim your AI deals here: https://www.nearme-india.org`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'NearMe India Savings', text, url: 'https://www.nearme-india.org' });
+      else window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    } catch (e) {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+  };
+
   const triggerReverseBid = async (query: string) => {
     setLoadingMsg('Calculating local bids...');
     setBids([]);
@@ -51,7 +66,10 @@ export default function CommandHub() {
         body: JSON.stringify({ voice_query: query, pincode: localStorage.getItem('user_pincode') || '560001' })
       });
       const data = await res.json();
-      if(data.bids) setBids(data.bids);
+      if(data.bids) {
+          setBids(data.bids);
+          setB2bLink(data.b2b_share_link);
+      }
       else toast('Failed to fetch bids', 'error');
     } catch (err) { toast('Error reaching bidding AI', 'error'); } finally {
       setLoadingMsg('');
@@ -70,6 +88,7 @@ export default function CommandHub() {
       toast('Joined Swarm successfully!', 'success');
       setSwarmJoined(true);
       setShowSwarmModal(false);
+      setShowPass(true);
     } catch (err) { toast('Failed to join swarm', 'error'); }
   };
 
@@ -130,7 +149,6 @@ export default function CommandHub() {
 
   const payForSpawnApp = async () => {
     const userPhone = localStorage.getItem('nearme_user_phone');
-    if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
@@ -138,24 +156,32 @@ export default function CommandHub() {
         body: JSON.stringify({ action_type: 'spawn_app', custom_amount: 99, user_phone: userPhone })
       });
       const data = await res.json();
-      if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
+
+      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+          setFallbackAmount(99);
+          return;
+      }
 
       const rzp = new (window as any).Razorpay({
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+          key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
           amount: 9900,
           currency: "INR",
           name: "NearMe India",
           description: "AI-Driven Local Commerce",
+          order_id: data.order_id,
           prefill: { contact: userPhone },
-          handler: function () { toast(`Published Live at ${spawnedApp.url}`, 'success'); }
+          handler: function () {
+              toast(`Published Live at ${spawnedApp.url}`, 'success');
+              setShowPass(true);
+          }
       });
+      rzp.on('payment.failed', function () { setFallbackAmount(99); });
       rzp.open();
-    } catch(err) { toast('Error launching checkout', 'error'); }
+    } catch(err) { setFallbackAmount(99); }
   };
 
   const handleLockBid = async (amount: number) => {
      const userPhone = localStorage.getItem('nearme_user_phone');
-     if(!process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID) return toast("Razorpay Key Missing", "error");
      toast(`Locking local deal for ₹${amount}...`, 'info');
      try {
        const res = await fetch('/api/payment/razorpay-split', {
@@ -164,24 +190,36 @@ export default function CommandHub() {
          body: JSON.stringify({ custom_amount: amount, action_type: 'bid_lock', user_phone: userPhone })
        });
        const data = await res.json();
-       if(!res.ok) return toast(data.error || 'Checkout Failed', 'error');
+
+       if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+          setFallbackAmount(amount);
+          return;
+       }
 
        const rzp = new (window as any).Razorpay({
-           key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+           key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
            amount: Math.round(amount * 100),
            currency: "INR",
            name: "NearMe India",
            description: "AI-Driven Local Commerce",
+           order_id: data.order_id,
            prefill: { contact: userPhone },
-           handler: function () { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); }
+           handler: function () {
+               toast('Deal Locked Successfully!', 'success');
+               setBidLocked(true);
+               setShowPass(true);
+           }
        });
+       rzp.on('payment.failed', function () { setFallbackAmount(amount); });
        rzp.open();
-     } catch(err) { toast('Error launching checkout', 'error'); }
+     } catch(err) { setFallbackAmount(amount); }
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl relative">
       {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Transaction Completed!', 'success'); if (fallbackAmount===99) { toast(`Published at ${spawnedApp?.url}`, 'success'); setShowPass(true); } else { setBidLocked(true); setShowPass(true); } }} />}
+      {showPass && <SavingsPassModal amount={billResult?.user_savings_inr || fallbackAmount || 1500} service="AI Engine Deal" onClose={() => setShowPass(false)} />}
 
       {loadingMsg && (
         <div className="absolute inset-0 z-50 bg-gray-950/80 flex flex-col items-center justify-center backdrop-blur-sm">
@@ -199,9 +237,9 @@ export default function CommandHub() {
              <input
                type="tel" value={phone} onChange={e => setPhone(e.target.value)}
                placeholder="10-digit mobile" maxLength={10}
-               className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500"
+               className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500 text-white"
              />
-             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 font-bold px-6 rounded-r-xl">Join</button>
+             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 rounded-r-xl">Join</button>
            </div>
            <button onClick={() => setShowSwarmModal(false)} className="mt-4 text-sm text-gray-500 hover:text-white">Cancel</button>
         </div>
@@ -238,18 +276,17 @@ export default function CommandHub() {
                  <ShieldCheck className="w-5 h-5" /> Join National Swarm Pool (Extra 15% Off)
                </button>
             ) : (
-               <a
-                 href={`https://wa.me/?text=I%20just%20joined%20the%20National%20Swarm%20Pool%20for%20a%20huge%20discount!%20Join%20me:%20https://www.nearme-india.org`}
-                 target="_blank" rel="noreferrer"
-                 className="mt-4 px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20"
-               >
+               <button onClick={() => handleSwarmGateShare(1500, "Swarm Pool")} className="mt-4 px-6 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20">
                  <Share2 className="w-4 h-4" /> Share Swarm on WhatsApp
-               </a>
+               </button>
             )}
 
             {bids.length > 0 && !bidLocked && (
                <div className="w-full mt-8 bg-gray-800 p-4 rounded-xl text-left border border-blue-500/30">
-                 <h4 className="font-bold text-blue-400 mb-4">Live Bids Received:</h4>
+                 <h4 className="font-bold text-blue-400 mb-4 flex justify-between items-center">
+                    Live Bids Received:
+                    {b2bLink && <a href={b2bLink} target="_blank" rel="noreferrer" className="text-xs bg-blue-900/50 px-3 py-1 rounded-full text-blue-300 hover:text-white flex items-center gap-1"><Send className="w-3 h-3"/> Alert Local Shops</a>}
+                 </h4>
                  <div className="space-y-3">
                    {bids.map((b, i) => (
                      <div key={i} className="flex justify-between items-center bg-gray-900 p-3 rounded-lg border border-gray-700">
@@ -259,22 +296,12 @@ export default function CommandHub() {
                         </div>
                         <div className="flex items-center gap-4">
                            <span className="text-xl font-black text-emerald-400">₹{b.offer}</span>
-                           <button onClick={() => requireAuth(() => handleLockBid(b.offer), 'lock')} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold">Lock Deal</button>
+                           <button onClick={() => requireAuth(() => handleLockBid(b.offer), 'lock')} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold text-white">Lock Deal</button>
                         </div>
                      </div>
                    ))}
                  </div>
                </div>
-            )}
-
-            {bidLocked && (
-                <a
-                   href={`https://wa.me/?text=I%20just%20forced%20local%20shops%20to%20bid%20for%20my%20order%20and%20got%20a%20deal!%20Check%20it%20out:%20https://www.nearme-india.org`}
-                   target="_blank" rel="noreferrer"
-                   className="w-full mt-8 py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-[#25D366]/20"
-                 >
-                   <Share2 className="w-5 h-5" /> Deal Locked! Share & Earn ₹100
-                 </a>
             )}
           </div>
         )}
@@ -294,18 +321,17 @@ export default function CommandHub() {
               <div className="w-full bg-emerald-900/20 border border-emerald-500/30 rounded-xl p-6">
                  <h3 className="text-xl font-bold text-emerald-400 mb-2">Analysis Complete</h3>
                  <div className="flex justify-between text-lg border-b border-gray-700 pb-2 mb-2">
-                    <span className="text-gray-400">Original Bill:</span> <span className="font-bold">₹{billResult.original_amount_inr}</span>
+                    <span className="text-gray-400">Original Bill:</span> <span className="font-bold text-white">₹{billResult.original_amount_inr}</span>
                  </div>
                  <div className="flex justify-between text-2xl font-black text-white mb-6">
                     <span>Local Counter-Offer:</span> <span className="text-emerald-500">₹{billResult.counter_offer_price_inr}</span>
                  </div>
-                 <a
-                   href={`https://wa.me/?text=I%20just%20saved%20₹${billResult.user_savings_inr}%20using%20NearMe-India%20AI!%20Check%20it%20out:%20https://www.nearme-india.org`}
-                   target="_blank" rel="noreferrer"
+                 <button
+                   onClick={() => handleSwarmGateShare(billResult.user_savings_inr, billResult.bill_type)}
                    className="w-full py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-[#25D366]/20"
                  >
-                   <Share2 className="w-5 h-5" /> Share on WhatsApp & Earn ₹100 Cashback
-                 </a>
+                   <Share2 className="w-5 h-5" /> Share on WhatsApp & Claim Pass
+                 </button>
               </div>
             )}
           </div>
@@ -321,7 +347,7 @@ export default function CommandHub() {
                   placeholder="e.g. 'Token queue & UPI app for my clinic'"
                   className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl py-4 pl-4 pr-4 text-white outline-none focus:border-purple-500"
                 />
-                <button onClick={() => requireAuth(handleSpawnApp, 'spawn')} className="px-6 bg-purple-600 rounded-r-xl hover:bg-purple-500 font-bold flex items-center gap-2">
+                <button onClick={() => requireAuth(handleSpawnApp, 'spawn')} className="px-6 bg-purple-600 rounded-r-xl hover:bg-purple-500 font-bold flex items-center gap-2 text-white">
                   <Zap className="w-5 h-5 text-white" /> Build
                 </button>
               </div>
@@ -329,16 +355,15 @@ export default function CommandHub() {
               <div className="w-full max-w-md p-6 bg-purple-900/20 border border-purple-500/30 rounded-xl">
                  <h3 className="text-lg font-bold text-white mb-2">App Generated!</h3>
                  <p className="text-gray-400 mb-6 font-mono text-sm">{spawnedApp.url}</p>
-                 <button onClick={() => requireAuth(payForSpawnApp, 'pay')} className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl mb-4">
+                 <button onClick={() => requireAuth(payForSpawnApp, 'pay')} className="w-full py-3 bg-purple-600 hover:bg-purple-500 font-bold rounded-xl mb-4 text-white">
                     Pay ₹99 to Publish App
                  </button>
-                 <a
-                   href={`https://wa.me/?text=I%20just%20built%20an%20AI%20app%20in%204%20seconds!%20https://www.nearme-india.org`}
-                   target="_blank" rel="noreferrer"
-                   className="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-[#25D366]/20"
+                 <button
+                   onClick={() => handleSwarmGateShare(99, "AI App Spawner")}
+                   className="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold rounded-xl flex justify-center items-center gap-2 border border-gray-700"
                  >
                    <Share2 className="w-4 h-4" /> Share on WhatsApp
-                 </a>
+                 </button>
               </div>
             )}
           </div>

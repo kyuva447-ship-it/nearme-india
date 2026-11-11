@@ -3,10 +3,11 @@ import TelemetryBar from '@/components/TelemetryBar';
 import CommandHub from '@/components/CommandHub';
 import LiveTicker from '@/components/LiveTicker';
 import MicroPass from '@/components/MicroPass';
+import LiveActivityTicker from '@/components/LiveActivityTicker';
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-950 font-sans text-slate-200">
+    <main className="min-h-screen bg-gray-950 font-sans text-gray-200">
       <TelemetryBar />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -17,7 +18,7 @@ export default function Home() {
               National Super-Engine
             </span>
           </h1>
-          <p className="text-lg text-slate-400 max-w-2xl mb-12">
+          <p className="text-lg text-gray-400 max-w-2xl mb-12">
             No searching. No scrolling. Speak what you need, scan bills to slash prices, and unlock real-time local discounts driven entirely by AI.
           </p>
 
@@ -27,6 +28,8 @@ export default function Home() {
         <LiveTicker />
         <MicroPass />
       </div>
+
+      <LiveActivityTicker />
     </main>
   );
 }
