@@ -6,31 +6,35 @@ import CommandHub from '@/components/CommandHub';
 import MicroPass from '@/components/MicroPass';
 
 // Simulated DB fetch
-async function getCategoryData(pincode: string, slug: string) {
-  // Mock data for programmatic SEO pages
-  const formattedSlug = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+async function getCategoryData(slugs: string[]) {
+  const city = slugs[0] || 'all-india';
+  const category = slugs[1] || 'deals';
+  const formattedCity = city.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  const formattedCategory = category.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
   return {
-    title: `Top ${formattedSlug} in ${pincode}`,
-    description: `Find the best and most affordable ${formattedSlug} services around ${pincode}. Verified local merchants with instant AI bargaining.`,
+    title: `Top ${formattedCategory} in ${formattedCity}`,
+    description: `Find the best and most affordable ${formattedCategory} services in ${formattedCity}. Verified local merchants with instant AI bargaining.`,
     merchants: [
-      { id: 1, name: `Sri Sai ${formattedSlug}`, rating: 4.8, reviews: 124, verified: true, price: '₹' },
-      { id: 2, name: `Metro ${formattedSlug} Hub`, rating: 4.5, reviews: 89, verified: true, price: '₹₹' },
-      { id: 3, name: `Global ${formattedSlug} Solutions`, rating: 4.9, reviews: 312, verified: true, price: '₹₹₹' },
-    ]
+      { id: 1, name: `Sri Sai ${formattedCategory}`, rating: 4.8, reviews: 124, verified: true, price: '₹' },
+      { id: 2, name: `Metro ${formattedCategory} Hub`, rating: 4.5, reviews: 89, verified: true, price: '₹₹' },
+      { id: 3, name: `Global ${formattedCategory} Solutions`, rating: 4.9, reviews: 312, verified: true, price: '₹₹₹' },
+    ],
+    formattedCity,
+    formattedCategory
   };
 }
 
-export async function generateMetadata({ params }: { params: { pincode: string, slug: string } }): Promise<Metadata> {
-  const data = await getCategoryData(params.pincode, params.slug);
+export async function generateMetadata({ params }: { params: { slug: string[] } }): Promise<Metadata> {
+  const data = await getCategoryData(params.slug);
   return {
     title: `${data.title} | NearMe India`,
     description: data.description,
   };
 }
 
-export default async function CategorySEOPage({ params }: { params: { pincode: string, slug: string } }) {
-  const data = await getCategoryData(params.pincode, params.slug);
-  const formattedSlug = params.slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+export default async function CatchAllSEOPage({ params }: { params: { slug: string[] } }) {
+  const data = await getCategoryData(params.slug);
 
   return (
     <div className="min-h-screen bg-gray-950 font-[family-name:var(--font-geist-sans)] text-white">
@@ -46,9 +50,8 @@ export default async function CategorySEOPage({ params }: { params: { pincode: s
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 rounded-full border border-gray-800 text-sm font-medium text-gray-300">
             <MapPin className="w-4 h-4 text-emerald-400" />
-            <span>{params.pincode}</span>
+            <span>{data.formattedCity}</span>
           </div>
-          <Link href="/owner" className="text-sm font-bold text-gray-400 hover:text-white">Merchant Login</Link>
         </div>
       </header>
 
@@ -58,9 +61,9 @@ export default async function CategorySEOPage({ params }: { params: { pincode: s
         <div className="flex items-center gap-2 text-xs font-bold text-gray-500 mb-8 uppercase tracking-wider">
           <Link href="/" className="hover:text-gray-300">Home</Link>
           <ChevronRight className="w-3 h-3" />
-          <Link href={`/in/${params.pincode}`} className="hover:text-gray-300">{params.pincode}</Link>
+          <span className="hover:text-gray-300">{data.formattedCity}</span>
           <ChevronRight className="w-3 h-3" />
-          <span className="text-emerald-400">{formattedSlug}</span>
+          <span className="text-emerald-400">{data.formattedCategory}</span>
         </div>
 
         {/* Hero */}
@@ -70,7 +73,7 @@ export default async function CategorySEOPage({ params }: { params: { pincode: s
                <TrendingUp className="w-4 h-4" /> High Demand Area
              </div>
              <h1 className="text-4xl md:text-6xl font-black tracking-tight leading-tight">
-               Best <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{formattedSlug}</span> in {params.pincode}
+               Best <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">{data.formattedCategory}</span> in {data.formattedCity}
              </h1>
              <p className="text-lg text-gray-400 max-w-xl">
                {data.description}
@@ -85,7 +88,7 @@ export default async function CategorySEOPage({ params }: { params: { pincode: s
              <div className="bg-gray-900 p-6 rounded-3xl border border-gray-800 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full"></div>
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2"><Zap className="w-5 h-5 text-blue-400"/> Instant Bargain</h3>
-                <p className="text-sm text-gray-400 mb-6">Skip the directory. Let AI find you the lowest price for {formattedSlug} in {params.pincode} right now.</p>
+                <p className="text-sm text-gray-400 mb-6">Skip the directory. Let AI find you the lowest price for {data.formattedCategory} in {data.formattedCity} right now.</p>
                 <Link href="/" className="w-full py-4 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors">
                   Open AI Engine <ArrowRight className="w-4 h-4"/>
                 </Link>
@@ -130,7 +133,6 @@ export default async function CategorySEOPage({ params }: { params: { pincode: s
         <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4 text-sm font-medium text-gray-500">
            <div className="flex gap-6">
              <Link href="/" className="hover:text-white">Home</Link>
-             <Link href="/owner" className="hover:text-white">Merchant Login</Link>
            </div>
            <p>&copy; {new Date().getFullYear()} NearMe India. All rights reserved.</p>
         </div>

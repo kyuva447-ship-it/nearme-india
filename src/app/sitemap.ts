@@ -17,13 +17,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route === '' ? 1 : 0.8,
   }));
 
-  // Programmatic SEO Routes (Top Bangalore Pincodes * Categories)
+  // Programmatic SEO Routes (Top All India Pincodes * Categories)
   const pincodes = ['560001', '560034', '560095', '560100', '560103'];
   const categories = ['medical', 'auto-repair', 'electronics', 'fashion', 'real-estate'];
 
   const programmaticRoutes = pincodes.flatMap(pincode =>
     categories.map(category => ({
-      url: `${baseUrl}/in/${pincode}/${category}`,
+      url: `${baseUrl}/services/${pincode}/${category}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.6,

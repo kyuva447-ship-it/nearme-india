@@ -16,6 +16,8 @@ export default function LiveActivityTicker() {
   useEffect(() => {
     // Generate some initial mock data for social proof
     const generateActivity = () => {
+      const cities = ['Mumbai', 'Delhi', 'Bengaluru', 'Chennai', 'Pune'];
+      const city = cities[Math.floor(Math.random() * cities.length)];
       const types = ['purchase', 'view', 'join', 'save'];
       const users = ['Rahul M.', 'Priya S.', 'Vikram K.', 'Sneha P.', 'Amit R.', 'Kavita D.', 'Suresh N.'];
       const items = ['1.5T Split AC', 'Full Body MRI', '10g 24K Gold', 'Priority Pass', 'B2B Wholesale Deal', 'Auto Repair'];
@@ -25,13 +27,13 @@ export default function LiveActivityTicker() {
       const user = users[Math.floor(Math.random() * users.length)];
 
       if (type === 'purchase') {
-          return { id: Math.random().toString(), icon: <Zap className="w-4 h-4 text-emerald-400" />, text: <><span className="font-bold text-white">{user}</span> bought <span className="text-gray-300">{items[Math.floor(Math.random()*items.length)]}</span></>, time: 'Just now', action: 'Claim Similar Deal' };
+          return { id: Math.random().toString(), icon: <Zap className="w-4 h-4 text-emerald-400" />, text: <><span className="font-bold text-white">{user}</span> ({city}) bought <span className="text-gray-300">{items[Math.floor(Math.random()*items.length)]}</span></>, time: 'Just now', action: 'Claim Similar Deal' };
       } else if (type === 'view') {
           return { id: Math.random().toString(), icon: <Eye className="w-4 h-4 text-blue-400" />, text: <><span className="font-bold text-white">42 people</span> looking at <span className="text-gray-300">{items[Math.floor(Math.random()*items.length)]}</span></>, time: 'Live', action: 'View Deal' };
       } else if (type === 'join') {
           return { id: Math.random().toString(), icon: <Star className="w-4 h-4 text-purple-400" />, text: <><span className="font-bold text-white">{user}</span> joined the <span className="text-purple-300">National Swarm Pool</span></>, time: '1m ago', action: 'Join Swarm' };
       } else {
-          return { id: Math.random().toString(), icon: <Activity className="w-4 h-4 text-yellow-400" />, text: <><span className="font-bold text-white">{user}</span> saved <span className="text-yellow-400 font-bold">₹{savings[Math.floor(Math.random()*savings.length)]}</span></>, time: '2m ago', action: 'Slash My Bill' };
+          return { id: Math.random().toString(), icon: <Activity className="w-4 h-4 text-yellow-400" />, text: <><span className="font-bold text-white">{user}</span> ({city}) saved <span className="text-yellow-400 font-bold">₹{savings[Math.floor(Math.random()*savings.length)]}</span></>, time: '2m ago', action: 'Slash My Bill' };
       }
     };
 
