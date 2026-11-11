@@ -33,6 +33,7 @@ export default function RootLayout({
               <Link href="/refund-policy" className="hover:text-white transition-colors">Cancellation & Refunds</Link>
               <Link href="/shipping-policy" className="hover:text-white transition-colors">Shipping & Delivery</Link>
               <Link href="/contact" className="hover:text-white transition-colors">Contact</Link>
+              <Link href="/owner" className="hover:text-emerald-400 transition-colors">Owner Console</Link>
             </div>
             <p className="mb-2">© {new Date().getFullYear()} NearMe India. Made in India | For Every City, Every Colony, Every Shop</p>
             <p className="text-xs text-gray-600">Operating Address: Level 1, NearMe Tech Hub, Bengaluru, Karnataka, India 560001</p>

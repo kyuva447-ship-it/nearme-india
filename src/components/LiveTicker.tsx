@@ -1,8 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Timer, ArrowDownRight, Loader2, Share2, QrCode } from 'lucide-react';
+import { Timer, ArrowDownRight, Loader2, QrCode } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
-import PhoneAuthModal from './PhoneAuthModal';
+import QuickAuthModal from './QuickAuthModal';
 import UpiFallbackModal from './UpiFallbackModal';
 import { useToast } from './Toast';
 
@@ -14,17 +14,14 @@ const mockSlots = [
 
 export default function LiveTicker() {
   const [loadingId, setLoadingId] = useState<number | null>(null);
-  const [purchasedId, setPurchasedId] = useState<number | null>(null);
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    loadRazorpay();
-  }, []);
+  useEffect(() => { loadRazorpay(); }, []);
 
-  const executeLock = async (id: number, amount: number, userPhone: string) => {
+  const executeLock = async (id: number, amount: number, userPhone: string, itemName: string) => {
     setLoadingId(id);
     try {
       const res = await fetch('/api/payment/razorpay-split', {
@@ -44,20 +41,22 @@ export default function LiveTicker() {
         amount: Math.round(amount * 100),
         currency: "INR",
         name: "NearMe India",
-        description: "AI-Driven Local Commerce",
+        description: itemName,
         order_id: data.order_id,
-        prefill: { contact: userPhone },
-        handler: function () {
-            toast('Payment successful!', 'success');
-            setPurchasedId(id);
+        prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || 'User' },
+        handler: async function (response: any) {
+            // Push instant ledger recording
+            await fetch('/api/owner/stats', {
+               method: 'POST', headers: { 'Content-Type': 'application/json' },
+               body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount, item: itemName, userPhone })
+            });
+            window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=${amount}&item=${encodeURIComponent(itemName)}`;
         },
         theme: { color: "#3B82F6" }
       };
 
       const rzp = new (window as any).Razorpay(options);
-      rzp.on('payment.failed', function () {
-         setFallbackAmount(amount);
-      });
+      rzp.on('payment.failed', function () { setFallbackAmount(amount); });
       rzp.open();
 
     } catch (err) {
@@ -68,13 +67,13 @@ export default function LiveTicker() {
     }
   };
 
-  const handleLockUPI = (id: number, amount: number) => {
+  const handleLockUPI = (id: number, amount: number, itemName: string) => {
     const userPhone = localStorage.getItem('nearme_user_phone');
     if (!userPhone) {
-      setPendingAction({ id, amount });
+      setPendingAction({ id, amount, itemName });
       setShowAuth(true);
     } else {
-      executeLock(id, amount, userPhone);
+      executeLock(id, amount, userPhone, itemName);
     }
   };
 
@@ -82,15 +81,15 @@ export default function LiveTicker() {
     setShowAuth(false);
     const userPhone = localStorage.getItem('nearme_user_phone');
     if (pendingAction && userPhone) {
-      executeLock(pendingAction.id, pendingAction.amount, userPhone);
+      executeLock(pendingAction.id, pendingAction.amount, userPhone, pendingAction.itemName);
       setPendingAction(null);
     }
   };
 
   return (
     <div className="w-full mt-16 px-4">
-      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Deal Locked!', 'success'); if(pendingAction) setPurchasedId(pendingAction.id); else setPurchasedId(1); }} />}
+      {showAuth && <QuickAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => window.location.href = `/success?amount=${fallbackAmount}&item=Live+Deal` } />}
 
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-xl font-black text-white flex items-center gap-2">
@@ -122,31 +121,14 @@ export default function LiveTicker() {
                     <ArrowDownRight className="w-5 h-5 text-emerald-500" />
                   </div>
                 </div>
-                {!purchasedId || purchasedId !== slot.id ? (
-                  <button
-                    onClick={() => handleLockUPI(slot.id, slot.current)}
-                    disabled={loadingId === slot.id}
-                    className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 text-white font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 border border-gray-700 hover:border-emerald-500"
-                  >
-                    {loadingId === slot.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lock via UPI'}
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2 bg-emerald-900/50 text-emerald-400 font-bold rounded-lg border border-emerald-500/50 px-4 py-2">
-                    <QrCode className="w-5 h-5" /> Pass Ready
-                  </div>
-                )}
+                <button
+                  onClick={() => handleLockUPI(slot.id, slot.current, slot.title)}
+                  disabled={loadingId === slot.id}
+                  className="px-4 py-2 bg-gray-800 hover:bg-emerald-600 text-white font-bold rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50 border border-gray-700 hover:border-emerald-500"
+                >
+                  {loadingId === slot.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lock via UPI'}
+                </button>
               </div>
-
-              {purchasedId === slot.id && (
-                 <a
-                   href={`https://wa.me/?text=I%20just%20saved%20₹${slot.original - slot.current}%20on%20${encodeURIComponent(slot.title)}%20via%20https://www.nearme-india.org`}
-                   target="_blank" rel="noreferrer"
-                   className="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 shadow-lg shadow-[#25D366]/20"
-                 >
-                   <Share2 className="w-4 h-4" />
-                   Share on WhatsApp & Earn ₹100 Cashback
-                 </a>
-              )}
             </div>
           </div>
         ))}
