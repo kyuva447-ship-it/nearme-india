@@ -1,9 +1,11 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Camera, Zap, ShieldCheck, Loader2, Share2, Send } from 'lucide-react';
-import { loadRazorpay } from '@/lib/razorpayClient';
-import QuickAuthModal from './QuickAuthModal';
+import { triggerNearMeCheckout } from '@/lib/razorpayClient';
+import PhoneAuthModal from './QuickAuthModal';
 import UpiFallbackModal from './UpiFallbackModal';
+import SavingsPassModal from './SavingsPassModal';
+import VoiceFallbackModal from './VoiceFallbackModal';
 import { useToast } from './Toast';
 
 export default function CommandHub() {
@@ -15,14 +17,18 @@ export default function CommandHub() {
   const [phone, setPhone] = useState('');
   const [billResult, setBillResult] = useState<any>(null);
   const [spawnedApp, setSpawnedApp] = useState<any>(null);
+  const [bidLocked, setBidLocked] = useState(false);
   const [swarmJoined, setSwarmJoined] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
   const [pendingAction, setPendingAction] = useState<any>(null);
   const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
   const [b2bLink, setB2bLink] = useState<string | null>(null);
-  const { toast } = useToast();
+  const [showPass, setShowPass] = useState(false);
+  const [showVoiceFallback, setShowVoiceFallback] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
 
-  useEffect(() => { loadRazorpay(); }, []);
+  const { toast } = useToast();
 
   const requireAuth = (actionFn: () => void, metadata: any) => {
     const userPhone = localStorage.getItem('nearme_user_phone');
@@ -48,9 +54,46 @@ export default function CommandHub() {
     } catch (e) { window.open(`https://wa.me/?text=${encodeURIComponent(text)}`); }
   };
 
+  const startVoiceRecognition = () => {
+      // Fallback for browsers that don't support the API or block permissions
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+          setShowVoiceFallback(true);
+          return;
+      }
+
+      if (isRecording) {
+          recognitionRef.current?.stop();
+          return;
+      }
+
+      const recognition = new SpeechRecognition();
+      recognitionRef.current = recognition;
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+
+      recognition.onstart = () => setIsRecording(true);
+
+      recognition.onresult = (event: any) => {
+          const transcript = event.results[0][0].transcript;
+          toast(`Voice Captured: "${transcript}"`, 'info');
+          triggerReverseBid(transcript);
+      };
+
+      recognition.onerror = (event: any) => {
+          setIsRecording(false);
+          setShowVoiceFallback(true);
+      };
+
+      recognition.onend = () => setIsRecording(false);
+
+      try { recognition.start(); } catch(e) { setShowVoiceFallback(true); }
+  };
+
   const triggerReverseBid = async (query: string) => {
     setLoadingMsg('Calculating local bids...');
     setBids([]);
+    setBidLocked(false);
     try {
       const res = await fetch('/api/engine/reverse-bid', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -120,59 +163,35 @@ export default function CommandHub() {
     finally { setLoadingMsg(''); setSpawnInput(''); }
   };
 
-  const payForSpawnApp = async () => {
-    const userPhone = localStorage.getItem('nearme_user_phone');
-    try {
-      const res = await fetch('/api/payment/razorpay-split', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action_type: 'spawn_app', custom_amount: 99, user_phone: userPhone })
-      });
-      const data = await res.json();
-      if (data.fallbackMode || !data.order_id?.startsWith('order_')) return setFallbackAmount(99);
-
-      const rzp = new (window as any).Razorpay({
-          key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-          amount: 9900, currency: "INR", name: "NearMe India", description: "App Publishing Fee",
-          order_id: data.order_id, prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
-          handler: async function (response: any) {
-              await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount: 99, item: 'App Publish', userPhone }) });
-              window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=99&item=App+Publish`;
-          }
-      });
-      rzp.on('payment.failed', function () { setFallbackAmount(99); });
-      rzp.open();
-    } catch(err) { setFallbackAmount(99); }
+  const payForSpawnApp = () => {
+    triggerNearMeCheckout({
+        itemName: "App Publishing Fee",
+        amountInRupees: 99,
+        actionType: 'spawn_app',
+        onSuccess: () => { toast(`Published Live at ${spawnedApp.url}`, 'success'); setShowPass(true); },
+        onFallback: () => setFallbackAmount(99),
+        onAuthRequired: () => setShowAuth(true)
+    });
   };
 
-  const handleLockBid = async (amount: number, merchant: string) => {
-     const userPhone = localStorage.getItem('nearme_user_phone');
-     toast(`Locking local deal for ₹${amount}...`, 'info');
-     try {
-       const res = await fetch('/api/payment/razorpay-split', {
-         method: 'POST', headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ custom_amount: amount, action_type: 'bid_lock', user_phone: userPhone })
-       });
-       const data = await res.json();
-       if (data.fallbackMode || !data.order_id?.startsWith('order_')) return setFallbackAmount(amount);
-
-       const rzp = new (window as any).Razorpay({
-           key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-           amount: Math.round(amount * 100), currency: "INR", name: "NearMe India", description: `Deal with ${merchant}`,
-           order_id: data.order_id, prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
-           handler: async function (response: any) {
-               await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount, item: merchant, userPhone }) });
-               window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=${amount}&item=${encodeURIComponent(merchant)}`;
-           }
-       });
-       rzp.on('payment.failed', function () { setFallbackAmount(amount); });
-       rzp.open();
-     } catch(err) { setFallbackAmount(amount); }
+  const handleLockBid = (amount: number, merchant: string) => {
+    toast(`Locking local deal for ₹${amount}...`, 'info');
+    triggerNearMeCheckout({
+        itemName: `Deal with ${merchant}`,
+        amountInRupees: amount,
+        actionType: 'bid_lock',
+        onSuccess: () => { toast('Deal Locked Successfully!', 'success'); setBidLocked(true); setShowPass(true); },
+        onFallback: () => setFallbackAmount(amount),
+        onAuthRequired: () => setShowAuth(true)
+    });
   }
 
   return (
     <div className="w-full max-w-4xl mx-auto mt-8 bg-gray-900/80 backdrop-blur-xl border border-gray-800 rounded-3xl overflow-hidden shadow-2xl relative">
-      {showAuth && <QuickAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => window.location.href = `/success?amount=${fallbackAmount}&item=Live+Deal` } />}
+      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { toast('Transaction Completed!', 'success'); if (fallbackAmount===99) { toast(`Published at ${spawnedApp?.url}`, 'success'); setShowPass(true); } else { setBidLocked(true); setShowPass(true); } }} />}
+      {showPass && <SavingsPassModal amount={billResult?.user_savings_inr || fallbackAmount || 1500} service="AI Engine Deal" onClose={() => setShowPass(false)} />}
+      {showVoiceFallback && <VoiceFallbackModal onClose={() => setShowVoiceFallback(false)} onQuery={triggerReverseBid} />}
 
       {loadingMsg && (
         <div className="absolute inset-0 z-50 bg-gray-950/80 flex flex-col items-center justify-center backdrop-blur-sm">
@@ -187,8 +206,8 @@ export default function CommandHub() {
            <h3 className="text-2xl font-black text-white mb-2">National Swarm Pool</h3>
            <p className="text-gray-400 mb-6 text-center max-w-sm">Join 1,200 buyers to unlock 15% wholesale discount. Enter phone to lock your slot.</p>
            <div className="flex w-full max-w-sm">
-             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile" maxLength={10} className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500" />
-             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 font-bold px-6 rounded-r-xl">Join</button>
+             <input type="tel" value={phone} onChange={e => setPhone(e.target.value)} placeholder="10-digit mobile" maxLength={10} className="flex-1 bg-gray-800 border border-gray-700 rounded-l-xl px-4 py-3 outline-none focus:border-blue-500 text-white" />
+             <button onClick={() => requireAuth(handleSwarmJoin, 'swarm')} className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 rounded-r-xl">Join</button>
            </div>
            <button onClick={() => setShowSwarmModal(false)} className="mt-4 text-sm text-gray-500 hover:text-white">Cancel</button>
         </div>
@@ -205,10 +224,14 @@ export default function CommandHub() {
           <div className="flex flex-col items-center text-center space-y-6">
             <h2 className="text-2xl font-black text-white">Speak Your Price</h2>
             <p className="text-gray-400">Merchants within 5km will fight for your order.</p>
-            <button onClick={() => requireAuth(() => triggerReverseBid("General Request"), 'bid')} className="w-24 h-24 bg-blue-600 hover:bg-blue-500 rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(37,99,235,0.5)] transition-all"><Mic className="w-10 h-10 text-white" /></button>
+            <button onClick={startVoiceRecognition} className={`w-24 h-24 ${isRecording ? 'bg-red-600 hover:bg-red-500 animate-pulse shadow-[0_0_40px_rgba(220,38,38,0.5)]' : 'bg-blue-600 hover:bg-blue-500 shadow-[0_0_40px_rgba(37,99,235,0.5)]'} rounded-full flex items-center justify-center transition-all`}>
+              <Mic className="w-10 h-10 text-white" />
+            </button>
+            {isRecording && <p className="text-red-400 font-bold text-xs uppercase tracking-widest animate-pulse">Listening... Tap to Stop</p>}
             <div className="flex flex-wrap justify-center gap-3 mt-4">
               <span onClick={() => requireAuth(() => triggerReverseBid("1.5T Split AC"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"1.5T Split AC"</span>
               <span onClick={() => requireAuth(() => triggerReverseBid("Full Body MRI"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"Full Body MRI"</span>
+              <span onClick={() => requireAuth(() => triggerReverseBid("10g 24K Gold"), 'bid')} className="px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-300 cursor-pointer hover:bg-gray-700">"10g 24K Gold"</span>
             </div>
 
             {!swarmJoined ? (
@@ -228,7 +251,7 @@ export default function CommandHub() {
                    {bids.map((b, i) => (
                      <div key={i} className="flex justify-between items-center bg-gray-900 p-3 rounded-lg border border-gray-700">
                         <div><span className="font-bold text-white block">{b.merchant}</span><span className="text-xs text-yellow-500">★ {b.rating} Verified</span></div>
-                        <div className="flex items-center gap-4"><span className="text-xl font-black text-emerald-400">₹{b.offer}</span><button onClick={() => requireAuth(() => handleLockBid(b.offer, b.merchant), 'lock')} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold text-white">Lock Deal</button></div>
+                        <div className="flex items-center gap-4"><span className="text-xl font-black text-emerald-400">₹{b.offer}</span><button onClick={() => handleLockBid(b.offer, b.merchant)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-bold text-white">Lock Deal</button></div>
                      </div>
                    ))}
                  </div>
@@ -240,6 +263,7 @@ export default function CommandHub() {
         {activeTab === 'camera' && (
           <div className="flex flex-col items-center text-center space-y-6">
             <h2 className="text-2xl font-black text-white">AI Bill & Loan Slasher</h2>
+
             {!billResult ? (
               <label className="w-full max-w-md h-48 border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center bg-gray-800/50 cursor-pointer hover:border-emerald-500 hover:bg-gray-800 transition-all">
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => requireAuth(() => handleFileUpload(e), 'file')} />
@@ -250,6 +274,18 @@ export default function CommandHub() {
                  <h3 className="text-xl font-bold text-emerald-400 mb-2">Analysis Complete</h3>
                  <div className="flex justify-between text-lg border-b border-gray-700 pb-2 mb-2"><span className="text-gray-400">Original Bill:</span> <span className="font-bold text-white">₹{billResult.original_amount_inr}</span></div>
                  <div className="flex justify-between text-2xl font-black text-white mb-6"><span>Local Counter-Offer:</span> <span className="text-emerald-500">₹{billResult.counter_offer_price_inr}</span></div>
+                 <button onClick={() => {
+                     triggerNearMeCheckout({
+                         itemName: "Lock Slashed Bill Deal",
+                         amountInRupees: billResult.counter_offer_price_inr,
+                         actionType: "live_checkout",
+                         onSuccess: () => { toast('Deal Locked Successfully!', 'success'); setShowPass(true); },
+                         onFallback: () => { setFallbackAmount(billResult.counter_offer_price_inr) },
+                         onAuthRequired: () => setShowAuth(true)
+                     })
+                 }} className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex justify-center items-center gap-2 mb-4">
+                     Lock Slashed Bill via UPI
+                 </button>
                  <button onClick={() => handleSwarmGateShare(billResult.user_savings_inr, billResult.bill_type)} className="w-full py-4 bg-[#25D366] hover:bg-[#1DA851] text-white font-bold rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-[#25D366]/20">
                    <Share2 className="w-5 h-5" /> Share on WhatsApp & Claim Pass
                  </button>

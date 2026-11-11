@@ -1,163 +1,145 @@
 'use client';
-import React, { useState, useEffect } from 'react';
-import { Wifi, Dumbbell, Coffee, BatteryCharging, CheckCircle2, QrCode } from 'lucide-react';
-import { loadRazorpay } from '@/lib/razorpayClient';
-import { useRouter } from 'next/navigation';
-import QuickAuthModal from './QuickAuthModal';
+import React, { useState } from 'react';
+import { Sparkles, Loader2, Dumbbell, Laptop, Wifi, BatteryCharging, Zap } from 'lucide-react';
+import { triggerNearMeCheckout } from '@/lib/razorpayClient';
+import PhoneAuthModal from './QuickAuthModal';
 import UpiFallbackModal from './UpiFallbackModal';
+import SavingsPassModal from './SavingsPassModal';
 import { useToast } from './Toast';
 
 export default function MicroPass() {
-  const [activeTile, setActiveTile] = useState<string>('Gyms');
-  const [showAuth, setShowAuth] = useState(false);
-  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
-  const [pendingAction, setPendingAction] = useState<'pass' | 'merchant' | null>(null);
-  const router = useRouter();
-  const { toast } = useToast();
+    const [loadingPass, setLoadingPass] = useState<string | null>(null);
+    const [showAuth, setShowAuth] = useState(false);
+    const [pendingAction, setPendingAction] = useState<any>(null);
+    const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
+    const [activePass, setActivePass] = useState<any>(null);
+    const [selectedFacility, setSelectedFacility] = useState<string | null>(null);
+    const { toast } = useToast();
 
-  useEffect(() => { loadRazorpay(); }, []);
+    const facilities = [
+        { id: 'gym', name: 'Premium Gym Access', price: 99, icon: <Dumbbell className="w-5 h-5" />, color: 'blue' },
+        { id: 'coworking', name: 'Co-working Day Pass', price: 149, icon: <Laptop className="w-5 h-5" />, color: 'purple' },
+        { id: 'wifi', name: 'High-Speed Wi-Fi Zone', price: 49, icon: <Wifi className="w-5 h-5" />, color: 'emerald' },
+        { id: 'ev', name: 'EV Fast Charging', price: 199, icon: <BatteryCharging className="w-5 h-5" />, color: 'yellow' },
+    ];
 
-  const getTileDetails = () => {
-    switch (activeTile) {
-      case 'Gyms': return { amount: 50, label: 'Gyms ₹50 Deposit Pass' };
-      case 'Co-working': return { amount: 99, label: 'Co-working ₹99 Day Pass' };
-      case 'Premium WiFi': return { amount: 25, label: 'WiFi ₹25 Pass' };
-      case 'EV Charging': return { amount: 100, label: 'EV Charging ₹100 Slot' };
-      default: return { amount: 50, label: 'Deposit Pass' };
-    }
-  };
-
-  const executePass = async (userPhone: string) => {
-    const { amount, label } = getTileDetails();
-    try {
-      const res = await fetch('/api/payment/razorpay-split', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ custom_amount: amount, action_type: 'live_checkout', user_phone: userPhone })
-      });
-      const data = await res.json();
-
-      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
-         setFallbackAmount(amount);
-         return;
-      }
-
-      const rzp = new (window as any).Razorpay({
-        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: Math.round(amount * 100),
-        currency: "INR",
-        name: "NearMe India",
-        description: label,
-        order_id: data.order_id,
-        prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
-        handler: async function (response: any) {
-            await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount, item: label, userPhone }) });
-            window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=${amount}&item=${encodeURIComponent(label)}`;
+    const requireAuth = (actionFn: () => void, pass: any) => {
+        const userPhone = localStorage.getItem('nearme_user_phone');
+        if (!userPhone) {
+            setPendingAction({ fn: actionFn, pass });
+            setShowAuth(true);
+        } else {
+            actionFn();
         }
-      });
-      rzp.on('payment.failed', function () { setFallbackAmount(amount); });
-      rzp.open();
+    };
 
-    } catch (err) { setFallbackAmount(amount); }
-  };
-
-  const executeMerchant = async (userPhone: string) => {
-    try {
-      const res = await fetch('/api/payment/razorpay-split', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ custom_amount: 499, action_type: 'merchant_sub', user_phone: userPhone })
-      });
-      const data = await res.json();
-
-      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
-         setFallbackAmount(499);
-         return;
-      }
-
-      const rzp = new (window as any).Razorpay({
-        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: 49900,
-        currency: "INR",
-        name: "NearMe India",
-        description: "Merchant Auto-Bidder Pro",
-        order_id: data.order_id,
-        prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
-        handler: async function (response: any) {
-            await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount: 499, item: "Auto-Bidder Pro", userPhone }) });
-            router.push('/dashboard');
+    const handleAuthSuccess = () => {
+        setShowAuth(false);
+        if (pendingAction) {
+            pendingAction.fn();
+            setPendingAction(null);
         }
-      });
-      rzp.on('payment.failed', function () { setFallbackAmount(499); });
-      rzp.open();
+    };
 
-    } catch (err) { setFallbackAmount(499); }
-  };
+    const handleBuyPass = (facility: any) => {
+        if (!facility) return;
+        setLoadingPass(facility.id);
 
-  const handleAction = (action: 'pass' | 'merchant') => {
-    const userPhone = localStorage.getItem('nearme_user_phone');
-    if (!userPhone) {
-      setPendingAction(action);
-      setShowAuth(true);
-    } else {
-      action === 'pass' ? executePass(userPhone) : executeMerchant(userPhone);
-    }
-  };
+        triggerNearMeCheckout({
+            itemName: `${facility.name} Pass`,
+            amountInRupees: facility.price,
+            actionType: 'micro_pass',
+            onSuccess: () => {
+                setActivePass(facility);
+                toast(`Unlocked ${facility.name}!`, 'success');
+                setLoadingPass(null);
+            },
+            onFallback: () => {
+                setLoadingPass(null);
+                setFallbackAmount(facility.price);
+                setActivePass(facility);
+            },
+            onAuthRequired: () => {
+                setLoadingPass(null);
+                setShowAuth(true);
+            }
+        });
+    };
 
-  const handleAuthSuccess = () => {
-    setShowAuth(false);
-    const userPhone = localStorage.getItem('nearme_user_phone');
-    if (pendingAction && userPhone) {
-      pendingAction === 'pass' ? executePass(userPhone) : executeMerchant(userPhone);
-      setPendingAction(null);
-    }
-  };
+    const handleMerchantBidder = () => {
+        setLoadingPass('merchant_bidder');
 
-  const tiles = [
-    { name: 'Gyms', icon: <Dumbbell className="w-6 h-6 text-emerald-400 mb-2" /> },
-    { name: 'Co-working', icon: <Coffee className="w-6 h-6 text-amber-400 mb-2" /> },
-    { name: 'Premium WiFi', icon: <Wifi className="w-6 h-6 text-blue-400 mb-2" /> },
-    { name: 'EV Charging', icon: <BatteryCharging className="w-6 h-6 text-green-400 mb-2" /> }
-  ];
+        triggerNearMeCheckout({
+            itemName: `Merchant Auto-Bidder`,
+            amountInRupees: 499,
+            actionType: 'subscription',
+            onSuccess: () => {
+                toast(`Auto-Bidder Activated!`, 'success');
+                setLoadingPass(null);
+            },
+            onFallback: () => {
+                setLoadingPass(null);
+                setFallbackAmount(499);
+            },
+            onAuthRequired: () => {
+                setLoadingPass(null);
+                setShowAuth(true);
+            }
+        });
+    };
 
-  return (
-    <div className="w-full mt-16 px-4 pb-16">
-      {showAuth && <QuickAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
-      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { if (fallbackAmount===499) router.push('/dashboard'); else window.location.href = `/success?amount=${fallbackAmount}&item=MicroPass`; }} />}
+    const handleFallbackSuccess = () => {
+        toast(`Transaction complete!`, 'success');
+        setFallbackAmount(null);
+    };
 
-      <div className="bg-gradient-to-r from-gray-900 to-indigo-950 border border-indigo-500/30 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
-        <div className="absolute top-0 right-0 p-8 opacity-5">
-          <Wifi className="w-48 h-48" />
-        </div>
+    const activeFacilityData = facilities.find(f => f.id === selectedFacility);
 
-        <div className="relative z-10 max-w-2xl">
-          <h2 className="text-3xl font-black text-white mb-2">Ambient Micro-Pass</h2>
-          <p className="text-indigo-200 mb-8">Access premium local facilities via UPI Autopay. No subscriptions required.</p>
+    return (
+        <section className="py-12 px-4 relative z-10 w-full max-w-4xl mx-auto">
+            {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+            {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={handleFallbackSuccess} />}
+            {activePass && !fallbackAmount && !showAuth && <SavingsPassModal amount={activePass.price * 10} service={activePass.name} onClose={() => setActivePass(null)} />}
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-            {tiles.map((tile) => (
-              <div
-                key={tile.name}
-                onClick={() => setActiveTile(tile.name)}
-                className={`flex flex-col items-center rounded-xl p-4 cursor-pointer transition-all border ${activeTile === tile.name ? 'bg-indigo-900/50 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.3)] scale-105' : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-800'}`}
-              >
-                {tile.icon}
-                <span className="text-sm font-bold text-white">{tile.name}</span>
-              </div>
-            ))}
-          </div>
+            <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-3">
+                    <Sparkles className="w-6 h-6 text-purple-400" />
+                    <h3 className="text-xl font-black text-white">Instant Micro-Passes</h3>
+                </div>
+                <button onClick={() => requireAuth(handleMerchantBidder, 'merchant_bidder')} className="bg-gradient-to-r from-orange-500 to-rose-500 text-white text-xs font-bold px-4 py-2 rounded-full flex items-center gap-2 hover:scale-105 transition-transform shadow-lg shadow-orange-500/20">
+                    <Zap className="w-4 h-4" /> Merchant Auto-Bidder (₹499/mo)
+                </button>
+            </div>
 
-          <div className="flex flex-col sm:flex-row gap-4">
-             <button onClick={() => handleAction('pass')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
-               <CheckCircle2 className="w-5 h-5" />
-               Activate {getTileDetails().label}
-             </button>
-             <button onClick={() => handleAction('merchant')} className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors border border-gray-700 hover:border-gray-500">
-               Merchant Auto-Bidder (₹499/mo)
-             </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                {facilities.map(facility => (
+                    <div
+                        key={facility.id}
+                        onClick={() => setSelectedFacility(facility.id)}
+                        className={`bg-gray-900 border-2 rounded-2xl p-4 cursor-pointer transition-all flex flex-col items-center justify-center text-center gap-3 ${selectedFacility === facility.id ? 'border-purple-500 bg-purple-900/20 shadow-lg shadow-purple-500/10 scale-105' : 'border-gray-800 hover:border-gray-700 hover:bg-gray-800'}`}
+                    >
+                        <div className={`p-3 rounded-full bg-${facility.color}-500/10 text-${facility.color}-400`}>
+                            {facility.icon}
+                        </div>
+                        <h4 className="font-bold text-sm text-gray-200">{facility.name}</h4>
+                        <span className="text-lg font-black text-white">₹{facility.price}</span>
+                    </div>
+                ))}
+            </div>
+
+            <button
+                disabled={!selectedFacility || loadingPass === selectedFacility}
+                onClick={() => requireAuth(() => handleBuyPass(activeFacilityData), activeFacilityData)}
+                className={`w-full py-4 rounded-xl font-black text-lg flex items-center justify-center gap-2 transition-all ${selectedFacility ? 'bg-purple-600 hover:bg-purple-500 text-white shadow-xl shadow-purple-600/20' : 'bg-gray-800 text-gray-500 cursor-not-allowed'}`}
+            >
+                {loadingPass === selectedFacility ? (
+                    <><Loader2 className="w-6 h-6 animate-spin"/> Processing...</>
+                ) : selectedFacility ? (
+                    <>Unlock {activeFacilityData?.name} for ₹{activeFacilityData?.price}</>
+                ) : (
+                    <>Select a Facility Pass Above</>
+                )}
+            </button>
+        </section>
+    );
 }

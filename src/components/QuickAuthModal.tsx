@@ -55,7 +55,7 @@ export default function QuickAuthModal({ onClose, onSuccess }: { onClose: () => 
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-gray-950/90 flex items-center justify-center p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[100] bg-gray-950/90 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in zoom-in">
       <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-sm w-full relative shadow-2xl">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
         <Smartphone className="w-12 h-12 text-blue-500 mb-4 mx-auto" />
