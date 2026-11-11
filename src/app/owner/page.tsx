@@ -1,15 +1,19 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Store, Zap, Activity, Link as LinkIcon, DollarSign, Settings, Users, AlertTriangle } from 'lucide-react';
+import { Store, Zap, Activity, Link as LinkIcon, DollarSign, Settings, Users, AlertTriangle, Lock } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
 export default function OwnerPortal() {
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cronRunning, setCronRunning] = useState(false);
+  const [pin, setPin] = useState('');
+  const [authenticated, setAuthenticated] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!authenticated) return;
+
     fetch('/api/owner/stats')
       .then(r => r.json())
       .then(d => { setStats(d); setLoading(false); })
@@ -22,7 +26,7 @@ export default function OwnerPortal() {
          });
          setLoading(false);
       });
-  }, []);
+  }, [authenticated]);
 
   const triggerCron = async () => {
     setCronRunning(true);
@@ -36,6 +40,47 @@ export default function OwnerPortal() {
        setCronRunning(false);
     }
   };
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pin === '7485') {
+      setAuthenticated(true);
+      toast('Access Granted', 'success');
+    } else {
+      toast('Invalid PIN', 'error');
+      setPin('');
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 font-[family-name:var(--font-geist-sans)] text-white">
+        <div className="w-full max-w-sm bg-gray-900 border border-gray-800 rounded-2xl p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-rose-500"></div>
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/30">
+              <Lock className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-black text-center mb-2">Restricted Area</h2>
+          <p className="text-gray-400 text-center mb-8 text-sm">Enter Admin PIN to access Owner Console.</p>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              placeholder="Enter PIN"
+              className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-3 text-center text-xl tracking-widest text-white focus:outline-none focus:border-red-500 transition-colors"
+              autoFocus
+            />
+            <button type="submit" className="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-colors">
+              Unlock Console
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white font-[family-name:var(--font-geist-sans)]">
@@ -76,7 +121,10 @@ export default function OwnerPortal() {
         </div>
 
         <div className="bg-gray-900 rounded-2xl border border-gray-800 overflow-hidden">
-           <div className="p-6 border-b border-gray-800"><h2 className="text-xl font-bold flex items-center gap-2"><LinkIcon className="w-5 h-5 text-gray-400"/> Recent Razorpay Sync</h2></div>
+           <div className="p-6 border-b border-gray-800 flex justify-between items-center">
+              <h2 className="text-xl font-bold flex items-center gap-2"><LinkIcon className="w-5 h-5 text-gray-400"/> Recent Razorpay Sync</h2>
+              <button className="text-sm font-bold text-gray-400 hover:text-white px-3 py-1.5 border border-gray-700 rounded-lg flex items-center gap-2">CSV Export</button>
+           </div>
            <div className="p-6">
               {loading ? (
                  <div className="text-center text-gray-500 py-8">Syncing ledger...</div>

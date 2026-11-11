@@ -7,10 +7,10 @@ import LiveActivityTicker from '@/components/LiveTicker';
 
 export default function Home() {
   const topCategories = [
-    { name: "Medical / Scans", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/services/bangalore/medical" },
-    { name: "Electronics", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/services/bangalore/electronics" },
-    { name: "Auto Repair", icon: <Wrench className="w-6 h-6 text-amber-400" />, href: "/services/bangalore/auto" },
-    { name: "Real Estate", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/services/bangalore/real-estate" },
+    { name: "Medical / Scans", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/services/all-india/medical" },
+    { name: "Electronics", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/services/all-india/electronics" },
+    { name: "Auto Repair", icon: <Wrench className="w-6 h-6 text-amber-400" />, href: "/services/all-india/auto" },
+    { name: "Real Estate", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/services/all-india/real-estate" },
   ];
 
   return (
@@ -26,13 +26,8 @@ export default function Home() {
           <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">NearMe<span className="text-blue-500">India</span></span>
         </Link>
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-gray-900/80 rounded-full border border-gray-800 text-sm font-medium text-gray-300 backdrop-blur-md">
-            <MapPin className="w-4 h-4 text-emerald-400" />
-            <span>Bangalore, KA</span>
-          </div>
-          <Link href="/owner" className="px-6 py-2.5 bg-white text-gray-950 text-sm font-bold rounded-full hover:bg-gray-100 transition-colors shadow-lg shadow-white/10 flex items-center gap-2">
-            <Store className="w-4 h-4" /> <span className="hidden sm:inline">Merchant Login</span>
-          </Link>
+
+
         </div>
       </header>
 
@@ -40,13 +35,13 @@ export default function Home() {
 
         <div className="max-w-4xl w-full text-center space-y-6 mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-400 text-sm font-bold mb-4 backdrop-blur-sm">
-            <Sparkles className="w-4 h-4" /> V1 Bangalore Live
+            <Sparkles className="w-4 h-4" /> Pan-India Live
           </div>
           <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] text-white">
              Slash Local Bills <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400">In 60 Seconds.</span>
           </h1>
           <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto font-medium">
-             Speak your price or scan your bill. Bangalore's top merchants fight to give you the lowest local price.
+             Speak your price or scan your bill. India's top merchants fight to give you the lowest local price.
           </p>
         </div>
 
@@ -80,7 +75,7 @@ export default function Home() {
             <span className="font-bold text-gray-400">NearMe India V1</span>
           </div>
           <div className="flex gap-6 text-sm font-medium text-gray-500">
-             <Link href="/owner" className="hover:text-white">Merchant Login</Link>
+
              <Link href="/search" className="hover:text-white">City Directory</Link>
              <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
              <Link href="/terms" className="hover:text-white">Terms of Service</Link>
