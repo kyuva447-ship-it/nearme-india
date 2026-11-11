@@ -1,23 +1,25 @@
-import React from 'react';
-import { FileText } from 'lucide-react';
+import Link from 'next/link';
 
-export default function TermsPage() {
-  return (
-    <div className="min-h-screen bg-gray-950 text-white p-8 sm:p-16 font-sans">
-      <div className="max-w-3xl mx-auto space-y-8 bg-gray-900 p-8 sm:p-12 rounded-3xl border border-gray-800 shadow-2xl">
-        <div className="flex items-center gap-4 border-b border-gray-800 pb-6">
-          <FileText className="w-10 h-10 text-purple-500" />
-          <h1 className="text-3xl font-black">Terms of Service</h1>
+export default function Terms() {
+    return (
+        <div className="min-h-screen bg-gray-950 font-[family-name:var(--font-geist-sans)] text-white p-8">
+            <div className="max-w-3xl mx-auto bg-gray-900 border border-gray-800 rounded-3xl p-8 shadow-2xl">
+                <h1 className="text-3xl font-black mb-6">Terms of Service</h1>
+                <p className="text-gray-400 mb-4">Last updated: {new Date().toLocaleDateString()}</p>
+                <div className="space-y-6 text-gray-300">
+                    <section>
+                        <h2 className="text-xl font-bold text-white mb-2">1. Autonomous AI Engine</h2>
+                        <p>NearMe India utilizes an autonomous Agentic AI to scout and negotiate deals. Prices displayed are locked-in offers from verified local merchants.</p>
+                    </section>
+                    <section>
+                        <h2 className="text-xl font-bold text-white mb-2">2. Payment & Settlements</h2>
+                        <p>All payments are securely processed via Razorpay. B2B payouts follow our T+1 automated settlement cycle via the /owner cron job limits.</p>
+                    </section>
+                </div>
+                <div className="mt-8 pt-8 border-t border-gray-800">
+                    <Link href="/" className="text-blue-400 hover:text-blue-300 font-bold">Return Home</Link>
+                </div>
+            </div>
         </div>
-        <div className="prose prose-invert prose-lg text-gray-300">
-          <p>
-            <strong>NearMe-India Terms of Service.</strong> By using our AI routing platform, you agree to our automated bidding rules.
-          </p>
-          <p>
-            The platform success fee (2% to 20%) is automatically split via Razorpay Route. All 60-second reverse-bids and AI App spawns are automated and final.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }

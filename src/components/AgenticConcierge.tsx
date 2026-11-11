@@ -22,9 +22,9 @@ export default function AgenticConcierge() {
         return (
             <button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white shadow-2xl hover:scale-110 transition-transform z-50 animate-bounce"
+                className="fixed bottom-6 right-6 px-6 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center gap-2 text-white shadow-2xl hover:scale-110 transition-transform z-50 animate-bounce"
             >
-                <Bot className="w-6 h-6" />
+                <Bot className="w-5 h-5" /> <span className="font-bold text-sm tracking-wide">Ask AI Negotiator</span>
             </button>
         );
     }
@@ -48,6 +48,13 @@ export default function AgenticConcierge() {
                 <div className="bg-gray-800 p-3 rounded-xl rounded-tl-none text-sm text-gray-300 mb-4 shadow-sm border border-gray-700">
                     Hi! I'm the NearMe 4-Agent AI. Tell me what service you need and I'll find you the lowest negotiated price in your city right now.
                 </div>
+            </div>
+
+            <div className="p-3 bg-gray-900 flex flex-wrap gap-2 border-t border-gray-800">
+                <button onClick={() => { setInput('Slash Hospital Bill'); }} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700">Slash Hospital Bill</button>
+                <button onClick={() => { setInput('₹99 Gym Pass'); }} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700">₹99 Gym Pass</button>
+                <button onClick={() => { setInput('Make Free Shop Ad'); }} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700">Make Free Shop Ad</button>
+                <button onClick={() => { setInput('AC Repair Near Me'); }} className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700">AC Repair Near Me</button>
             </div>
 
             <form onSubmit={handleSubmit} className="p-3 border-t border-gray-800 bg-gray-900 flex gap-2">
