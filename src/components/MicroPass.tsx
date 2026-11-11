@@ -3,47 +3,62 @@ import React, { useState, useEffect } from 'react';
 import { Wifi, Dumbbell, Coffee, BatteryCharging, CheckCircle2, QrCode } from 'lucide-react';
 import { loadRazorpay } from '@/lib/razorpayClient';
 import { useRouter } from 'next/navigation';
-import PhoneAuthModal from './PhoneAuthModal';
+import QuickAuthModal from './QuickAuthModal';
+import UpiFallbackModal from './UpiFallbackModal';
 import { useToast } from './Toast';
 
 export default function MicroPass() {
   const [activeTile, setActiveTile] = useState<string>('Gyms');
-  const [isPassActive, setIsPassActive] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [fallbackAmount, setFallbackAmount] = useState<number | null>(null);
   const [pendingAction, setPendingAction] = useState<'pass' | 'merchant' | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
   useEffect(() => { loadRazorpay(); }, []);
 
+  const getTileDetails = () => {
+    switch (activeTile) {
+      case 'Gyms': return { amount: 50, label: 'Gyms ₹50 Deposit Pass' };
+      case 'Co-working': return { amount: 99, label: 'Co-working ₹99 Day Pass' };
+      case 'Premium WiFi': return { amount: 25, label: 'WiFi ₹25 Pass' };
+      case 'EV Charging': return { amount: 100, label: 'EV Charging ₹100 Slot' };
+      default: return { amount: 50, label: 'Deposit Pass' };
+    }
+  };
+
   const executePass = async (userPhone: string) => {
+    const { amount, label } = getTileDetails();
     try {
       const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ custom_amount: 50, action_type: 'live_checkout', user_phone: userPhone })
+        body: JSON.stringify({ custom_amount: amount, action_type: 'live_checkout', user_phone: userPhone })
       });
       const data = await res.json();
-      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
-      if (data.demo_mode) {
-         setIsPassActive(true);
-      } else {
-         const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: 5000,
-            currency: "INR",
-            name: "NearMe India",
-        description: "AI-Driven Local Commerce",
-            prefill: { contact: userPhone },
-            handler: function () {
-                setIsPassActive(true);
-                toast('Pass Activated Successfully!', 'success');
-            }
-         });
-         rzp.open();
+      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+         setFallbackAmount(amount);
+         return;
       }
-    } catch (err) { toast('Error launching checkout', 'error'); }
+
+      const rzp = new (window as any).Razorpay({
+        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        name: "NearMe India",
+        description: label,
+        order_id: data.order_id,
+        prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
+        handler: async function (response: any) {
+            await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount, item: label, userPhone }) });
+            window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=${amount}&item=${encodeURIComponent(label)}`;
+        }
+      });
+      rzp.on('payment.failed', function () { setFallbackAmount(amount); });
+      rzp.open();
+
+    } catch (err) { setFallbackAmount(amount); }
   };
 
   const executeMerchant = async (userPhone: string) => {
@@ -54,26 +69,29 @@ export default function MicroPass() {
         body: JSON.stringify({ custom_amount: 499, action_type: 'merchant_sub', user_phone: userPhone })
       });
       const data = await res.json();
-      if(!res.ok) return toast(data.error || 'Failed to initialize payment', 'error');
 
-      if (data.demo_mode) {
-         router.push('/dashboard');
-      } else {
-         const rzp = new (window as any).Razorpay({
-            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-            amount: 49900,
-            currency: "INR",
-            name: "NearMe India",
-        description: "AI-Driven Local Commerce",
-            prefill: { contact: userPhone },
-            handler: function () {
-                toast("SaaS Auto-Bidder Activated!", 'success');
-                router.push('/dashboard');
-            }
-         });
-         rzp.open();
+      if (data.fallbackMode || !data.order_id?.startsWith('order_')) {
+         setFallbackAmount(499);
+         return;
       }
-    } catch (err) { toast('Error launching checkout', 'error'); }
+
+      const rzp = new (window as any).Razorpay({
+        key: data.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        amount: 49900,
+        currency: "INR",
+        name: "NearMe India",
+        description: "Merchant Auto-Bidder Pro",
+        order_id: data.order_id,
+        prefill: { contact: userPhone, name: localStorage.getItem('nearme_user_name') || '' },
+        handler: async function (response: any) {
+            await fetch('/api/owner/stats', { method: 'POST', body: JSON.stringify({ paymentId: response.razorpay_payment_id, amount: 499, item: "Auto-Bidder Pro", userPhone }) });
+            router.push('/dashboard');
+        }
+      });
+      rzp.on('payment.failed', function () { setFallbackAmount(499); });
+      rzp.open();
+
+    } catch (err) { setFallbackAmount(499); }
   };
 
   const handleAction = (action: 'pass' | 'merchant') => {
@@ -104,7 +122,9 @@ export default function MicroPass() {
 
   return (
     <div className="w-full mt-16 px-4 pb-16">
-      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {showAuth && <QuickAuthModal onClose={() => setShowAuth(false)} onSuccess={handleAuthSuccess} />}
+      {fallbackAmount && <UpiFallbackModal amount={fallbackAmount} onClose={() => setFallbackAmount(null)} onSuccess={() => { if (fallbackAmount===499) router.push('/dashboard'); else window.location.href = `/success?amount=${fallbackAmount}&item=MicroPass`; }} />}
+
       <div className="bg-gradient-to-r from-gray-900 to-indigo-950 border border-indigo-500/30 rounded-3xl p-8 relative overflow-hidden shadow-2xl">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Wifi className="w-48 h-48" />
@@ -112,7 +132,7 @@ export default function MicroPass() {
 
         <div className="relative z-10 max-w-2xl">
           <h2 className="text-3xl font-black text-white mb-2">Ambient Micro-Pass</h2>
-          <p className="text-indigo-200 mb-8">Access premium local facilities at ₹0.25/minute via UPI Autopay. No subscriptions required.</p>
+          <p className="text-indigo-200 mb-8">Access premium local facilities via UPI Autopay. No subscriptions required.</p>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
             {tiles.map((tile) => (
@@ -127,25 +147,15 @@ export default function MicroPass() {
             ))}
           </div>
 
-          {!isPassActive ? (
-            <div className="flex flex-col sm:flex-row gap-4">
-               <button onClick={() => handleAction('pass')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
-                 <CheckCircle2 className="w-5 h-5" />
-                 Activate ₹0.25/min Pass
-               </button>
-               <button onClick={() => handleAction('merchant')} className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors border border-gray-700 hover:border-gray-500">
-                 Merchant Auto-Bidder (₹499/mo)
-               </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-6 p-4 bg-indigo-950/50 border border-indigo-500/50 rounded-xl">
-               <div className="p-2 bg-white rounded-lg"><QrCode className="w-16 h-16 text-black" /></div>
-               <div>
-                  <h3 className="text-emerald-400 font-bold text-lg">Active Session</h3>
-                  <p className="text-sm text-indigo-200">Tap phone on {activeTile} terminal to enter.</p>
-               </div>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row gap-4">
+             <button onClick={() => handleAction('pass')} className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-black rounded-xl flex justify-center items-center gap-2 transition-colors shadow-lg shadow-indigo-600/20">
+               <CheckCircle2 className="w-5 h-5" />
+               Activate {getTileDetails().label}
+             </button>
+             <button onClick={() => handleAction('merchant')} className="px-8 py-4 bg-gray-800 hover:bg-gray-700 text-white font-bold rounded-xl transition-colors border border-gray-700 hover:border-gray-500">
+               Merchant Auto-Bidder (₹499/mo)
+             </button>
+          </div>
         </div>
       </div>
     </div>

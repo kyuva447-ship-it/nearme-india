@@ -3,8 +3,11 @@ import React, { useState } from 'react';
 import { Smartphone, CheckCircle2, Loader2 } from 'lucide-react';
 import { useToast } from './Toast';
 
-export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
+export default function QuickAuthModal({ onClose, onSuccess }: { onClose: () => void, onSuccess: () => void }) {
+  const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+
   const [otp, setOtp] = useState('');
   const [sent, setSent] = useState(false);
   const [hint, setHint] = useState('');
@@ -12,7 +15,7 @@ export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => 
   const { toast } = useToast();
 
   const handleSend = async () => {
-    if (phone.length !== 10) return toast("Enter valid 10-digit number", "error");
+    if (!name || phone.length !== 10 || !email) return toast("Enter valid Name, 10-digit Mobile, and Email", "error");
     setLoading(true);
     try {
         const res = await fetch('/api/auth/send-otp', {
@@ -21,17 +24,14 @@ export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => 
         });
         const data = await res.json();
         if (data.status === 'sent') {
-            setHint(data.hint); // fallback for zero-touch demo
+            setHint(data.hint);
             setSent(true);
             toast("OTP Sent to Mobile", "success");
         } else {
             toast("Failed to send OTP", "error");
         }
-    } catch (e) {
-        toast("Server Error", "error");
-    } finally {
-        setLoading(false);
-    }
+    } catch (e) { toast("Server Error", "error"); }
+    finally { setLoading(false); }
   };
 
   const handleVerify = async () => {
@@ -44,17 +44,14 @@ export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => 
         });
         if (res.ok) {
             localStorage.setItem('nearme_user_phone', phone);
+            localStorage.setItem('nearme_user_name', name);
+            localStorage.setItem('nearme_user_email', email);
             window.dispatchEvent(new Event('auth_change'));
             toast("Logged in securely!", "success");
             onSuccess();
-        } else {
-            toast("Invalid OTP", "error");
-        }
-    } catch(e) {
-        toast("Verification Failed", "error");
-    } finally {
-        setLoading(false);
-    }
+        } else { toast("Invalid OTP", "error"); }
+    } catch(e) { toast("Verification Failed", "error"); }
+    finally { setLoading(false); }
   };
 
   return (
@@ -62,15 +59,25 @@ export default function PhoneAuthModal({ onClose, onSuccess }: { onClose: () => 
       <div className="bg-gray-900 border border-gray-800 rounded-3xl p-8 max-w-sm w-full relative shadow-2xl">
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-500 hover:text-white">✕</button>
         <Smartphone className="w-12 h-12 text-blue-500 mb-4 mx-auto" />
-        <h2 className="text-2xl font-black text-center text-white mb-2">Login</h2>
-        <p className="text-gray-400 text-center mb-6 text-sm">Enter mobile to unlock deals.</p>
+        <h2 className="text-2xl font-black text-center text-white mb-2">Secure Login</h2>
+        <p className="text-gray-400 text-center mb-6 text-sm">Please sign in to proceed with your booking.</p>
 
         {!sent ? (
           <div className="space-y-4">
             <input
+              type="text" value={name} onChange={e => setName(e.target.value)}
+              placeholder="Full Name"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500"
+            />
+            <input
               type="tel" maxLength={10} value={phone} onChange={e => setPhone(e.target.value)}
               placeholder="10-digit Indian Mobile"
-              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500 text-center tracking-widest"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500"
+            />
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Email Address"
+              className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500"
             />
             <button disabled={loading} onClick={handleSend} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors flex justify-center items-center h-12 disabled:opacity-50">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Send Secure OTP'}
