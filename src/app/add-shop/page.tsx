@@ -11,7 +11,7 @@ export default function AddShopPage() {
                 </div>
                 <h1 className="text-2xl font-black text-white mb-2">Claim Your Business</h1>
                 <p className="text-gray-400 text-sm mb-8">Verified merchants get direct WhatsApp leads. Connect with our B2B team to claim your spot.</p>
-                <a href="https://wa.me/918147363914?text=I want to list my business on NearMe India" target="_blank" rel="noreferrer" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 mb-4">
+                <a href="https://wa.me/918247831885?text=I want to list my business on NearMe India" target="_blank" rel="noreferrer" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2 mb-4">
                    <Phone className="w-4 h-4"/> WhatsApp B2B Team
                 </a>
                 <Link href="/" className="text-sm text-gray-500 hover:text-white">Cancel</Link>

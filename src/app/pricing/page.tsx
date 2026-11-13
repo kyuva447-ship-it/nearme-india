@@ -1,9 +1,24 @@
 'use client';
 import { CheckCircle2 } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 
 export default function PricingPage() {
-  const handlePayment = (planName: string, amount: number) => {
-    alert(`Initiating secure Razorpay checkout for ${planName} (₹${amount}). Redirecting to gateway...`);
+  const { toast } = useToast();
+
+  const handlePayment = async (planName: string, amount: number) => {
+    toast(`Initiating secure Razorpay checkout for ${planName} (₹${amount})...`, 'info');
+    try {
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, receipt: `plan_${Date.now()}` }),
+      });
+      if (res.ok) {
+        toast(`Order created for ${planName} (₹${amount})`, 'success');
+      }
+    } catch {
+      toast('Checkout gateway unavailable right now', 'error');
+    }
   };
 
   return (

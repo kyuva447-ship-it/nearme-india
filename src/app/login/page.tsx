@@ -17,7 +17,7 @@ export default function LoginPage() {
                 <button onClick={() => router.push('/')} className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors mb-4">
                     Return to Home
                 </button>
-                <a href="https://wa.me/918147363914" target="_blank" rel="noreferrer" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
+                <a href="https://wa.me/918247831885" target="_blank" rel="noreferrer" className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-colors flex items-center justify-center gap-2">
                    <Phone className="w-4 h-4"/> Support
                 </a>
             </div>

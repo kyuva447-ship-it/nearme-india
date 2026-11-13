@@ -24,7 +24,7 @@ export default function PhotoSearch({ onResult }: { onResult: (results: any[]) =
     setIsUploading(true);
 
     // Redirect to WhatsApp with the photo request since AI processing isn't fully implemented
-    window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE}?text=Hi%2C%20I%20have%20a%20photo%20to%20search%20for%20products`, '_blank');
+    window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE || '918247831885'}?text=Hi%2C%20I%20have%20a%20photo%20to%20search%20for%20products`, '_blank');
 
     setIsUploading(false);
     setIsOpen(false);

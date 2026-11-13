@@ -1,163 +1,225 @@
 'use client';
+
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Activity, ShieldCheck, MapPin, Zap, User, Ticket, Store, Building, ChevronDown, Globe } from 'lucide-react';
+import { MapPin, User, ChevronDown, Shield } from 'lucide-react';
 import PhoneAuthModal from './QuickAuthModal';
+import PWAInstallButton from './PWAInstallButton';
 import { useToast } from './Toast';
+import { LANGUAGES, normalizeLang } from '@/lib/i18n';
+import type { SupportedLang } from '@/lib/autonomousStore';
 
 export default function TelemetryBar() {
   const [showAuth, setShowAuth] = useState(false);
   const [userPhone, setUserPhone] = useState<string | null>(null);
   const [showCitySelector, setShowCitySelector] = useState(false);
-  const [showLangSelector, setShowLangSelector] = useState(false);
   const [selectedCity, setSelectedCity] = useState('All India');
-  const [selectedLang, setSelectedLang] = useState('EN');
+  const [selectedLang, setSelectedLang] = useState<SupportedLang>('EN');
   const [customPincode, setCustomPincode] = useState('');
 
   const { toast } = useToast();
 
-  const cities = ['All India', 'Mumbai', 'Delhi NCR', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Tirupati', 'Madanapalle', 'Visakhapatnam'];
-  const languages = ['EN', 'हिं', 'తె', 'క'];
+  const cities = [
+    'All India',
+    'Bengaluru',
+    'Mumbai',
+    'Delhi NCR',
+    'Hyderabad',
+    'Chennai',
+    'Pune',
+    'Kolkata',
+    'Madanapalle',
+  ];
 
   useEffect(() => {
     setUserPhone(localStorage.getItem('nearme_user_phone'));
     const savedCity = localStorage.getItem('nearme_city');
     if (savedCity) setSelectedCity(savedCity);
-    const savedLang = localStorage.getItem('nearme_lang');
-    if (savedLang) setSelectedLang(savedLang);
+    const savedLang = normalizeLang(localStorage.getItem('nearme_lang'));
+    setSelectedLang(savedLang);
   }, []);
 
   const handleSignOut = () => {
-      localStorage.removeItem('nearme_user_phone');
-      setUserPhone(null);
-      toast('Signed out successfully', 'info');
+    localStorage.removeItem('nearme_user_phone');
+    setUserPhone(null);
+    toast('Signed out', 'info');
   };
 
   const handleCitySelect = (city: string) => {
-      setSelectedCity(city);
-      localStorage.setItem('nearme_city', city);
-      setShowCitySelector(false);
-      toast(`Location set to ${city}`, 'success');
+    setSelectedCity(city);
+    localStorage.setItem('nearme_city', city);
+    setShowCitySelector(false);
+    toast(`Location set to ${city}`, 'success');
   };
 
-  const handleLangSelect = (lang: string) => {
-      setSelectedLang(lang);
-      localStorage.setItem('nearme_lang', lang);
-      setShowLangSelector(false);
-      toast(`Language set to ${lang}`, 'success');
+  const handleLangSelect = (lang: SupportedLang) => {
+    setSelectedLang(lang);
+    localStorage.setItem('nearme_lang', lang);
+    window.dispatchEvent(new CustomEvent('nearme-lang-change', { detail: lang }));
+    toast(`Language switched to ${lang}`, 'success');
   };
 
   const handlePincodeSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      if (customPincode.length === 6) {
-          handleCitySelect(customPincode);
-          setCustomPincode('');
-      }
+    e.preventDefault();
+    if (customPincode.length === 6) {
+      handleCitySelect(customPincode);
+      setCustomPincode('');
+    }
   };
 
   return (
-    <div className="w-full bg-gray-950/80 backdrop-blur-md border-b border-gray-900 sticky top-0 z-50">
-      {showAuth && <PhoneAuthModal onClose={() => setShowAuth(false)} onSuccess={() => { setShowAuth(false); setUserPhone(localStorage.getItem('nearme_user_phone')); }} />}
-      <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500/20 to-transparent pointer-events-none"></div>
+    <header className="w-full bg-gray-950/95 backdrop-blur-md border-b border-gray-800/80 sticky top-0 z-40">
+      {showAuth && (
+        <PhoneAuthModal
+          onClose={() => setShowAuth(false)}
+          onSuccess={() => {
+            setShowAuth(false);
+            setUserPhone(localStorage.getItem('nearme_user_phone'));
+          }}
+        />
+      )}
 
-      {/* Top utility bar */}
-      <div className="flex justify-between items-center px-4 py-1 text-[10px] font-mono text-gray-500 border-b border-gray-900/50">
-          <div className="flex items-center gap-4">
-              <span className="flex items-center gap-1"><Activity className="w-3 h-3 text-emerald-500" /> STATUS: OPERATIONAL</span>
-              <span className="hidden sm:flex items-center gap-1 border-l border-gray-800 pl-4"><ShieldCheck className="w-3 h-3 text-blue-500" /> WAF: ACTIVE</span>
-          </div>
-          <div className="flex items-center gap-3">
-              <Link href="/account" className="hidden md:flex items-center gap-1 hover:text-gray-300"><Ticket className="w-3 h-3"/> My Passes</Link>
-              <Link href="/merchant-claim/1" className="hidden md:flex items-center gap-1 hover:text-gray-300 border-l border-gray-800 pl-3"><Store className="w-3 h-3"/> Merchant Claim</Link>
-          </div>
-      </div>
+      {/* Single-Row Top Bar Contract: Brand — Single-Line Nav + City/Lang — Primary Actions */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 lg:px-8 h-16">
+        {/* Zone 1: Clean single-line brand wordmark */}
+        <Link
+          href="/"
+          className="text-lg sm:text-xl font-bold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2"
+        >
+          <span>
+            NearMe <span className="text-emerald-400">India</span>
+          </span>
+        </Link>
 
-      {/* Main Navbar */}
-      <div className="flex justify-between items-center px-4 sm:px-6 lg:px-12 py-3">
-          <div className="flex items-center gap-6">
-              {/* Brand Logo */}
-              <Link href="/" className="flex items-center gap-2 group">
-                  <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-blue-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-lg shadow-emerald-500/20">
-                      <Zap className="w-6 h-6 text-white" />
-                  </div>
-                  <div className="flex flex-col">
-                      <span className="text-xl sm:text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-300 leading-none">NearMe<span className="text-emerald-500">India</span></span>
-                      <span className="text-[10px] font-bold text-emerald-400 tracking-widest uppercase">🇮🇳 Pan-India AI Network</span>
-                  </div>
-              </Link>
+        {/* Zone 2: Clean single-line navigation links + 6-language switcher */}
+        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-gray-300">
+          <Link href="/#auditor" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+            Bill Stripper
+          </Link>
+          <Link href="/#syndicates" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+            Syndicates
+          </Link>
+          <Link href="/search" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+            Wholesale Index
+          </Link>
+          <Link href="/owner" className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1">
+            <Shield className="w-3.5 h-3.5" />
+            Founder Portal
+          </Link>
+        </nav>
 
-              {/* Desktop City Selector */}
-              <div className="hidden md:block relative">
-                  <button onClick={() => setShowCitySelector(!showCitySelector)} className="flex items-center gap-2 bg-gray-900 hover:bg-gray-800 border border-gray-800 px-3 py-1.5 rounded-lg text-white transition-colors text-sm">
-                      <MapPin className="w-4 h-4 text-emerald-400" />
-                      <span className="font-bold">{selectedCity}</span>
-                      <ChevronDown className="w-4 h-4 text-gray-400" />
-                  </button>
-                  {showCitySelector && (
-                      <div className="absolute top-full left-0 mt-2 w-64 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
-                          <div className="p-3 border-b border-gray-800 bg-gray-950">
-                              <form onSubmit={handlePincodeSubmit} className="relative">
-                                  <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                                  <input type="text" value={customPincode} onChange={e => setCustomPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit Pincode" className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-3 py-2 text-white outline-none focus:border-emerald-500 text-sm" />
-                              </form>
-                          </div>
-                          <div className="max-h-64 overflow-y-auto p-2">
-                              {cities.map(c => <button key={c} onClick={() => handleCitySelect(c)} className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedCity === c ? 'bg-emerald-900/30 text-emerald-400 font-bold' : 'text-gray-300 hover:bg-gray-800'}`}>{c}</button>)}
-                          </div>
-                      </div>
-                  )}
-              </div>
-          </div>
-
-          <div className="flex items-center gap-4">
-              {/* Language Switcher */}
-              <div className="relative">
-                  <button onClick={() => setShowLangSelector(!showLangSelector)} className="flex items-center gap-1.5 text-sm font-bold text-gray-300 hover:text-white transition-colors">
-                      <Globe className="w-4 h-4" /> {selectedLang} <ChevronDown className="w-3 h-3"/>
-                  </button>
-                  {showLangSelector && (
-                      <div className="absolute top-full right-0 mt-2 w-24 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden animate-fade-in z-50">
-                          {languages.map(l => <button key={l} onClick={() => handleLangSelect(l)} className={`w-full text-center px-3 py-2 text-sm transition-colors ${selectedLang === l ? 'bg-blue-900/30 text-blue-400 font-bold' : 'text-gray-300 hover:bg-gray-800'}`}>{l}</button>)}
-                      </div>
-                  )}
-              </div>
-
-              {/* Mobile City Selector (Icon only) */}
-              <button onClick={() => setShowCitySelector(!showCitySelector)} className="md:hidden p-2 text-gray-400 hover:text-white">
-                  <MapPin className="w-5 h-5" />
+        {/* Zone 3: City, 6-Language Switcher, PWA Install & Account */}
+        <div className="flex items-center gap-2.5 shrink-0">
+          {/* 6-Language Switcher (EN, HI, KN, TA, TE, MR) */}
+          <div
+            role="group"
+            aria-label="Language Switcher"
+            className="hidden sm:flex items-center bg-gray-900 border border-gray-800 rounded-lg p-0.5"
+          >
+            {LANGUAGES.map((l) => (
+              <button
+                key={l.code}
+                type="button"
+                onClick={() => handleLangSelect(l.code)}
+                title={l.native}
+                className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                  selectedLang === l.code
+                    ? 'bg-emerald-600 text-white'
+                    : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                {l.code}
               </button>
-
-              {userPhone ? (
-                   <div className="flex items-center gap-3">
-                       <Link href="/account" className="flex items-center gap-2 px-4 py-2 bg-emerald-900/30 text-emerald-400 border border-emerald-500/30 rounded-full font-bold text-sm hover:bg-emerald-900/50 transition-colors">
-                           <User className="w-4 h-4"/> <span className="hidden sm:inline">Profile</span>
-                       </Link>
-                       <button onClick={handleSignOut} className="text-xs text-gray-500 hover:text-red-400 hidden sm:block">Sign Out</button>
-                   </div>
-              ) : (
-                  <button onClick={() => setShowAuth(true)} className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold rounded-full transition-colors shadow-lg shadow-blue-500/20 flex items-center gap-2">
-                      <User className="w-4 h-4" /> Sign In <span className="hidden sm:inline">/ Profile</span>
-                  </button>
-              )}
+            ))}
           </div>
-      </div>
 
-      {/* Mobile City Dropdown rendered full width if toggled on small screens */}
-      <div className="md:hidden relative">
-          {showCitySelector && (
-              <div className="absolute top-0 left-0 w-full bg-gray-900 border-b border-gray-800 shadow-2xl z-50 animate-fade-in">
-                  <div className="p-3 border-b border-gray-800 bg-gray-950">
-                      <form onSubmit={handlePincodeSubmit} className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
-                          <input type="text" value={customPincode} onChange={e => setCustomPincode(e.target.value.replace(/\D/g, '').slice(0, 6))} placeholder="6-digit Pincode" className="w-full bg-gray-900 border border-gray-800 rounded-lg pl-9 pr-3 py-2 text-white outline-none focus:border-emerald-500" />
-                      </form>
-                  </div>
-                  <div className="max-h-48 overflow-y-auto p-2 grid grid-cols-2 gap-2">
-                      {cities.map(c => <button key={c} onClick={() => handleCitySelect(c)} className={`text-left px-3 py-2 rounded-lg text-sm transition-colors ${selectedCity === c ? 'bg-emerald-900/30 text-emerald-400 font-bold' : 'text-gray-300 bg-gray-800 hover:bg-gray-700'}`}>{c}</button>)}
-                  </div>
+          {/* Mobile compact language selector */}
+          <select
+            aria-label="Select Language"
+            value={selectedLang}
+            onChange={(e) => handleLangSelect(normalizeLang(e.target.value))}
+            className="sm:hidden bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5 text-xs font-bold text-white"
+          >
+            {LANGUAGES.map((l) => (
+              <option key={l.code} value={l.code}>
+                {l.code}
+              </option>
+            ))}
+          </select>
+
+          {/* City Selector */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowCitySelector(!showCitySelector)}
+              className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-gray-200 transition-colors whitespace-nowrap shrink-0"
+            >
+              <MapPin className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="hidden md:inline">{selectedCity}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+            </button>
+            {showCitySelector && (
+              <div className="absolute top-full right-0 mt-2 w-60 bg-gray-900 border border-gray-800 rounded-xl shadow-2xl overflow-hidden z-50">
+                <form onSubmit={handlePincodeSubmit} className="p-2.5 border-b border-gray-800 bg-gray-950">
+                  <input
+                    type="text"
+                    value={customPincode}
+                    onChange={(e) => setCustomPincode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="Enter 6-digit Pincode"
+                    className="w-full bg-gray-900 border border-gray-800 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-emerald-500"
+                  />
+                </form>
+                <div className="max-h-56 overflow-y-auto p-1.5">
+                  {cities.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => handleCitySelect(c)}
+                      className={`w-full text-left px-3 py-1.5 rounded-lg text-xs transition-colors ${
+                        selectedCity === c
+                          ? 'bg-emerald-900/40 text-emerald-300 font-bold'
+                          : 'text-gray-300 hover:bg-gray-800'
+                      }`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
               </div>
+            )}
+          </div>
+
+          <PWAInstallButton />
+
+          {userPhone ? (
+            <div className="flex items-center gap-2 shrink-0">
+              <Link
+                href="/account"
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600/20 text-emerald-300 border border-emerald-500/40 rounded-lg font-bold text-xs hover:bg-emerald-600 hover:text-white transition-colors whitespace-nowrap shrink-0"
+              >
+                <User className="w-3.5 h-3.5" />
+                Account
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="hidden xl:inline text-xs text-gray-400 hover:text-white whitespace-nowrap shrink-0"
+              >
+                Sign Out
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowAuth(true)}
+              className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap shrink-0"
+            >
+              <User className="w-3.5 h-3.5" />
+              Sign In
+            </button>
           )}
+        </div>
       </div>
-    </div>
+    </header>
   );
 }

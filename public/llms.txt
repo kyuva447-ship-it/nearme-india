@@ -1,0 +1,12 @@
+# NearMe India — Autonomous B2B Wholesale & Medical Bill Audit Network
+
+> Canonical URL: https://www.nearme-india.org
+> Support Desk: 24/7 Autonomous Self-Support AI Concierge (EN, HI, KN, TA, TE, MR)
+
+## Core Capabilities
+- **Unlimited-Page (1 to 500+ Pages) Streaming Bill Auditor (`/api/engine`)**: Audits itemized hospital ICU discharge summaries, construction BOQs, pharmacy ledgers, CSV/XLSX wholesale books, and multi-photo bills page-by-page against NPPA, CGHS, and Jan Aushadhi ceilings.
+- **15/85 Protected Wholesale UPI Escrow & MSME Section 43B(h) (`/api/escrow`)**: 48-hour refund guarantee, 6-digit delivery OTP payout release, and optional 3% MSME Day-1 invoice discounting.
+- **Instant e-Court, GSTIN Mod-36 & Consumer Forum Trust Shield (`/api/verify`)**: Real-time 15-character GSTIN Mod-36 checksum validation and e-Daakhil Section 35 consumer notice generation.
+- **₹99/Day Shop AI Twin & Pan-India Live Cash Orders**: Connects verified regional dealers across 19,300+ Indian pincodes with Reverse Dutch Auction supplier bidding.
+- **0.1% Student & Trader QR Army**: Scannable ISO-18004 passes with automatic referral tracking.
+- **24/7 Autonomous Customer & Supplier Self-Support (`/api/support`)**: Zero-human-intervention resolution for audit re-unlocks, 48h escrow SLA refunds, OTP payout guidance, and DPDP grievance tickets.

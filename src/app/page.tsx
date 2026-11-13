@@ -1,110 +1,283 @@
-// V20 Build Stamp: 2026-11-11T05:56:23.030Z
-import Image from "next/image";
-import Link from "next/link";
-import { Search, MapPin, Store, Sparkles, TrendingUp, Zap, ChevronRight, CheckCircle2, ShieldCheck, HeartPulse, Stethoscope, Car, Wrench, Building } from "lucide-react";
-import CommandHub from '@/components/CommandHub';
-import MicroPass from '@/components/MicroPass';
-import LiveActivityTicker from '@/components/LiveTicker';
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import {
+  Search,
+  TrendingDown,
+  Users,
+  ArrowRight,
+  ShieldCheck,
+  Bot,
+  Banknote,
+} from 'lucide-react';
+import NearMePlatform from '@/components/NearMePlatform';
+import { COPY_BY_LANG, normalizeLang } from '@/lib/i18n';
+import { SEEDED_MERCHANTS } from '@/lib/seeded-marketplace';
+import type { SupportedLang } from '@/lib/autonomousStore';
+
+const REGIONAL_LOOPS = [
+  {
+    region: 'Bengaluru · 560001',
+    title: 'Corporate ICU & Consumables Strip Loop',
+    before: '₹15,42,000',
+    after: '₹9,86,500',
+    saved: '₹5,55,500 saved (-36%)',
+    href: '/services/560001/hospital-bill-audit',
+  },
+  {
+    region: 'Delhi NCR · 110001',
+    title: 'OPC-53 Direct Rake Cement + Fe-550D Loop',
+    before: '₹435 / bag',
+    after: '₹358 / bag',
+    saved: '₹77 / bag saved (-18%)',
+    href: '/services/110001/wholesale-cement-tmt',
+  },
+  {
+    region: 'Mumbai · 400002',
+    title: '22K Hallmarked Bullion Making Strip',
+    before: '18.0% making',
+    after: '8.2% making',
+    saved: '54% making cut locked',
+    href: '/services/400002/gold-bullion-making',
+  },
+];
+
+const NEIGHBORHOOD_SYNDICATES = [
+  {
+    pincode: '560001 · Bengaluru Central',
+    pool: 'Cardiac & Ortho Generic Jan Aushadhi Pool',
+    membersJoined: 42,
+    targetMembers: 50,
+    discountLocked: '38% Below Retail MRP',
+    orderPoolInr: '₹6,40,000',
+  },
+  {
+    pincode: '110001 · NCR Builders Syndicate',
+    pool: '1,200 Bag Direct Factory Cement Rake',
+    membersJoined: 19,
+    targetMembers: 20,
+    discountLocked: '18% Mill-Direct Rate',
+    orderPoolInr: '₹14,20,000',
+  },
+  {
+    pincode: '517325 · Madanapalle Kisan Cluster',
+    pool: 'ISI 16mm Drip Laterals & NPK Fertilizer',
+    membersJoined: 31,
+    targetMembers: 35,
+    discountLocked: '32% Mandi Direct Cut',
+    orderPoolInr: '₹4,95,000',
+  },
+];
 
 export default function Home() {
-  const topCategories = [
-    { name: "Medical / Scans", desc: "Save up to 45% on MRI & Labs", icon: <Stethoscope className="w-6 h-6 text-rose-400" />, href: "/search?q=Hospitals" },
-    { name: "Electronics & Gadgets", desc: "Wholesale AI Group Price", icon: <Zap className="w-6 h-6 text-blue-400" />, href: "/search?q=Electronics" },
-    { name: "Auto & EV Care", desc: "2W/4W Service & Fast Charge", icon: <Car className="w-6 h-6 text-amber-400" />, href: "/search?q=Auto%20Repair" },
-    { name: "Real Estate & Hostels", desc: "Zero-Brokerage Verified Stays", icon: <Building className="w-6 h-6 text-emerald-400" />, href: "/search?q=Real%20Estate" },
-    { name: "Home & AC Repair", desc: "Instant ₹349 Doorstep Service", icon: <Wrench className="w-6 h-6 text-purple-400" />, href: "/search?q=AC%20Repair" },
-    { name: "Tailoring & Custom Fit", desc: "Bespoke Stitching & Bulk Orders", icon: <Sparkles className="w-6 h-6 text-pink-400" />, href: "/search?q=Tailoring" },
-  ];
+  const [lang, setLang] = useState<SupportedLang>('EN');
+
+  useEffect(() => {
+    setLang(normalizeLang(localStorage.getItem('nearme_lang')));
+    const handler = (e: Event) => {
+      const custom = e as CustomEvent<SupportedLang>;
+      setLang(normalizeLang(custom.detail));
+    };
+    window.addEventListener('nearme-lang-change', handler);
+    return () => window.removeEventListener('nearme-lang-change', handler);
+  }, []);
+
+  const copy = COPY_BY_LANG[lang];
 
   return (
-    <div className="min-h-screen font-[family-name:var(--font-geist-sans)] flex flex-col relative overflow-hidden bg-gray-950">
-      <div className="absolute top-0 left-0 w-full h-[60vh] bg-gradient-to-br from-blue-900/20 via-purple-900/10 to-transparent pointer-events-none"></div>
-      <div className="absolute top-0 right-0 w-1/2 h-[60vh] bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-900/20 via-transparent to-transparent pointer-events-none"></div>
-
-      <header className="w-full flex items-center justify-between p-4 sm:p-6 lg:px-12 relative z-10">
-        <Link href="/" className="flex items-center gap-2 group">
-          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center transform group-hover:rotate-12 transition-transform shadow-lg shadow-blue-500/20">
-            <Zap className="w-6 h-6 text-white" />
-          </div>
-          <span className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">NearMe<span className="text-blue-500">India</span></span>
-        </Link>
-        <div className="flex items-center gap-4">
-
-
-        </div>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center pt-8 sm:pt-16 pb-20 w-full relative z-10 px-4">
-
-        <div className="max-w-4xl w-full text-center space-y-6 mb-8">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-blue-900/30 border border-blue-500/30 text-blue-400 text-sm font-bold mb-4 backdrop-blur-sm">
-            <Sparkles className="w-4 h-4" /> Pan-India Live
-          </div>
-          <h1 className="text-5xl sm:text-7xl font-black tracking-tight leading-[1.1] text-white">
-             Slash Local Bills <br className="hidden sm:block"/> <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-purple-400 to-emerald-400">In 60 Seconds.</span>
+    <div className="min-h-screen bg-gray-950 text-white flex flex-col">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-14">
+        {/* Clean Design #2 Hero — No duplicate header, no directory tiles, no micro-pass grid */}
+        <section className="text-center max-w-4xl mx-auto space-y-6">
+          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight text-white leading-[1.12] text-balance">
+            {copy.heroTitle}
           </h1>
-
-          <div className="w-full max-w-2xl mx-auto mt-8 relative">
-              <Link href="/search" className="block relative group cursor-text">
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-emerald-500 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500"></div>
-                  <div className="relative flex items-center bg-gray-900 border border-gray-700 rounded-2xl overflow-hidden shadow-2xl">
-                      <Search className="absolute left-6 w-6 h-6 text-emerald-400" />
-                      <div className="w-full bg-transparent py-4 pl-16 pr-6 font-bold text-lg text-gray-400 text-left">Search deals... e.g. "AC Repair"</div>
-                      <div className="absolute right-2 bg-emerald-600 text-white font-black px-6 py-2 rounded-xl">Go</div>
-                  </div>
-              </Link>
-              <div className="flex flex-wrap justify-center gap-2 mt-4">
-                  <Link href="/search?q=MRI" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🏥 MRI & Blood Scans (45% Off)</Link>
-                  <Link href="/search?q=AC" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">❄️ AC Service & Repair (₹349)</Link>
-                  <Link href="/search?q=Dental" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🦷 Dental Cleaning (₹499)</Link>
-                  <Link href="/search?q=Tailoring" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">✂️ Custom Tailoring (₹249)</Link>
-                  <Link href="/search?q=Gym" className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-full border border-gray-700 transition-colors">🏋️ Gym & Co-working Pass (₹99)</Link>
-              </div>
-          </div>
-          <p className="text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto font-medium">
-             Speak your price or scan your bill. India's top merchants fight to give you the lowest local price.
+          <p className="text-sm sm:text-lg text-gray-300 max-w-3xl mx-auto leading-relaxed">
+            {copy.heroSubtitle}
           </p>
-        </div>
 
-        <LiveActivityTicker />
-        <CommandHub />
-        <MicroPass />
-
-        <div className="w-full max-w-6xl mx-auto mt-16 px-4">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-black text-white flex items-center gap-2"><TrendingUp className="w-6 h-6 text-emerald-400" /> Top City Markets</h3>
-            <Link href="/search" className="text-sm font-bold text-gray-400 hover:text-white flex items-center gap-1">View All <ChevronRight className="w-4 h-4" /></Link>
+          <div className="max-w-2xl mx-auto pt-2 flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/search"
+              className="flex-1 flex items-center gap-3 bg-gray-900 border border-gray-800 hover:border-emerald-500/60 rounded-xl px-4 py-3.5 text-left transition-colors"
+            >
+              <Search className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span className="text-sm text-gray-400 truncate flex-1">
+                {copy.searchPlaceholder}
+              </span>
+              <span className="px-3.5 py-1.5 bg-emerald-600 text-white text-xs font-bold rounded-lg shrink-0">
+                {copy.searchCta}
+              </span>
+            </Link>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('nearme-open-support'))}
+              className="px-4 py-3.5 bg-gray-900 hover:bg-gray-800 border border-gray-800 text-emerald-300 text-xs font-bold rounded-xl flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors"
+            >
+              <Bot className="w-4 h-4" />
+              {copy.supportButton}
+            </button>
           </div>
+        </section>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {topCategories.map((cat, i) => (
-              <Link key={i} href={cat.href} className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 p-6 rounded-2xl flex flex-col items-center text-center gap-3 hover:bg-gray-800 hover:border-gray-700 transition-all group">
-                <div className="w-14 h-14 bg-gray-950 rounded-full flex items-center justify-center border border-gray-800 group-hover:border-gray-600 transition-colors shadow-inner">
-                  {cat.icon}
-                </div>
-                <div>
-                    <span className="font-bold text-gray-200 group-hover:text-white block mb-1">{cat.name}</span>
-                    <span className="text-xs text-gray-500 font-medium group-hover:text-emerald-400 transition-colors">{cat.desc}</span>
+        {/* Primary Interactive Platform: 4 Main Navigation Tabs + Unlimited-Page Streamer */}
+        <section id="auditor" className="w-full">
+          <NearMePlatform lang={lang} />
+        </section>
+
+        {/* Regional Price-Slash Loops */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+              <TrendingDown className="w-5 h-5 text-emerald-400" />
+              {copy.loopsTitle}
+            </h2>
+            <Link
+              href="/search"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300 flex items-center gap-1"
+            >
+              View All Loops <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {REGIONAL_LOOPS.map((loop) => (
+              <Link
+                key={loop.region}
+                href={loop.href}
+                className="bg-gray-900/70 border border-gray-800 hover:border-emerald-500/40 rounded-xl p-5 space-y-3 transition-colors"
+              >
+                <p className="text-xs font-mono text-gray-400">{loop.region}</p>
+                <h3 className="text-sm font-bold text-white">{loop.title}</h3>
+                <div className="flex items-baseline justify-between pt-2 border-t border-gray-800/80 tabular-nums">
+                  <div>
+                    <span className="text-xs text-gray-500 line-through mr-2">{loop.before}</span>
+                    <span className="text-base font-extrabold text-emerald-400">{loop.after}</span>
+                  </div>
+                  <span className="text-xs font-semibold text-emerald-300">{loop.saved}</span>
                 </div>
               </Link>
             ))}
           </div>
-        </div>
+        </section>
+
+        {/* Active Neighborhood Group-Buy Syndicates */}
+        <section id="syndicates" className="space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+              <Users className="w-5 h-5 text-emerald-400" />
+              {copy.syndicatesTitle}
+            </h2>
+            <span className="text-xs text-gray-400 font-mono">19,300+ Pincodes Active</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {NEIGHBORHOOD_SYNDICATES.map((syn) => {
+              const pct = Math.min(100, Math.round((syn.membersJoined / syn.targetMembers) * 100));
+              return (
+                <div
+                  key={syn.pincode}
+                  className="bg-gray-900/70 border border-gray-800 rounded-xl p-5 space-y-3"
+                >
+                  <p className="text-xs font-mono text-emerald-400">{syn.pincode}</p>
+                  <h3 className="text-sm font-bold text-white">{syn.pool}</h3>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between text-xs text-gray-400 tabular-nums">
+                      <span>
+                        {syn.membersJoined}/{syn.targetMembers} buyers pooled
+                      </span>
+                      <span className="text-white font-semibold">{syn.orderPoolInr}</span>
+                    </div>
+                    <div className="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-gray-800/80 text-xs">
+                    <span className="text-emerald-300 font-semibold">{syn.discountLocked}</span>
+                    <Link
+                      href="/search"
+                      className="font-bold text-white hover:text-emerald-400 transition-colors"
+                    >
+                      Join Pool →
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Pan-India Cash Orders */}
+        <section className="space-y-4">
+          <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+            <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+              <Banknote className="w-5 h-5 text-emerald-400" />
+              {copy.cashOrdersTitle}
+            </h2>
+            <Link
+              href="/add-shop"
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              Onboard Your Shop (₹99/day AI Twin) →
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {SEEDED_MERCHANTS.slice(0, 3).map((m) => (
+              <div
+                key={m.id}
+                className="bg-gray-900/70 border border-gray-800 rounded-xl p-5 flex flex-col justify-between gap-3"
+              >
+                <div>
+                  <div className="flex items-center justify-between text-xs text-gray-400 mb-1">
+                    <span className="font-mono">
+                      {m.city} · {m.pincode}
+                    </span>
+                    <span className="text-emerald-400 font-semibold">
+                      <ShieldCheck className="w-3.5 h-3.5 inline mr-1" />
+                      {m.trust_score}% Trust
+                    </span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">{m.business_name}</h3>
+                  <p className="text-xs text-gray-400 mt-0.5">{m.category}</p>
+                </div>
+                <div className="flex items-center justify-between pt-3 border-t border-gray-800/80 tabular-nums">
+                  <span className="text-sm font-bold text-emerald-400">
+                    ₹{(m.liveCashOrderInr || 42500).toLocaleString('en-IN')} Cash Order
+                  </span>
+                  <Link
+                    href={`/merchant-claim/${m.id}`}
+                    className="text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 px-3 py-1.5 rounded-lg transition-colors"
+                  >
+                    Claim Order
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
 
-      <footer className="w-full bg-gray-950 border-t border-gray-900 py-12 relative z-10 px-4">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex items-center gap-2">
-            <Zap className="w-5 h-5 text-gray-500" />
-            <span className="font-bold text-gray-400">NearMe India • Autonomous Pan-India Hyperlocal AI Network (19,000+ Pincodes)</span>
+      {/* Clean Compliance Footer */}
+      <footer className="w-full bg-gray-950 border-t border-gray-800/80 py-8 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400">
+          <p className="font-semibold text-gray-300">
+            NearMe India · https://www.nearme-india.org · Autonomous Pan-India B2B & Bill Audit Network
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/about" className="hover:text-white">About</Link>
+            <Link href="/pricing" className="hover:text-white">Pricing</Link>
+            <Link href="/terms" className="hover:text-white">Terms</Link>
+            <Link href="/privacy" className="hover:text-white">Privacy</Link>
+            <Link href="/refund-policy" className="hover:text-white">Refund Policy</Link>
+            <Link href="/shipping-policy" className="hover:text-white">Shipping Policy</Link>
+            <Link href="/contact" className="hover:text-white">Contact</Link>
+            <Link href="/owner" className="text-emerald-400 hover:text-emerald-300 font-semibold">
+              Founder Console
+            </Link>
           </div>
-          <div className="flex gap-6 text-sm font-medium text-gray-500">
-
-             <Link href="/search" className="hover:text-white">City Directory</Link>
-             <Link href="/privacy" className="hover:text-white">Privacy Policy</Link>
-             <Link href="/terms" className="hover:text-white">Terms of Service</Link>
-          </div>
-          <p className="text-sm text-gray-600">&copy; {new Date().getFullYear()} NearMe India. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} NearMe India</p>
         </div>
       </footer>
     </div>

@@ -4,7 +4,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: '*',
-      allow: '/',
+      allow: ['/', '/services/', '/search', '/pricing', '/about', '/contact', '/llms.txt', '/sitemap.xml'],
       disallow: ['/api/', '/dashboard/', '/owner/'],
     },
     sitemap: 'https://www.nearme-india.org/sitemap.xml',
