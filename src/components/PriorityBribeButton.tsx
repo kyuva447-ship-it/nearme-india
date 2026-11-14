@@ -28,7 +28,18 @@ export default function PriorityBribeButton({ merchantId }: { merchantId: string
               </p>
 
               <button
-                onClick={() => { window.open(`https://wa.me/${process.env.NEXT_PUBLIC_ADMIN_PHONE || '918247831885'}?text=Hi%2C%20I%20want%20to%20add%20priority%20tip%20for%20merchant%20${merchantId}`); setIsOpen(false); }}
+                onClick={async () => {
+                  try {
+                    await fetch('/api/orders', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ amount: 50, itemName: `Priority Dispatch (${merchantId})` }),
+                    });
+                  } catch {
+                    // ignore
+                  }
+                  setIsOpen(false);
+                }}
                 className="w-full bg-amber-500 text-black font-bold py-3 rounded-xl hover:bg-amber-400"
               >
                 Pay ₹50 & Get Priority

@@ -6,6 +6,8 @@ import {
   MultiDocAuditResult,
   PageBreakdownItem,
 } from './seeded-marketplace';
+import { recordAgentExecution } from './autonomousStore';
+import { recordAuditEntry } from './ordersStore';
 
 export interface AuditAttachmentInput {
   name: string;
@@ -250,9 +252,27 @@ export async function runMultiDocBillAudit(payload: AuditRequestPayload): Promis
     .filter(Boolean)
     .join('\n\n');
 
+  const finalize = (result: MultiDocAuditResult): MultiDocAuditResult => {
+    const entry = recordAuditEntry({
+      billType: result.bill_type,
+      city: payload.city || 'Bengaluru',
+      totalPages: result.totalPagesAudited,
+      originalAmountInr: result.original_amount_inr,
+      fairAmountInr: result.counter_offer_price_inr,
+      savingsInr: result.user_savings_inr,
+      auditFeeInr: result.auditFeeInr,
+    });
+    recordAgentExecution(
+      'agent-irdai-auditor',
+      `Audited ${result.totalPagesAudited}p (${result.bill_type}) • Entry ${entry.id}`,
+      0
+    );
+    return result;
+  };
+
   const ai = getGeminiClient();
   if (!ai) {
-    return buildFallbackAudit(payload, totalPages, combinedText);
+    return finalize(buildFallbackAudit(payload, totalPages, combinedText));
   }
 
   try {
@@ -356,7 +376,7 @@ Return a strict JSON object with realistic INR figures, totalLineItemsScanned, a
         combinedText.toLowerCase().includes('hospital') ||
         combinedText.toLowerCase().includes('icu');
 
-      return {
+      return finalize({
         status: 'success',
         bill_type: parsed.bill_type || `${auditedPages}-Page AI Audited Bill`,
         original_amount_inr: original,
@@ -377,11 +397,11 @@ Return a strict JSON object with realistic INR figures, totalLineItemsScanned, a
           parsed.ai_audit_notes ||
           `Completed page-by-page AI audit across ${auditedPages} page(s).`,
         usedLiveAI: true,
-      };
+      });
     }
   } catch (err) {
     console.warn('Gemini audit fallback activated:', err);
   }
 
-  return buildFallbackAudit(payload, totalPages, combinedText);
+  return finalize(buildFallbackAudit(payload, totalPages, combinedText));
 }

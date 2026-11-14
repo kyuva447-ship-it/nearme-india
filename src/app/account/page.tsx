@@ -94,7 +94,7 @@ export default function AccountPage() {
                <Wallet className="w-8 h-8 text-emerald-400" />
                <h2 className="text-2xl font-bold">₹100 Viral Referral</h2>
              </div>
-             <div className="text-4xl font-black text-white mb-2">₹1,200 <span className="text-sm font-normal text-emerald-400">Earned (Demo)</span></div>
+             <div className="text-4xl font-black text-white mb-2">₹{(orders.length * 100).toLocaleString('en-IN')} <span className="text-sm font-normal text-emerald-400">Earned</span></div>
              <p className="text-gray-400 text-sm mb-6">Earn ₹100 direct to your UPI for every friend who books a deal.</p>
 
              <div className="flex bg-gray-900 border border-gray-700 rounded-xl overflow-hidden">

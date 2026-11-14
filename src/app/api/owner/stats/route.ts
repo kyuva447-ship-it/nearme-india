@@ -1,60 +1,59 @@
 import { NextResponse } from 'next/server';
+import { ordersLedger } from '@/lib/ordersStore';
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
     const key_id = process.env.RAZORPAY_KEY_ID;
     const key_secret = process.env.RAZORPAY_KEY_SECRET;
 
-    let baselineData = {
-        total_payments: 1,
-        total_volume: 49900, // INR 499.00
-        total_refunds: 0,
-        recent_transactions: [
-           { id: 'pay_TycTTmprvvbYx4', amount: 49900, status: 'captured', created_at: Date.now() / 1000 }
-        ]
-    };
-
     if (!key_id || !key_secret) {
-        return NextResponse.json(baselineData);
+      const captured = ordersLedger.filter((o) => o.status === 'captured' || o.status === 'paid');
+      const refunded = ordersLedger.filter((o) => o.status === 'refunded');
+      return NextResponse.json({
+        total_payments: captured.length,
+        total_volume: captured.reduce((acc, o) => acc + o.amount, 0),
+        total_refunds: refunded.length,
+        recent_transactions: ordersLedger.slice(0, 10),
+      });
     }
 
     const authHeader = `Basic ${Buffer.from(`${key_id}:${key_secret}`).toString('base64')}`;
 
-    // Fetch live payments
     const rzpResponse = await fetch('https://api.razorpay.com/v1/payments?count=50', {
       headers: { Authorization: authHeader },
     });
 
     if (!rzpResponse.ok) {
-        return NextResponse.json(baselineData);
+      return NextResponse.json({
+        total_payments: 0,
+        total_volume: 0,
+        total_refunds: 0,
+        recent_transactions: ordersLedger.slice(0, 10),
+      });
     }
 
     const data = await rzpResponse.json();
-    const payments = data.items || [];
+    const payments: Array<{ id: string; amount: number; status: string; created_at: number }> =
+      data.items || [];
 
-    // Inject the baseline transaction so it's never 0
-    let allTransactions = [...baselineData.recent_transactions, ...payments];
-
-    // Deduplicate by ID
-    allTransactions = allTransactions.filter((v, i, a) => a.findIndex(t => (t.id === v.id)) === i);
-
-    const totalVolume = allTransactions.reduce((acc, p) => acc + (p.status === 'captured' ? p.amount : 0), 0);
-    const capturedCount = allTransactions.filter(p => p.status === 'captured').length;
+    const totalVolume = payments.reduce(
+      (acc, p) => acc + (p.status === 'captured' ? p.amount : 0),
+      0
+    );
+    const capturedCount = payments.filter((p) => p.status === 'captured').length;
 
     return NextResponse.json({
-        total_payments: capturedCount,
-        total_volume: totalVolume,
-        total_refunds: allTransactions.filter(p => p.status === 'refunded').length,
-        recent_transactions: allTransactions.slice(0, 10)
+      total_payments: capturedCount,
+      total_volume: totalVolume,
+      total_refunds: payments.filter((p) => p.status === 'refunded').length,
+      recent_transactions: payments.slice(0, 10),
     });
-  } catch (error) {
+  } catch {
     return NextResponse.json({
-        total_payments: 1,
-        total_volume: 49900,
-        total_refunds: 0,
-        recent_transactions: [
-           { id: 'pay_TycTTmprvvbYx4', amount: 49900, status: 'captured', created_at: Date.now() / 1000 }
-        ]
+      total_payments: 0,
+      total_volume: 0,
+      total_refunds: 0,
+      recent_transactions: [],
     });
   }
 }

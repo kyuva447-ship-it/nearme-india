@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { ownerAlerts, pushOwnerAlert } from '@/lib/autonomousStore';
-import { OWNER_CONTACT_EMAIL, OWNER_CONTACT_PHONE } from '@/lib/seeded-marketplace';
+import { OWNER_CONTACT_EMAIL } from '@/lib/seeded-marketplace';
 
 export async function GET() {
   return NextResponse.json({
     status: 'operational',
-    ownerPhone: OWNER_CONTACT_PHONE,
     ownerEmail: OWNER_CONTACT_EMAIL,
     alerts: ownerAlerts,
   });

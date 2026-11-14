@@ -2,36 +2,43 @@ import { NextResponse } from 'next/server';
 import {
   DEFAULT_OWNER_PIN,
   OWNER_CONTACT_EMAIL,
-  OWNER_CONTACT_PHONE,
-  SEEDED_ESCROWS,
-  SEEDED_MERCHANTS,
 } from '@/lib/seeded-marketplace';
 import { runAutonomousGrowthCycle } from '@/lib/autonomous-growth';
 import {
   getAutonomousTelemetrySnapshot,
+  harvestedSuppliers,
   resolveSupportQuery,
   runMapsAndWebHarvester,
   updateFounderControls,
 } from '@/lib/autonomousStore';
+import { escrowLedger } from '@/lib/escrowStore';
+import { auditLedger, ordersLedger } from '@/lib/ordersStore';
+
+function buildRealOwnerPayload() {
+  const snapshot = getAutonomousTelemetrySnapshot();
+  const capturedOrders = ordersLedger.filter(
+    (o) => o.status === 'captured' || o.status === 'paid'
+  );
+  const realVolumePaise =
+    capturedOrders.reduce((acc, o) => acc + o.amount, 0) +
+    escrowLedger
+      .filter((e) => e.status === 'RELEASED_TO_MERCHANT')
+      .reduce((acc, e) => acc + e.total_amount_inr * 100, 0);
+
+  return {
+    ...snapshot,
+    totalMerchants: harvestedSuppliers.length,
+    activeEscrows: escrowLedger.length,
+    totalAuditsRun: auditLedger.length,
+    total_volume: realVolumePaise,
+    total_payments: capturedOrders.length,
+    recent_transactions: ordersLedger.slice(0, 10),
+    escrows: escrowLedger.slice(0, 10),
+  };
+}
 
 export async function GET() {
-  const snapshot = getAutonomousTelemetrySnapshot();
-
-  return NextResponse.json({
-    ...snapshot,
-    totalMerchants: SEEDED_MERCHANTS.length,
-    activeEscrows: SEEDED_ESCROWS.length,
-    total_volume: 49900,
-    total_payments: 1,
-    recent_transactions: [
-      {
-        id: 'pay_TycTTmprvvbYx4',
-        amount: 49900,
-        status: 'captured',
-        created_at: Math.floor(Date.now() / 1000),
-      },
-    ],
-  });
+  return NextResponse.json(buildRealOwnerPayload());
 }
 
 export async function POST(req: Request) {
@@ -51,7 +58,7 @@ export async function POST(req: Request) {
         autoRefundOn48hExpiry: body.autoRefundOn48hExpiry,
       });
       return NextResponse.json({
-        ...getAutonomousTelemetrySnapshot(),
+        ...buildRealOwnerPayload(),
         status: 'updated',
         controls: updated,
       });
@@ -63,7 +70,7 @@ export async function POST(req: Request) {
         pincode || '560001'
       );
       return NextResponse.json({
-        ...getAutonomousTelemetrySnapshot(),
+        ...buildRealOwnerPayload(),
         status: 'ok',
         harvested,
       });
@@ -72,7 +79,7 @@ export async function POST(req: Request) {
     if (action === 'run_growth' || action === 'run_viral_wave') {
       const report = await runAutonomousGrowthCycle(city || 'Bengaluru', pincode || '560001');
       return NextResponse.json({
-        ...getAutonomousTelemetrySnapshot(),
+        ...buildRealOwnerPayload(),
         status: 'ok',
         report,
       });
@@ -82,22 +89,21 @@ export async function POST(req: Request) {
       const ticket = await resolveSupportQuery({
         query:
           body.query ||
-          'Paid ₹199 for my 112-page ICU bill audit, please re-unlock receipt and check 48h escrow status',
+          'Verify GSTIN 29AABCS1429B1ZQ and check 48h Escrow & Audit self-support status',
         language: body.language || 'EN',
-        customerIdentifier: body.customerIdentifier || '+918247831885',
+        customerIdentifier: body.customerIdentifier || 'Founder Console Diagnostic',
         channel: 'FOUNDER_TEST',
       });
       return NextResponse.json({
-        ...getAutonomousTelemetrySnapshot(),
+        ...buildRealOwnerPayload(),
         status: 'ok',
         ticket,
       });
     }
 
     return NextResponse.json({
-      ...getAutonomousTelemetrySnapshot(),
+      ...buildRealOwnerPayload(),
       status: 'authenticated',
-      ownerPhone: OWNER_CONTACT_PHONE,
       ownerEmail: OWNER_CONTACT_EMAIL,
     });
   } catch {

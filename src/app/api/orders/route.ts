@@ -1,36 +1,12 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
-
-interface OrderRecord {
-  id: string;
-  amount: number;
-  currency: string;
-  receipt: string;
-  status: string;
-  created_at: number;
-}
-
-const globalForOrders = globalThis as unknown as {
-  __nearmeOrders?: OrderRecord[];
-};
-
-const recentOrders: OrderRecord[] = globalForOrders.__nearmeOrders ?? [
-  {
-    id: 'order_NearMeSeed01',
-    amount: 49900,
-    currency: 'INR',
-    receipt: 'receipt_seed_01',
-    status: 'paid',
-    created_at: Math.floor(Date.now() / 1000) - 3600,
-  },
-];
-globalForOrders.__nearmeOrders = recentOrders;
+import { ordersLedger, recordOrderEntry, OrderRecord } from '@/lib/ordersStore';
 
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    count: recentOrders.length,
-    orders: recentOrders,
+    count: ordersLedger.length,
+    orders: ordersLedger,
   });
 }
 
@@ -38,7 +14,7 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const rawAmount = body.amount ?? body.amountInRupees;
-    const { currency, receipt } = body;
+    const { currency, receipt, customerIdentifier, itemName } = body;
 
     if (!rawAmount || isNaN(Number(rawAmount))) {
       return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
@@ -49,16 +25,18 @@ export async function POST(req: Request) {
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
-      const demoOrder: OrderRecord = {
-        id: `order_demo_${Date.now()}`,
+      const pendingOrder: OrderRecord = {
+        id: `order_pending_${Date.now()}`,
         amount: amountInPaise,
         currency: currency || 'INR',
         receipt: receipt || `receipt_${Date.now()}`,
-        status: 'created_demo',
+        status: 'awaiting_upi_settlement',
+        customerIdentifier: customerIdentifier ? String(customerIdentifier) : undefined,
+        itemName: itemName ? String(itemName) : undefined,
         created_at: Math.floor(Date.now() / 1000),
       };
-      recentOrders.unshift(demoOrder);
-      return NextResponse.json({ ...demoOrder, fallbackMode: true }, { status: 200 });
+      recordOrderEntry(pendingOrder);
+      return NextResponse.json({ ...pendingOrder, fallbackMode: true }, { status: 200 });
     }
 
     const razorpay = new Razorpay({
@@ -73,12 +51,14 @@ export async function POST(req: Request) {
     };
 
     const order = await razorpay.orders.create(options);
-    recentOrders.unshift({
+    recordOrderEntry({
       id: order.id,
       amount: Number(order.amount),
       currency: order.currency,
       receipt: order.receipt || options.receipt,
       status: order.status,
+      customerIdentifier: customerIdentifier ? String(customerIdentifier) : undefined,
+      itemName: itemName ? String(itemName) : undefined,
       created_at: Math.floor(Date.now() / 1000),
     });
 

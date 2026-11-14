@@ -5,6 +5,7 @@ import {
   validateGstinMod36,
   ZONE_WHOLESALE_INDEX,
 } from '@/lib/seeded-marketplace';
+import { recordAgentExecution } from '@/lib/autonomousStore';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
           trust_score: Number(m.trust_score || 90),
           verified: Boolean(m.is_verified ?? true),
           avg_discount_pct: 30,
-          phone: '918247831885',
+          phone: String(m.phone || ''),
         }));
       }
     } catch {
@@ -59,6 +60,12 @@ export async function POST(req: Request) {
     const raw = String(gstin || '29AABCS1429B1ZQ');
     const mod36 = validateGstinMod36(raw);
     const matchedSeed = SEEDED_MERCHANTS.find((m) => m.gstin === mod36.gstin);
+
+    recordAgentExecution(
+      'agent-fraud-guard',
+      `Verified GSTIN ${mod36.gstin} (Mod-36: ${mod36.checksumValid ? 'VALID' : 'INVALID'})`,
+      0
+    );
 
     return NextResponse.json({
       status: 'verified',

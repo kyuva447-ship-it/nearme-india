@@ -9,15 +9,14 @@ export default function Footer() {
           <div className="md:col-span-2">
             <BrandLogo className="mb-4 grayscale opacity-70" />
             <p className="text-sm mt-2 font-medium text-slate-300">
-              NearMe India — Verified Hyper-Local Business Directory
+              NearMe India — Autonomous Bill Audit &amp; Wholesale Procurement Platform
             </p>
             <p className="text-xs mt-1">
-              (Proprietorship / Digital SaaS & Directory Platform)
+              Built in Bengaluru, Karnataka, India
             </p>
             <div className="mt-4 text-xs space-y-1">
-              <p>Email: contact@nearme-india.org</p>
-              <p>Phone: +91 8247831885</p>
-              <p>Address: Bengaluru, Karnataka, India</p>
+              <p>Platform Support: support@nearme-india.org (On-Site 24/7 Self-Support Desk)</p>
+              <p>Headquarters: Bengaluru, Karnataka, India</p>
             </div>
           </div>
           <div>
@@ -25,21 +24,21 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               <li><Link href="/about" className="hover:text-emerald-400 transition-colors">About Us</Link></li>
               <li><Link href="/pricing" className="hover:text-emerald-400 transition-colors">Pricing</Link></li>
-              <li><Link href="/contact" className="hover:text-emerald-400 transition-colors">Contact</Link></li>
+              <li><Link href="/contact" className="hover:text-emerald-400 transition-colors">24/7 Self-Support</Link></li>
             </ul>
           </div>
           <div>
             <h3 className="text-sm font-bold text-slate-200 mb-4 uppercase tracking-wider">Legal</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link href="/terms" className="hover:text-emerald-400 transition-colors">Terms & Conditions</Link></li>
+              <li><Link href="/terms" className="hover:text-emerald-400 transition-colors">Terms &amp; Conditions</Link></li>
               <li><Link href="/privacy" className="hover:text-emerald-400 transition-colors">Privacy Policy</Link></li>
-              <li><Link href="/refund-policy" className="hover:text-emerald-400 transition-colors">Cancellation & Refund Policy</Link></li>
-              <li><Link href="/shipping-policy" className="hover:text-emerald-400 transition-colors">Shipping & Delivery Policy</Link></li>
+              <li><Link href="/refund-policy" className="hover:text-emerald-400 transition-colors">Cancellation &amp; Refund Policy</Link></li>
+              <li><Link href="/shipping-policy" className="hover:text-emerald-400 transition-colors">Shipping &amp; Delivery Policy</Link></li>
             </ul>
           </div>
         </div>
         <div className="mt-12 pt-8 border-t border-slate-800 text-xs text-center">
-          &copy; {new Date().getFullYear()} NearMe India. All rights reserved.
+          &copy; {new Date().getFullYear()} NearMe India · Built in Bengaluru, Karnataka.
         </div>
       </div>
     </footer>

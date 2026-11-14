@@ -1,11 +1,10 @@
 import { GEMINI_MODEL, getGeminiClient } from './gemini';
 import {
   OWNER_CONTACT_EMAIL,
-  OWNER_CONTACT_PHONE,
-  SEEDED_MERCHANTS,
   validateGstinMod36,
 } from './seeded-marketplace';
 import { escrowLedger, getOwnerNetProfitSummary } from './escrowStore';
+import { auditLedger, ordersLedger } from './ordersStore';
 
 export type SupportedLang = 'EN' | 'HI' | 'KN' | 'TA' | 'TE' | 'MR';
 
@@ -28,7 +27,7 @@ export interface HarvestedSupplier {
   category: string;
   publicRating: string;
   gstPresence: string;
-  inviteStatus: 'WHATSAPP_QUEUED' | 'EMAIL_QUEUED' | 'AI_TWIN_INVITED';
+  inviteStatus: 'ON_SITE_QUEUED' | 'EMAIL_QUEUED' | 'AI_TWIN_INVITED';
   sourceUri?: string;
   discoveredAt: string;
 }
@@ -95,157 +94,89 @@ const DEFAULT_SUB_AGENTS: SubAgentTelemetry[] = [
   {
     id: 'agent-viral',
     name: 'Viral Loop & Proof Card Architect',
-    role: 'Generates WhatsApp proof cards & QR Army referral loops',
+    role: 'Generates regional savings proof cards & QR Army referral loops',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 148,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Published 112p Hospital Bill Savings Card for Bengaluru 560001',
-    revenueImpactInr: 84500,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Awaiting live viral campaign trigger',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-maps-harvester',
     name: 'Google Maps & Internet B2B Supplier Harvester',
     role: 'Discovers verified wholesale dealers, pharmacies & labs via Search Grounding',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 64,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Harvested 4 wholesale & diagnostic hubs across KA/DL/MH/AP',
-    revenueImpactInr: 192000,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Click Harvester Wave to scan live suppliers',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-dutch-escrow',
     name: '30-Min Reverse Dutch Auction & Escrow Coordinator',
     role: 'Runs 30-min supplier bidding & 15/85 UPI escrow + MSME 43B(h) settlement',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 91,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Locked 15/85 Escrow + 3% MSME Section 43B(h) Day-1 split',
-    revenueImpactInr: 318500,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Awaiting live escrow lock or OTP release',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-irdai-auditor',
     name: 'IRDAI Hospital Claim & Multi-Page Auditor',
     role: 'Audits 1 to 500+ page hospital/BOQ PDFs & drafts IRDAI TPA rebuttals',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 215,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Stripped NPPA/CGHS overcharges across 112-page ICU claim file',
-    revenueImpactInr: 427850,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Awaiting live document audit',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-seo-indexer',
     name: 'Programmatic SEO & Chrome/Search Indexer',
     role: 'Maintains 19,300+ pincode feeds, sitemap.xml, llms.txt & IndexNow pings',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 52,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Synced sitemap.xml + llms.txt + FAQPage/Product JSON-LD',
-    revenueImpactInr: 114000,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Awaiting IndexNow / syndication wave',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-self-support',
     name: '24/7 Autonomous Customer Self-Support & Refund Bot',
-    role: 'Resolves audit re-unlocks, 48h refunds & OTP issues with 0 human support',
+    role: 'Resolves audit re-unlocks, 48h refunds & OTP issues inside the website',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 37,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Auto-resolved payment unlock & 48h escrow SLA checks in 6 languages',
-    revenueImpactInr: 68400,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Listening for customer self-support queries',
+    revenueImpactInr: 0,
   },
   {
     id: 'agent-fraud-guard',
     name: 'Escrow & GST Fraud Guardrail',
     role: 'Verifies Mod-36 GSTIN checksums, OTP handoffs & e-Daakhil readiness',
     status: 'ACTIVE • AUTOPILOT',
-    executions: 119,
-    lastActionAt: nowIso(),
-    lastActionSummary: 'Validated 5 regional GSTIN nodes & blocked tampered invoice claims',
-    revenueImpactInr: 145000,
+    executions: 0,
+    lastActionAt: '',
+    lastActionSummary: 'Standby • Awaiting GSTIN verification or security check',
+    revenueImpactInr: 0,
   },
 ];
 
-const DEFAULT_HARVESTED: HarvestedSupplier[] = SEEDED_MERCHANTS.map((m, i) => ({
-  id: `harv-${i + 1}`,
-  businessName: m.business_name,
-  city: m.city,
-  pincode: m.pincode,
-  category: m.category,
-  publicRating: `${(4.5 + (i % 4) * 0.1).toFixed(1)}★ Google Verified`,
-  gstPresence: `GSTIN ${m.gstin} (Mod-36 Checked)`,
-  inviteStatus: 'AI_TWIN_INVITED',
-  sourceUri: `https://www.nearme-india.org/services/${m.pincode}/hospital-bill-audit`,
-  discoveredAt: nowIso(),
-}));
-
-const DEFAULT_TICKETS: SupportTicket[] = [
-  {
-    id: 'TKT-AUTO-9012',
-    channel: 'WEB_CONCIERGE',
-    language: 'EN',
-    customerIdentifier: '+919845011223',
-    query: 'Paid ₹199 for my 112-page ICU bill audit, please re-unlock receipt',
-    actionExecuted: 'PAYMENT_UNLOCK_RESTORED',
-    resolutionSummary:
-      'Verified Razorpay/UPI reference & restored Unlimited-Page Audit Ledger unlock (Ref: UNLOCK-112P-9012).',
-    humanInterventionNeeded: false,
-    satisfactionScore: 5,
-    unlockedAuditRef: 'UNLOCK-112P-9012',
-    createdAt: new Date(Date.now() - 4200 * 1000).toISOString(),
-  },
-  {
-    id: 'TKT-AUTO-9011',
-    channel: 'WEB_CONCIERGE',
-    language: 'HI',
-    customerIdentifier: 'ESC-IND-9921',
-    query: '48 घंटे से ज्यादा हो गए, डिलीवरी OTP नहीं मिला — रिफंड स्टेटस चेक करें',
-    actionExecuted: 'OTP_GSTIN_GUIDED',
-    resolutionSummary:
-      'Checked ESC-IND-9921 milestone timer: within 48h active dispatch window; shared live OTP release protocol & guarantee protection.',
-    humanInterventionNeeded: false,
-    satisfactionScore: 5,
-    createdAt: new Date(Date.now() - 9600 * 1000).toISOString(),
-  },
-];
-
-const DEFAULT_ALERTS: OwnerAlertItem[] = [
-  {
-    id: 'ALT-1001',
-    severity: 'ACTION_TAKEN',
-    channel: `${OWNER_CONTACT_PHONE} / ${OWNER_CONTACT_EMAIL}`,
-    message: 'Autonomous Growth Engine active: 7 AI sub-agents running on autopilot.',
-    createdAt: nowIso(),
-  },
-];
+const DEFAULT_HARVESTED: HarvestedSupplier[] = [];
+const DEFAULT_TICKETS: SupportTicket[] = [];
+const DEFAULT_ALERTS: OwnerAlertItem[] = [];
 
 const DEFAULT_SYNDICATION: SyndicationState = {
   sitemapUrl: 'https://www.nearme-india.org/sitemap.xml',
   robotsUrl: 'https://www.nearme-india.org/robots.txt',
   llmsUrl: 'https://www.nearme-india.org/llms.txt',
   manifestUrl: 'https://www.nearme-india.org/manifest.json',
-  indexNowStatus: 'INDEXED_LIVE',
-  totalPings: 14,
-  lastPingAt: nowIso(),
+  indexNowStatus: 'READY',
+  totalPings: 0,
+  lastPingAt: '',
   pincodesIndexed: 19300,
-  viralCards: [
-    {
-      id: 'VC-BLR-01',
-      city: 'Bengaluru (560001)',
-      headline: 'ICU & Consumables Overcharge Stripped: ₹5,55,500 Saved on 112-Page File',
-      savingsBadge: '-36% vs Hospital MRP',
-      shareText:
-        'Audited a 112-page ICU bill on NearMe India (https://www.nearme-india.org) & stripped ₹5,55,500 in NPPA/CGHS overcharges.',
-      createdAt: nowIso(),
-    },
-    {
-      id: 'VC-DEL-02',
-      city: 'Delhi NCR (110001)',
-      headline: 'OPC-53 Direct Rake Cement Locked at ₹358/Bag via 15/85 UPI Escrow',
-      savingsBadge: '-18% Direct Mill Rate',
-      shareText:
-        'Locked OPC-53 Cement at ₹358/bag with 15/85 UPI Escrow protection on https://www.nearme-india.org',
-      createdAt: nowIso(),
-    },
-  ],
+  viralCards: [],
 };
 
 const globalStore = globalThis as unknown as {
@@ -296,7 +227,7 @@ export function recordAgentExecution(
   agent.executions += 1;
   agent.lastActionAt = nowIso();
   agent.lastActionSummary = summary;
-  agent.revenueImpactInr += addedRevenueInr;
+  agent.revenueImpactInr += Math.max(0, Math.round(addedRevenueInr));
   return agent;
 }
 
@@ -328,12 +259,12 @@ export function pushOwnerAlert(
   const item: OwnerAlertItem = {
     id: `ALT-${Math.floor(1000 + Math.random() * 9000)}`,
     severity,
-    channel: `${OWNER_CONTACT_PHONE} / ${OWNER_CONTACT_EMAIL}`,
+    channel: 'On-Site Founder Console',
     message,
     createdAt: nowIso(),
   };
   ownerAlerts.unshift(item);
-  if (ownerAlerts.length > 30) ownerAlerts.pop();
+  if (ownerAlerts.length > 40) ownerAlerts.pop();
   return item;
 }
 
@@ -394,7 +325,7 @@ export async function runMapsAndWebHarvester(
             category: parts[1] || category,
             publicRating: parts[2] || '4.6★ Google Search Grounded',
             gstPresence: 'Queued for Mod-36 GST Verification',
-            inviteStatus: 'WHATSAPP_QUEUED',
+            inviteStatus: 'ON_SITE_QUEUED',
             sourceUri: groundingSources[i]?.uri,
             discoveredAt: nowIso(),
           });
@@ -404,51 +335,29 @@ export async function runMapsAndWebHarvester(
         usedLiveSearch = true;
       }
     } catch {
-      // Fallback below
+      // Fallback below if Search Grounding fails or key absent
     }
   }
 
-  if (newlyHarvested.length === 0) {
-    newlyHarvested.push(
-      {
-        id: `harv-${Date.now()}-1`,
-        businessName: `${city} Jan Aushadhi & Surgical Wholesale Depot`,
-        city,
-        pincode,
-        category: 'Hospital Consumables & Generic Rx',
-        publicRating: '4.7★ Public Rating',
-        gstPresence: 'GST Active • Eligible for 15/85 Escrow',
-        inviteStatus: 'AI_TWIN_INVITED',
-        sourceUri: `https://www.nearme-india.org/services/${pincode}/hospital-bill-audit`,
-        discoveredAt: nowIso(),
-      },
-      {
-        id: `harv-${Date.now()}-2`,
-        businessName: `${city} Direct Rake Cement & Steel Syndicate`,
-        city,
-        pincode,
-        category: 'Construction & Wholesale BOQ',
-        publicRating: '4.6★ Public Rating',
-        gstPresence: 'GST Verified • MSME 43B(h) Ready',
-        inviteStatus: 'WHATSAPP_QUEUED',
-        sourceUri: `https://www.nearme-india.org/services/${pincode}/wholesale-cement-tmt`,
-        discoveredAt: nowIso(),
-      }
-    );
+  if (newlyHarvested.length > 0) {
+    harvestedSuppliers.unshift(...newlyHarvested);
+    if (harvestedSuppliers.length > 30) harvestedSuppliers.length = 30;
   }
-
-  harvestedSuppliers.unshift(...newlyHarvested);
-  if (harvestedSuppliers.length > 30) harvestedSuppliers.length = 30;
 
   recordAgentExecution(
     'agent-maps-harvester',
-    `Harvested ${newlyHarvested.length} B2B suppliers in ${city} (${pincode}) & queued ₹99/day AI Twin invites`,
-    newlyHarvested.length * 499
+    newlyHarvested.length > 0
+      ? `Harvested ${newlyHarvested.length} real suppliers in ${city} (${pincode}) via Search Grounding`
+      : `Scanned ${city} (${pincode}) — configure live GEMINI_API_KEY for Google Search web discovery`,
+    0
   );
-  pushOwnerAlert(
-    'ACTION_TAKEN',
-    `Maps & Web Harvester queued ${newlyHarvested.length} B2B invites in ${city} (${pincode}).`
-  );
+
+  if (newlyHarvested.length > 0) {
+    pushOwnerAlert(
+      'ACTION_TAKEN',
+      `Maps & Web Harvester discovered ${newlyHarvested.length} suppliers in ${city} (${pincode}).`
+    );
+  }
 
   return {
     city,
@@ -470,7 +379,7 @@ export function runWebSyndicationEngine(city = 'Bengaluru'): SyndicationState {
     city,
     headline: `${city} Regional Price-Slash Alert • ${Math.round(28 * founderControls.viralBountyMultiplier)}% Syndicate Rate Live`,
     savingsBadge: `${founderControls.viralBountyMultiplier.toFixed(1)}x QR Bounty`,
-    shareText: `Check live verified wholesale & hospital bill benchmarks in ${city} on https://www.nearme-india.org`,
+    shareText: `Check verified wholesale & hospital bill benchmarks in ${city} on https://www.nearme-india.org`,
     createdAt: nowIso(),
   };
 
@@ -480,19 +389,19 @@ export function runWebSyndicationEngine(city = 'Bengaluru'): SyndicationState {
   recordAgentExecution(
     'agent-seo-indexer',
     `Pinged sitemap.xml, llms.txt & IndexNow for ${city} (${syndicationState.pincodesIndexed} pincodes)`,
-    1200
+    0
   );
   recordAgentExecution(
     'agent-viral',
-    `Syndicated regional price-alert card ${card.id} (${founderControls.viralBountyMultiplier.toFixed(1)}x bounty)`,
-    1850
+    `Syndicated proof card ${card.id} for ${city} (${founderControls.viralBountyMultiplier.toFixed(1)}x bounty)`,
+    0
   );
 
   return syndicationState;
 }
 
 /**
- * 24/7 Multilingual Autonomous Self-Support & Dispute Resolution Engine
+ * 24/7 Multilingual Autonomous Self-Support & Dispute Resolution Engine (100% On-Site)
  */
 export async function resolveSupportQuery(params: {
   query: string;
@@ -502,7 +411,8 @@ export async function resolveSupportQuery(params: {
 }): Promise<SupportTicket> {
   const query = (params.query || '').trim();
   const language: SupportedLang = params.language || 'EN';
-  const customerIdentifier = (params.customerIdentifier || 'Guest User').trim();
+  const rawIdent = (params.customerIdentifier || '').trim();
+  const customerIdentifier = rawIdent || 'On-Site Customer';
   const channel: SupportTicket['channel'] = params.channel || 'WEB_CONCIERGE';
   const qLower = query.toLowerCase();
 
@@ -511,6 +421,7 @@ export async function resolveSupportQuery(params: {
   let humanInterventionNeeded = false;
   let refundVoucherCode: string | undefined;
   let unlockedAuditRef: string | undefined;
+  let revenueAddedInr = 0;
 
   if (
     qLower.includes('fraud') ||
@@ -520,9 +431,9 @@ export async function resolveSupportQuery(params: {
   ) {
     actionExecuted = 'ESCALATED_CRITICAL_FRAUD';
     humanInterventionNeeded = true;
-    resolutionSummary = `Critical fraud anomaly flagged for ${customerIdentifier}. Frozen automated payout & dispatched escalation alert to Founder Desk (${OWNER_CONTACT_PHONE} / ${OWNER_CONTACT_EMAIL}).`;
+    resolutionSummary = `Security safeguard triggered for ${customerIdentifier}. Pending escrow payouts have been frozen and an internal fraud alert has been logged to the Founder Console for immediate audit.`;
     pushOwnerAlert('CRITICAL_FRAUD', `Fraud escalation from ${customerIdentifier}: "${query}"`);
-    recordAgentExecution('agent-fraud-guard', `Quarantined & escalated critical fraud ticket`, 0);
+    recordAgentExecution('agent-fraud-guard', `Quarantined & flagged fraud grievance on-site`, 0);
   } else if (
     qLower.includes('refund') ||
     qLower.includes('48') ||
@@ -530,47 +441,107 @@ export async function resolveSupportQuery(params: {
     qLower.includes('रिफंड') ||
     qLower.includes('ವಾಪಸ್')
   ) {
-    const escrowMatch = query.match(/ESC-IND-\d+/i)?.[0]?.toUpperCase();
-    const targetEscrow =
-      (escrowMatch && escrowLedger.find((e) => e.id === escrowMatch)) ||
-      escrowLedger.find((e) => e.status === 'ESCROW_LOCKED_15_85');
+    const escrowMatch =
+      query.match(/ESC-IND-\d+/i)?.[0]?.toUpperCase() ||
+      rawIdent.match(/ESC-IND-\d+/i)?.[0]?.toUpperCase();
+    const targetEscrow = escrowMatch
+      ? escrowLedger.find((e) => e.id === escrowMatch)
+      : rawIdent
+        ? escrowLedger.find(
+            (e) =>
+              e.buyer_name.toLowerCase() === rawIdent.toLowerCase() &&
+              e.status !== 'RELEASED_TO_MERCHANT'
+          )
+        : undefined;
 
-    if (targetEscrow && founderControls.autoRefundOn48hExpiry) {
-      targetEscrow.status = 'REFUNDED_48HR_GUARANTEE';
-      actionExecuted = 'ESCROW_48H_REFUND_APPROVED';
-      refundVoucherCode = `REF48-${targetEscrow.id}-${Math.floor(100 + Math.random() * 900)}`;
-      resolutionSummary = `Verified 48-hour Escrow Protection on ${targetEscrow.id} (₹${targetEscrow.total_amount_inr.toLocaleString('en-IN')}). Automated instant refund approved (${refundVoucherCode}); downloadable refund voucher issued.`;
-    } else if (targetEscrow) {
+    if (targetEscrow) {
+      if (targetEscrow.status === 'REFUNDED_48HR_GUARANTEE') {
+        actionExecuted = 'ESCROW_48H_REFUND_APPROVED';
+        refundVoucherCode = `REF48-${targetEscrow.id}-ISSUED`;
+        resolutionSummary = `Escrow ${targetEscrow.id} (₹${targetEscrow.total_amount_inr.toLocaleString('en-IN')}) is already refunded under our 48-hour Escrow Protection guarantee. You can re-download your voucher (${refundVoucherCode}) below.`;
+      } else if (targetEscrow.status === 'RELEASED_TO_MERCHANT') {
+        actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
+        resolutionSummary = `Escrow ${targetEscrow.id} has already been completed via 6-digit Delivery OTP (${targetEscrow.merchant_name}). Logged post-delivery dispute ticket for review.`;
+      } else if (founderControls.autoRefundOn48hExpiry) {
+        targetEscrow.status = 'REFUNDED_48HR_GUARANTEE';
+        actionExecuted = 'ESCROW_48H_REFUND_APPROVED';
+        refundVoucherCode = `REF48-${targetEscrow.id}-${Math.floor(100 + Math.random() * 900)}`;
+        resolutionSummary = `Verified 48-hour Escrow Protection on ${targetEscrow.id} (₹${targetEscrow.total_amount_inr.toLocaleString('en-IN')}). Automated instant refund approved (${refundVoucherCode}); downloadable refund voucher issued right here.`;
+        recordAgentExecution(
+          'agent-dutch-escrow',
+          `Auto-processed 48h refund for ${targetEscrow.id} via Self-Support`,
+          0
+        );
+      } else {
+        actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
+        resolutionSummary = `Escrow ${targetEscrow.id} logged for 48-hour SLA verification under manual review policy. Status updates appear directly inside your 15/85 Escrow tab.`;
+      }
+    } else if (escrowMatch) {
       actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
-      resolutionSummary = `Escrow ${targetEscrow.id} logged for 48h expiry audit under Founder Manual Review policy. Target SLA response < 30 mins.`;
+      resolutionSummary = `Escrow ID ${escrowMatch} was not found in the active escrow ledger. Please verify the ID in your "15/85 Escrow & MSME" tab or lock a new escrow order on the website.`;
     } else {
-      actionExecuted = 'ESCROW_48H_REFUND_APPROVED';
-      refundVoucherCode = `REF48-AUTO-${Math.floor(1000 + Math.random() * 9000)}`;
-      resolutionSummary = `48-Hour Escrow Refund Guarantee activated for ${customerIdentifier}. Issued downloadable refund voucher ${refundVoucherCode}.`;
+      actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
+      resolutionSummary = `48-Hour Escrow Refund Guarantee is active (${escrowLedger.length} escrow order(s) currently tracked). To execute an instant on-site refund, enter your Escrow ID (format ESC-IND-XXXX) in the box below or click "48h Refund" directly inside the 15/85 Escrow tab.`;
     }
   } else if (
     qLower.includes('unlock') ||
     qLower.includes('paid') ||
     qLower.includes('receipt') ||
     qLower.includes('audit') ||
-    qLower.includes('49') ||
-    qLower.includes('199') ||
-    qLower.includes('pay_')
+    qLower.includes('pay_') ||
+    qLower.includes('order_') ||
+    qLower.includes('aud-')
   ) {
-    actionExecuted = 'PAYMENT_UNLOCK_RESTORED';
-    unlockedAuditRef = `UNLOCK-${Math.floor(100000 + Math.random() * 900000)}`;
-    resolutionSummary = `Looked up payment/phone record for ${customerIdentifier} and automatically re-unlocked Unlimited-Page Audit Ledger access (Receipt Ref: ${unlockedAuditRef}).`;
+    const orderOrPayMatch = query.match(/(order_[A-Za-z0-9_]+|pay_[A-Za-z0-9_]+|AUD-\d+)/i)?.[0];
+    const matchedOrder = ordersLedger.find(
+      (o) =>
+        (orderOrPayMatch && o.id.toLowerCase() === orderOrPayMatch.toLowerCase()) ||
+        (rawIdent && o.customerIdentifier === rawIdent)
+    );
+    const matchedAudit = auditLedger.find(
+      (a) =>
+        (orderOrPayMatch && a.id.toLowerCase() === orderOrPayMatch.toLowerCase()) ||
+        (rawIdent && a.customerIdentifier === rawIdent)
+    );
+
+    if (matchedAudit) {
+      actionExecuted = 'PAYMENT_UNLOCK_RESTORED';
+      unlockedAuditRef = matchedAudit.unlockCode;
+      resolutionSummary = `Verified audit record ${matchedAudit.id} (${matchedAudit.billType}, ${matchedAudit.totalPages} pages). Restored on-site Audit Ledger access token: ${unlockedAuditRef}.`;
+    } else if (matchedOrder) {
+      actionExecuted = 'PAYMENT_UNLOCK_RESTORED';
+      unlockedAuditRef = `UNLOCK-${matchedOrder.id.slice(-6).toUpperCase()}`;
+      resolutionSummary = `Verified order ${matchedOrder.id} (₹${Math.round(matchedOrder.amount / 100).toLocaleString('en-IN')}). On-site access restored cleanly (${unlockedAuditRef}).`;
+      revenueAddedInr = Math.round(matchedOrder.amount / 100);
+    } else if (auditLedger.length > 0 && !orderOrPayMatch) {
+      const latest = auditLedger[0];
+      actionExecuted = 'PAYMENT_UNLOCK_RESTORED';
+      unlockedAuditRef = latest.unlockCode;
+      resolutionSummary = `Restored latest session audit ledger (${latest.id}: ${latest.billType}, ${latest.totalPages} pages, Token: ${unlockedAuditRef}). You can view and export your CSV/IRDAI notice directly in the Bill Stripper tab.`;
+    } else {
+      actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
+      resolutionSummary = `No completed payment or audit receipt matched "${orderOrPayMatch || customerIdentifier}" yet. Paste your Razorpay Order/Payment ID (order_... / pay_...) or run your bill scan in the "Bill Stripper (500+p)" tab to unlock and save a receipt.`;
+    }
   } else if (qLower.includes('otp') || qLower.includes('gst') || qLower.includes('payout')) {
     actionExecuted = 'OTP_GSTIN_GUIDED';
     const gstMatch = query.match(/[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]/i)?.[0];
+    const escrowMatch = query.match(/ESC-IND-\d+/i)?.[0]?.toUpperCase();
+
     if (gstMatch) {
       const check = validateGstinMod36(gstMatch);
-      resolutionSummary = `Checked GSTIN ${check.gstin}: Mod-36 Checksum is ${
-        check.checksumValid ? 'VALID' : 'INVALID'
-      }. Suppliers can enter the buyer's 6-digit Delivery OTP inside Escrow Tab to release 85% UPI payout immediately.`;
+      recordAgentExecution('agent-fraud-guard', `Verified GSTIN ${check.gstin} via Self-Support`, 0);
+      resolutionSummary = `GSTIN ${check.gstin} verified on-site: Syntax ${
+        check.syntaxValid ? 'VALID' : 'INVALID'
+      } • Mod-36 Checksum ${
+        check.checksumValid ? 'PASSED' : 'INVALID'
+      }. Verified merchants settle 85% via buyer's 6-digit Delivery OTP inside the "15/85 Escrow & MSME" tab.`;
+    } else if (escrowMatch) {
+      const esc = escrowLedger.find((e) => e.id === escrowMatch);
+      resolutionSummary = esc
+        ? `Escrow ${esc.id} (${esc.merchant_name}) status is ${esc.status}. To release the 85% merchant payout, enter the 6-digit Delivery OTP shared with the buyer on the "15/85 Escrow & MSME" tab and click "OTP Release".`
+        : `Escrow ID ${escrowMatch} was not found in the active ledger. Check active escrows inside the "15/85 Escrow & MSME" tab.`;
     } else {
-      const sampleOtp = escrowLedger[0]?.delivery_otp || '482910';
-      resolutionSummary = `To release your 85% merchant UPI payout, collect the buyer's 6-digit Delivery OTP (demo milestone OTP: ${sampleOtp}) and click "OTP Release" in the 15/85 Escrow tab.`;
+      resolutionSummary = `To release an 85% merchant UPI payout, collect the buyer's 6-digit Delivery OTP shown when locking escrow, enter it in the "15/85 Escrow & MSME" tab, and click "OTP Release". You can also paste any 15-character GSTIN here for instant Mod-36 verification.`;
     }
   } else {
     const ai = getGeminiClient();
@@ -579,7 +550,7 @@ export async function resolveSupportQuery(params: {
       try {
         const res = await ai.models.generateContent({
           model: GEMINI_MODEL,
-          contents: `You are NearMe India's 24/7 Autonomous Self-Support Desk (zero human support needed). Reply concisely (max 2 sentences) in language code "${language}" explaining how the platform automatically resolved this request for ${customerIdentifier}: "${query}".`,
+          contents: `You are NearMe India's 24/7 On-Site Autonomous Self-Support Desk (built in Bengaluru, Karnataka, operating at https://www.nearme-india.org). NEVER ask the user to contact WhatsApp, phone numbers, or external human support. Answer clearly in language code "${language}" (max 2 sentences) explaining how the user can resolve this directly on the website for ${customerIdentifier}: "${query}".`,
         });
         aiText = (res.text || '').trim();
       } catch {
@@ -588,7 +559,7 @@ export async function resolveSupportQuery(params: {
     }
     resolutionSummary =
       aiText ||
-      `Official DPDP / NearMe Grievance Ticket created and auto-resolved for ${customerIdentifier}. Zero human intervention needed — all audit, 48h escrow refund, and GST verification tools remain active 24/7.`;
+      `Your on-site self-support ticket has been logged for ${customerIdentifier}. Use the quick tools above for instant GSTIN Mod-36 verification, audit receipt re-unlock, or 48-hour escrow refund execution right inside this website.`;
   }
 
   const ticket: SupportTicket = {
@@ -607,12 +578,12 @@ export async function resolveSupportQuery(params: {
   };
 
   supportTickets.unshift(ticket);
-  if (supportTickets.length > 40) supportTickets.pop();
+  if (supportTickets.length > 50) supportTickets.pop();
 
   recordAgentExecution(
     'agent-self-support',
     `Auto-resolved [${language}] ${actionExecuted} (${ticket.id})`,
-    actionExecuted === 'PAYMENT_UNLOCK_RESTORED' ? 199 : 0
+    revenueAddedInr
   );
 
   return ticket;
@@ -621,9 +592,9 @@ export async function resolveSupportQuery(params: {
 export function getAutonomousTelemetrySnapshot() {
   return {
     status: 'operational',
-    controls: founderControls,
-    ownerPhone: OWNER_CONTACT_PHONE,
+    builtIn: 'Bengaluru, Karnataka, India',
     ownerEmail: OWNER_CONTACT_EMAIL,
+    controls: founderControls,
     ...getOwnerNetProfitSummary(),
     subAgents,
     harvestedSuppliers,

@@ -193,6 +193,18 @@ export default function NearMePlatform({
   const [localLang, setLocalLang] = useState<SupportedLang>(lang || 'EN');
 
   useEffect(() => {
+    const savedPhone = localStorage.getItem('nearme_user_phone');
+    if (savedPhone) setQrPhone(savedPhone);
+
+    fetch('/api/escrow')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.escrows && Array.isArray(data.escrows)) {
+          setEscrows(data.escrows);
+        }
+      })
+      .catch(() => {});
+
     if (lang) {
       setLocalLang(lang);
       return;
@@ -226,12 +238,16 @@ export default function NearMePlatform({
   } | null>(null);
 
   // Pillar 2 + Multiplier C: 15/85 Escrow + MSME 43B(h)
-  const [escrows, setEscrows] = useState<SeededEscrowRecord[]>(SEEDED_ESCROWS);
+  const [escrows, setEscrows] = useState<SeededEscrowRecord[]>([]);
   const [escrowAmount, setEscrowAmount] = useState<number>(125000);
   const [escrowMerchant, setEscrowMerchant] = useState<string>(SEEDED_MERCHANTS[0].business_name);
   const [msme43bh, setMsme43bh] = useState<boolean>(true);
   const [otpInput, setOtpInput] = useState<string>('');
   const [escrowBusy, setEscrowBusy] = useState<boolean>(false);
+  const [escrowStatusFilter, setEscrowStatusFilter] = useState<'ALL' | 'PENDING' | 'COMPLETED'>('ALL');
+  const [escrowSortBy, setEscrowSortBy] = useState<
+    'LATEST' | 'VALUE_DESC' | 'VALUE_ASC' | 'STATUS_PENDING' | 'STATUS_COMPLETED'
+  >('LATEST');
 
   // Pillar 3: GSTIN Mod-36 & e-Court Trust Shield
   const [gstinInput, setGstinInput] = useState<string>('29AABCS1429B1ZQ');
@@ -248,7 +264,7 @@ export default function NearMePlatform({
   const [aiTwinActive, setAiTwinActive] = useState<boolean>(false);
 
   // Pillar 5: 0.1% Student & Trader QR Army
-  const [qrPhone, setQrPhone] = useState<string>('8247831885');
+  const [qrPhone, setQrPhone] = useState<string>('');
   const [showShareModal, setShowShareModal] = useState<boolean>(false);
 
   // Multiplier D: 19,300+ Pincode Benchmark Index Toggle
@@ -643,7 +659,7 @@ export default function NearMePlatform({
       ]
     : [];
 
-  const shareUrl = `https://www.nearme-india.org/?ref=${encodeURIComponent(qrPhone || '8247831885')}`;
+  const shareUrl = `https://www.nearme-india.org/?ref=${encodeURIComponent(qrPhone || 'partner')}`;
   const minsLeft = String(Math.floor(dutchSecondsLeft / 60)).padStart(2, '0');
   const secsLeft = String(dutchSecondsLeft % 60).padStart(2, '0');
 
@@ -673,9 +689,9 @@ export default function NearMePlatform({
         <UniversalShareModal
           onClose={() => setShowShareModal(false)}
           shareUrl={shareUrl}
-          shareText={`Audit 1–500+ page hospital & wholesale bills on NearMe India with 0.1% QR partner ${qrPhone || '8247831885'}`}
+          shareText={`Audit 1–500+ page hospital & wholesale bills on NearMe India${qrPhone ? ` via 0.1% QR partner ${qrPhone}` : ''}`}
           title="NearMe India 0.1% QR Army Partner Pass"
-          subtitle="Scan via PhonePe / GPay / WhatsApp camera to earn 0.1% lifetime affiliate commission"
+          subtitle="Scan via PhonePe / GPay camera to earn 0.1% lifetime affiliate commission"
         />
       )}
 
@@ -1231,54 +1247,138 @@ export default function NearMePlatform({
           </div>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <h4 className="text-xs font-bold uppercase text-gray-400">Active Escrow Milestones</h4>
               <input
                 type="text"
                 value={otpInput}
                 onChange={(e) => setOtpInput(e.target.value)}
                 placeholder="Enter 6-digit Delivery OTP"
-                className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white w-48"
+                className="bg-gray-900 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white w-full sm:w-48"
               />
             </div>
-            {escrows.slice(0, 4).map((esc) => (
-              <div
-                key={esc.id}
-                className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-blue-400">{esc.id}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">
-                      {esc.status}
-                    </span>
-                    <span className="text-[10px] text-gray-500">OTP: {esc.delivery_otp}</span>
-                  </div>
-                  <p className="text-xs font-bold text-white mt-1">{esc.merchant_name}</p>
-                  <p className="text-[11px] text-gray-400">
-                    Total: ₹{esc.total_amount_inr.toLocaleString('en-IN')} • 85% Merchant: ₹
-                    {esc.merchant_payout_85_inr.toLocaleString('en-IN')} • Owner Net Profit: ₹
-                    {esc.owner_net_profit_inr.toLocaleString('en-IN')}
-                  </p>
+
+            {escrows.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-900/70 border border-gray-800 rounded-xl p-2.5">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(['ALL', 'PENDING', 'COMPLETED'] as const).map((statusKey) => (
+                    <button
+                      key={statusKey}
+                      type="button"
+                      onClick={() => setEscrowStatusFilter(statusKey)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors ${
+                        escrowStatusFilter === statusKey
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-gray-950 text-gray-400 hover:text-white border border-gray-800'
+                      }`}
+                    >
+                      {statusKey === 'ALL'
+                        ? 'All'
+                        : statusKey === 'PENDING'
+                          ? 'Pending'
+                          : 'Completed'}
+                    </button>
+                  ))}
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleReleaseEscrow(esc.id)}
-                    className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
-                  >
-                    OTP Release
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleRefundEscrow(esc.id)}
-                    className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg"
-                  >
-                    48h Refund
-                  </button>
-                </div>
+                <select
+                  aria-label="Sort active escrow orders"
+                  value={escrowSortBy}
+                  onChange={(e) =>
+                    setEscrowSortBy(
+                      e.target.value as
+                        | 'LATEST'
+                        | 'VALUE_DESC'
+                        | 'VALUE_ASC'
+                        | 'STATUS_PENDING'
+                        | 'STATUS_COMPLETED'
+                    )
+                  }
+                  className="bg-gray-950 border border-gray-800 rounded-lg px-2.5 py-1 text-[11px] font-bold text-gray-200 outline-none focus:border-cyan-500"
+                >
+                  <option value="LATEST">Sort: Latest First</option>
+                  <option value="VALUE_DESC">Contract Value: High → Low</option>
+                  <option value="VALUE_ASC">Contract Value: Low → High</option>
+                  <option value="STATUS_PENDING">Status: Pending First</option>
+                  <option value="STATUS_COMPLETED">Status: Completed First</option>
+                </select>
               </div>
-            ))}
+            )}
+
+            {escrows.length === 0 ? (
+              <div className="bg-gray-900/70 border border-dashed border-gray-800 rounded-xl p-5 text-center text-xs text-gray-400">
+                No active escrows yet. Lock a deal above to generate your Escrow ID (ESC-IND-XXXX) and 6-digit Delivery OTP.
+              </div>
+            ) : (
+              (() => {
+                const visibleEscrows = escrows
+                  .filter((esc) => {
+                    const isPending = esc.status === 'ESCROW_LOCKED_15_85';
+                    if (escrowStatusFilter === 'PENDING') return isPending;
+                    if (escrowStatusFilter === 'COMPLETED') return !isPending;
+                    return true;
+                  })
+                  .sort((a, b) => {
+                    if (escrowSortBy === 'VALUE_DESC') return b.total_amount_inr - a.total_amount_inr;
+                    if (escrowSortBy === 'VALUE_ASC') return a.total_amount_inr - b.total_amount_inr;
+                    if (escrowSortBy === 'STATUS_PENDING') {
+                      if (a.status !== b.status) return a.status === 'ESCROW_LOCKED_15_85' ? -1 : 1;
+                      return b.total_amount_inr - a.total_amount_inr;
+                    }
+                    if (escrowSortBy === 'STATUS_COMPLETED') {
+                      if (a.status !== b.status) return a.status !== 'ESCROW_LOCKED_15_85' ? -1 : 1;
+                      return b.total_amount_inr - a.total_amount_inr;
+                    }
+                    return 0;
+                  });
+
+                if (visibleEscrows.length === 0) {
+                  return (
+                    <div className="bg-gray-900/70 border border-dashed border-gray-800 rounded-xl p-4 text-center text-xs text-gray-400">
+                      No escrow orders match the selected filter.
+                    </div>
+                  );
+                }
+
+                return visibleEscrows.slice(0, 8).map((esc) => (
+                  <div
+                    key={esc.id}
+                    className="bg-gray-900 border border-gray-800 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-blue-400">{esc.id}</span>
+                        <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 font-bold">
+                          {esc.status}
+                        </span>
+                        <span className="text-[10px] text-gray-500">OTP: {esc.delivery_otp}</span>
+                      </div>
+                      <p className="text-xs font-bold text-white mt-1">{esc.merchant_name}</p>
+                      <p className="text-[11px] text-gray-400">
+                        Total: ₹{esc.total_amount_inr.toLocaleString('en-IN')} • 85% Merchant: ₹
+                        {esc.merchant_payout_85_inr.toLocaleString('en-IN')} • Owner Net Profit: ₹
+                        {esc.owner_net_profit_inr.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleReleaseEscrow(esc.id)}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-lg"
+                      >
+                        OTP Release
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRefundEscrow(esc.id)}
+                        className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-bold rounded-lg"
+                      >
+                        48h Refund
+                      </button>
+                    </div>
+                  </div>
+                ));
+              })()
+            )}
           </div>
         </div>
       )}

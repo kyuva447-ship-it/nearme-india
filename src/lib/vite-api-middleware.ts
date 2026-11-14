@@ -4,16 +4,16 @@ import {
   AUDIT_PRESETS,
   DEFAULT_OWNER_PIN,
   OWNER_CONTACT_EMAIL,
-  OWNER_CONTACT_PHONE,
-  SEEDED_ESCROWS,
   SEEDED_MERCHANTS,
   ZONE_WHOLESALE_INDEX,
   validateGstinMod36,
 } from './seeded-marketplace';
 import {
   getAutonomousTelemetrySnapshot,
+  harvestedSuppliers,
   ownerAlerts,
   pushOwnerAlert,
+  recordAgentExecution,
   resolveSupportQuery,
   runMapsAndWebHarvester,
   runWebSyndicationEngine,
@@ -21,6 +21,8 @@ import {
   SupportedLang,
   updateFounderControls,
 } from './autonomousStore';
+import { escrowLedger, getOwnerNetProfitSummary, profitLedger } from './escrowStore';
+import { auditLedger, ordersLedger, recordOrderEntry } from './ordersStore';
 import { runAutonomousGrowthCycle } from './autonomous-growth';
 
 type NextFn = () => void;
@@ -98,6 +100,11 @@ export function createNearMeViteApiMiddleware() {
         if (method === 'POST') {
           const body = await readJsonBody(req);
           const mod36 = validateGstinMod36(String(body.gstin || '29AABCS1429B1ZQ'));
+          recordAgentExecution(
+            'agent-fraud-guard',
+            `Verified GSTIN ${mod36.gstin} (Mod-36: ${mod36.checksumValid ? 'VALID' : 'INVALID'})`,
+            0
+          );
           return sendJson(res, 200, {
             status: 'verified',
             gstin: mod36.gstin,
@@ -112,35 +119,84 @@ export function createNearMeViteApiMiddleware() {
 
       if (pathname === '/api/escrow') {
         if (method === 'GET') {
-          return sendJson(res, 200, { status: 'ok', escrows: SEEDED_ESCROWS });
+          return sendJson(res, 200, {
+            status: 'ok',
+            ...getOwnerNetProfitSummary(),
+            escrows: escrowLedger,
+          });
         }
         if (method === 'POST') {
           const body = await readJsonBody(req);
+          if (body.action === 'release' && body.escrowId) {
+            const target = escrowLedger.find((e) => e.id === body.escrowId);
+            if (!target) return sendJson(res, 404, { error: 'Escrow ID not found' });
+            if (body.otp && String(body.otp) !== target.delivery_otp) {
+              return sendJson(res, 400, { error: 'Invalid Delivery OTP' });
+            }
+            target.status = 'RELEASED_TO_MERCHANT';
+            recordAgentExecution(
+              'agent-dutch-escrow',
+              `Released 85% payout for ${target.id} via Delivery OTP`,
+              target.owner_net_profit_inr
+            );
+            return sendJson(res, 200, {
+              status: 'released',
+              escrow: target,
+              ...getOwnerNetProfitSummary(),
+            });
+          }
+          if (body.action === 'refund' && body.escrowId) {
+            const target = escrowLedger.find((e) => e.id === body.escrowId);
+            if (!target) return sendJson(res, 404, { error: 'Escrow ID not found' });
+            target.status = 'REFUNDED_48HR_GUARANTEE';
+            return sendJson(res, 200, { status: 'refunded', escrow: target });
+          }
+
           const total = Math.max(100, Number(body.totalAmountInr) || 10000);
           const fee15 = Math.round(total * 0.15);
           const msmeEnabled = Boolean(body.msme43bhDiscounting);
           const msmeFee = msmeEnabled ? Math.round(total * 0.03) : 0;
+          const record = {
+            id: `ESC-IND-${Math.floor(1000 + Math.random() * 9000)}`,
+            buyer_name: String(body.buyerName || 'On-Site Buyer'),
+            merchant_name: String(body.merchantName || 'NearMe Partner Node'),
+            total_amount_inr: total,
+            platform_fee_15_inr: fee15,
+            merchant_payout_85_inr: total - fee15 - msmeFee,
+            msme_43bh_enabled: msmeEnabled,
+            msme_43bh_fee_3pct_inr: msmeFee,
+            owner_net_profit_inr: fee15 + msmeFee,
+            delivery_otp: Math.floor(100000 + Math.random() * 900000).toString(),
+            refund_guarantee_hours: 48,
+            status: 'ESCROW_LOCKED_15_85' as const,
+            created_at: new Date().toISOString(),
+          };
+          escrowLedger.unshift(record);
+          profitLedger.totalEscrowFee15 += fee15;
+          profitLedger.totalMsme43bhFee3Pct += msmeFee;
+          profitLedger.ownerNetProfitInr += fee15 + msmeFee;
+          recordAgentExecution(
+            'agent-dutch-escrow',
+            `Locked 15/85 Escrow ${record.id} for ₹${total.toLocaleString('en-IN')}`,
+            0
+          );
           return sendJson(res, 201, {
             status: 'created',
-            escrow: {
-              id: `ESC-IND-${Math.floor(1000 + Math.random() * 9000)}`,
-              total_amount_inr: total,
-              platform_fee_15_inr: fee15,
-              merchant_payout_85_inr: total - fee15 - msmeFee,
-              msme_43bh_enabled: msmeEnabled,
-              msme_43bh_fee_3pct_inr: msmeFee,
-              owner_net_profit_inr: fee15 + msmeFee,
-              status: 'ESCROW_LOCKED_15_85',
-            },
+            escrow: record,
+            ...getOwnerNetProfitSummary(),
           });
         }
       }
 
       if (pathname === '/api/support') {
         if (method === 'GET') {
+          const autoResolvedCount = supportTickets.filter((t) => !t.humanInterventionNeeded).length;
           return sendJson(res, 200, {
             status: 'operational',
-            zeroHumanResolutionRatePct: 100,
+            zeroHumanResolutionRatePct:
+              supportTickets.length > 0
+                ? Math.round((autoResolvedCount / supportTickets.length) * 100)
+                : 100,
             totalTickets: supportTickets.length,
             tickets: supportTickets,
           });
@@ -150,7 +206,7 @@ export function createNearMeViteApiMiddleware() {
           const ticket = await resolveSupportQuery({
             query: String(body.query || body.message || 'Status check'),
             language: (body.language as SupportedLang) || 'EN',
-            customerIdentifier: String(body.customerIdentifier || body.phone || 'Guest User'),
+            customerIdentifier: String(body.customerIdentifier || body.phone || 'On-Site Customer'),
             channel: body.channel === 'FOUNDER_TEST' ? 'FOUNDER_TEST' : 'WEB_CONCIERGE',
           });
           return sendJson(res, 200, {
@@ -196,7 +252,6 @@ export function createNearMeViteApiMiddleware() {
         if (method === 'GET') {
           return sendJson(res, 200, {
             status: 'operational',
-            ownerPhone: OWNER_CONTACT_PHONE,
             ownerEmail: OWNER_CONTACT_EMAIL,
             alerts: ownerAlerts,
           });
@@ -210,24 +265,50 @@ export function createNearMeViteApiMiddleware() {
 
       if (pathname === '/api/orders') {
         if (method === 'GET') {
-          return sendJson(res, 200, { status: 'ok', count: 1, orders: [] });
+          return sendJson(res, 200, { status: 'ok', count: ordersLedger.length, orders: ordersLedger });
         }
         if (method === 'POST') {
           const body = await readJsonBody(req);
           const amount = Number(body.amount ?? body.amountInRupees) || 199;
-          return sendJson(res, 200, {
-            id: `order_demo_${Date.now()}`,
+          const order = recordOrderEntry({
+            id: `order_pending_${Date.now()}`,
             amount: Math.round(amount * 100),
             currency: 'INR',
-            status: 'created_demo',
-            fallbackMode: true,
+            receipt: String(body.receipt || `receipt_${Date.now()}`),
+            status: 'awaiting_upi_settlement',
+            created_at: Math.floor(Date.now() / 1000),
           });
+          return sendJson(res, 200, { ...order, fallbackMode: true });
         }
       }
 
+      if (pathname === '/api/owner/stats') {
+        const captured = ordersLedger.filter((o) => o.status === 'captured' || o.status === 'paid');
+        return sendJson(res, 200, {
+          total_payments: captured.length,
+          total_volume: captured.reduce((acc, o) => acc + o.amount, 0),
+          total_refunds: 0,
+          recent_transactions: ordersLedger.slice(0, 10),
+        });
+      }
+
       if (pathname === '/api/owner') {
+        const buildOwnerSnapshot = () => {
+          const captured = ordersLedger.filter((o) => o.status === 'captured' || o.status === 'paid');
+          return {
+            ...getAutonomousTelemetrySnapshot(),
+            totalMerchants: harvestedSuppliers.length,
+            activeEscrows: escrowLedger.length,
+            totalAuditsRun: auditLedger.length,
+            total_volume: captured.reduce((acc, o) => acc + o.amount, 0),
+            total_payments: captured.length,
+            recent_transactions: ordersLedger.slice(0, 10),
+            escrows: escrowLedger.slice(0, 10),
+          };
+        };
+
         if (method === 'GET') {
-          return sendJson(res, 200, getAutonomousTelemetrySnapshot());
+          return sendJson(res, 200, buildOwnerSnapshot());
         }
         if (method === 'POST') {
           const body = await readJsonBody(req);
@@ -256,13 +337,17 @@ export function createNearMeViteApiMiddleware() {
             await runAutonomousGrowthCycle(String(body.city || 'Bengaluru'), String(body.pincode || '560001'));
           } else if (body.action === 'test_self_support') {
             await resolveSupportQuery({
-              query: String(body.query || 'Re-unlock ₹199 receipt and check 48h escrow status'),
+              query: String(
+                body.query ||
+                  'Verify GSTIN 29AABCS1429B1ZQ and check 48h Escrow & Audit self-support status'
+              ),
               language: (body.language as SupportedLang) || 'EN',
+              customerIdentifier: 'Founder Console Diagnostic',
               channel: 'FOUNDER_TEST',
             });
           }
           return sendJson(res, 200, {
-            ...getAutonomousTelemetrySnapshot(),
+            ...buildOwnerSnapshot(),
             status: 'authenticated',
           });
         }
@@ -271,7 +356,6 @@ export function createNearMeViteApiMiddleware() {
       if (pathname === '/api/whatsapp-webhook') {
         return sendJson(res, 200, {
           status: 'processed',
-          ownerPhone: OWNER_CONTACT_PHONE,
           ownerEmail: OWNER_CONTACT_EMAIL,
         });
       }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
-import { OWNER_CONTACT_EMAIL, OWNER_CONTACT_PHONE } from '@/lib/seeded-marketplace';
+import { OWNER_CONTACT_EMAIL } from '@/lib/seeded-marketplace';
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -18,7 +18,6 @@ export async function GET(req: Request) {
   return NextResponse.json({
     status: 'ready',
     model: GEMINI_MODEL,
-    ownerAlertPhone: OWNER_CONTACT_PHONE,
     ownerAlertEmail: OWNER_CONTACT_EMAIL,
   });
 }
@@ -33,16 +32,17 @@ export async function POST(req: Request) {
     const senderPhone =
       body?.from ||
       body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.from ||
-      OWNER_CONTACT_PHONE;
+      'website-visitor';
 
     const ai = getGeminiClient();
-    let reply = `NearMe India AI: Upload your 30-40 page hospital bill or wholesale quote at https://www.nearme-india.org to strip overcharges immediately. Support: ${OWNER_CONTACT_PHONE}`;
+    let reply =
+      'NearMe India AI: Upload your multi-page hospital bill or wholesale quote at https://www.nearme-india.org to strip overcharges immediately, or use the 24/7 On-Site Self-Support Desk on our website.';
 
     if (ai) {
       try {
         const res = await ai.models.generateContent({
           model: GEMINI_MODEL,
-          contents: `You are NearMe India's WhatsApp concierge. Reply concisely (max 2 sentences) to customer (${senderPhone}): "${messageText}". Mention https://www.nearme-india.org and escalate urgent disputes to ${OWNER_CONTACT_PHONE}.`,
+          contents: `You are NearMe India's automated concierge (built in Bengaluru, Karnataka). Reply concisely (max 2 sentences) to customer (${senderPhone}): "${messageText}". Direct them to https://www.nearme-india.org and never share any personal phone number.`,
         });
         if (res.text) reply = res.text.trim();
       } catch {

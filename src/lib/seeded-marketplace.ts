@@ -1,6 +1,6 @@
-export const OWNER_CONTACT_PHONE = '+918247831885';
-export const OWNER_WHATSAPP_NUMBER = '918247831885';
-export const OWNER_CONTACT_EMAIL = 'kartheekkumar740@gmail.com';
+export const OWNER_CONTACT_PHONE = process.env.OWNER_CONTACT_PHONE || '';
+export const OWNER_WHATSAPP_NUMBER = process.env.OWNER_WHATSAPP_NUMBER || '';
+export const OWNER_CONTACT_EMAIL = process.env.OWNER_CONTACT_EMAIL || 'support@nearme-india.org';
 export const DEFAULT_OWNER_PIN = '748599';
 
 export interface PageBreakdownItem {
@@ -154,7 +154,7 @@ export const SEEDED_MERCHANTS: SeededMerchant[] = [
     trust_score: 96,
     verified: true,
     avg_discount_pct: 38,
-    phone: OWNER_WHATSAPP_NUMBER,
+    phone: '',
     liveCashOrderInr: 42500,
   },
   {
@@ -167,7 +167,7 @@ export const SEEDED_MERCHANTS: SeededMerchant[] = [
     trust_score: 94,
     verified: true,
     avg_discount_pct: 24,
-    phone: OWNER_WHATSAPP_NUMBER,
+    phone: '',
     liveCashOrderInr: 185000,
   },
   {
@@ -180,7 +180,7 @@ export const SEEDED_MERCHANTS: SeededMerchant[] = [
     trust_score: 98,
     verified: true,
     avg_discount_pct: 42,
-    phone: OWNER_WHATSAPP_NUMBER,
+    phone: '',
     liveCashOrderInr: 96000,
   },
   {
@@ -193,7 +193,7 @@ export const SEEDED_MERCHANTS: SeededMerchant[] = [
     trust_score: 95,
     verified: true,
     avg_discount_pct: 29,
-    phone: OWNER_WHATSAPP_NUMBER,
+    phone: '',
     liveCashOrderInr: 68000,
   },
   {
@@ -206,43 +206,12 @@ export const SEEDED_MERCHANTS: SeededMerchant[] = [
     trust_score: 92,
     verified: true,
     avg_discount_pct: 34,
-    phone: OWNER_WHATSAPP_NUMBER,
+    phone: '',
     liveCashOrderInr: 31500,
   },
 ];
 
-export const SEEDED_ESCROWS: SeededEscrowRecord[] = [
-  {
-    id: 'ESC-IND-9921',
-    buyer_name: 'TechPark Infra Pvt Ltd',
-    merchant_name: 'NCR Infra & TMT Cement Syndicate',
-    total_amount_inr: 485000,
-    platform_fee_15_inr: 72750,
-    merchant_payout_85_inr: 412250,
-    msme_43bh_enabled: true,
-    msme_43bh_fee_3pct_inr: 14550,
-    owner_net_profit_inr: 87300,
-    delivery_otp: '482910',
-    refund_guarantee_hours: 48,
-    status: 'ESCROW_LOCKED_15_85',
-    created_at: '2026-11-12T09:15:00.000Z',
-  },
-  {
-    id: 'ESC-IND-9948',
-    buyer_name: 'Raghavendra Rao (Patient Family)',
-    merchant_name: 'Sri Sai Multi-Specialty & Jan Aushadhi Diagnostics',
-    total_amount_inr: 214500,
-    platform_fee_15_inr: 32175,
-    merchant_payout_85_inr: 182325,
-    msme_43bh_enabled: false,
-    msme_43bh_fee_3pct_inr: 0,
-    owner_net_profit_inr: 32175,
-    delivery_otp: '739104',
-    refund_guarantee_hours: 48,
-    status: 'MILESTONE_VERIFIED',
-    created_at: '2026-11-13T06:40:00.000Z',
-  },
-];
+export const SEEDED_ESCROWS: SeededEscrowRecord[] = [];
 
 export function validateGstinMod36(rawGstin: string): {
   gstin: string;

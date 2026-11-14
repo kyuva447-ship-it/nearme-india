@@ -327,7 +327,7 @@ export default function Home() {
       <footer className="w-full bg-slate-950/90 border-t border-slate-800/80 py-8 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
           <p className="font-semibold text-slate-200">
-            NearMe India · https://www.nearme-india.org · Autonomous Pan-India B2B & Bill Audit Network
+            NearMe India · Built in Bengaluru, Karnataka · https://www.nearme-india.org
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
             <Link href="/about" className="hover:text-white">About</Link>
@@ -336,7 +336,9 @@ export default function Home() {
             <Link href="/privacy" className="hover:text-white">Privacy</Link>
             <Link href="/refund-policy" className="hover:text-white">Refund Policy</Link>
             <Link href="/shipping-policy" className="hover:text-white">Shipping Policy</Link>
-            <Link href="/contact" className="hover:text-white">Contact</Link>
+            <Link href="/contact" className="text-emerald-300 hover:text-emerald-200 font-semibold">
+              24/7 Self-Support
+            </Link>
             <Link href="/owner" className="text-violet-300 hover:text-violet-200 font-semibold">
               Founder Console
             </Link>

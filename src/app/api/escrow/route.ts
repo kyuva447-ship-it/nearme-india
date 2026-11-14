@@ -5,11 +5,13 @@ import {
   profitLedger,
   getOwnerNetProfitSummary,
 } from '@/lib/escrowStore';
+import { recordAgentExecution } from '@/lib/autonomousStore';
 
 export async function GET() {
   return NextResponse.json({
     status: 'ok',
-    splitPolicy: '15% Platform Success Escrow / 85% Merchant Direct Settlement + Optional 3% MSME 43B(h) Day-1 Fee',
+    splitPolicy:
+      '15% Platform Success Escrow / 85% Merchant Direct Settlement + Optional 3% MSME 43B(h) Day-1 Fee',
     refundGuaranteeHours: 48,
     ...getOwnerNetProfitSummary(),
     escrows: escrowLedger,
@@ -37,7 +39,16 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Invalid Delivery OTP' }, { status: 400 });
       }
       target.status = 'RELEASED_TO_MERCHANT';
-      return NextResponse.json({ status: 'released', escrow: target, ...getOwnerNetProfitSummary() });
+      recordAgentExecution(
+        'agent-dutch-escrow',
+        `Released 85% payout (₹${target.merchant_payout_85_inr.toLocaleString('en-IN')}) for ${target.id} via Delivery OTP`,
+        target.owner_net_profit_inr
+      );
+      return NextResponse.json({
+        status: 'released',
+        escrow: target,
+        ...getOwnerNetProfitSummary(),
+      });
     }
 
     if (action === 'refund' && escrowId) {
@@ -46,6 +57,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Escrow ID not found' }, { status: 404 });
       }
       target.status = 'REFUNDED_48HR_GUARANTEE';
+      recordAgentExecution(
+        'agent-dutch-escrow',
+        `Executed 48h Refund Guarantee on ${target.id}`,
+        0
+      );
       return NextResponse.json({ status: 'refunded', escrow: target });
     }
 
@@ -58,7 +74,7 @@ export async function POST(req: Request) {
 
     const record: SeededEscrowRecord = {
       id: `ESC-IND-${Math.floor(1000 + Math.random() * 9000)}`,
-      buyer_name: buyerName || 'Verified Buyer',
+      buyer_name: buyerName || 'On-Site Buyer',
       merchant_name: merchantName || 'NearMe Partner Node',
       total_amount_inr: total,
       platform_fee_15_inr: fee15,
@@ -76,6 +92,12 @@ export async function POST(req: Request) {
     profitLedger.totalEscrowFee15 += fee15;
     profitLedger.totalMsme43bhFee3Pct += msmeFee3Pct;
     profitLedger.ownerNetProfitInr += ownerProfit;
+
+    recordAgentExecution(
+      'agent-dutch-escrow',
+      `Locked 15/85 Escrow ${record.id} for ₹${total.toLocaleString('en-IN')}`,
+      0
+    );
 
     return NextResponse.json(
       {

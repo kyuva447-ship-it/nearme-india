@@ -110,8 +110,8 @@ export default function CommandHub() {
 
   const handleSpawnApp = async () => {
     if (!spawnInput.shop || !spawnInput.city || !spawnInput.offer) return;
-    setLoadingMsg('Generating WhatsApp Promo Card...');
-    const userPhone = localStorage.getItem('nearme_user_phone') || '918247831885';
+    setLoadingMsg('Generating On-Site Promo Card...');
+    const userPhone = localStorage.getItem('nearme_user_phone') || '';
     try {
       await fetch('/api/engine/spawn-app', {
         method: 'POST',

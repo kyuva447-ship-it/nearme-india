@@ -1,5 +1,5 @@
 import { GEMINI_MODEL, getGeminiClient } from './gemini';
-import { OWNER_CONTACT_EMAIL, OWNER_CONTACT_PHONE } from './seeded-marketplace';
+import { OWNER_CONTACT_EMAIL } from './seeded-marketplace';
 import {
   founderControls,
   recordAgentExecution,
@@ -10,7 +10,6 @@ import {
 export interface GrowthDispatchReport {
   timestamp: string;
   modelUsed: string;
-  ownerPhone: string;
   ownerEmail: string;
   bountyMultiplier: number;
   campaignsGenerated: Array<{
@@ -52,7 +51,7 @@ export async function runAutonomousGrowthCycle(
     try {
       const response = await ai.models.generateContent({
         model: GEMINI_MODEL,
-        contents: `Generate 2 crisp hyper-local WhatsApp deal hooks for NearMe India in ${targetCity} (one for multi-page hospital bill auditing, one for B2B wholesale). Return concise plain text lines.`,
+        contents: `Generate 2 crisp hyper-local promotional deal hooks for NearMe India in ${targetCity} (one for multi-page hospital bill auditing, one for B2B wholesale). Return concise plain text lines.`,
       });
 
       const summaryLine = (response.text || '').trim().slice(0, 220);
@@ -69,14 +68,13 @@ export async function runAutonomousGrowthCycle(
   runWebSyndicationEngine(targetCity);
   recordAgentExecution(
     'agent-viral',
-    `Executed full Viral Wave in ${targetCity} (${multiplier.toFixed(1)}x QR Bounty)`,
-    Math.round(3500 * multiplier)
+    `Executed Viral Wave in ${targetCity} (${multiplier.toFixed(1)}x QR Bounty)`,
+    0
   );
 
   return {
     timestamp: new Date().toISOString(),
     modelUsed: usedLive ? GEMINI_MODEL : `${GEMINI_MODEL} (offline-fallback)`,
-    ownerPhone: OWNER_CONTACT_PHONE,
     ownerEmail: OWNER_CONTACT_EMAIL,
     bountyMultiplier: multiplier,
     campaignsGenerated: fallbackCampaigns,
