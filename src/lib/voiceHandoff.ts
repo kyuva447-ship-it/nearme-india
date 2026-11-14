@@ -28,5 +28,9 @@ export async function voiceHandoff(transcript: string, merchantId: string, merch
   trackEvent('lead_generated', { merchant_id: merchantId, method: 'voice' });
   triggerConfetti();
 
-  window.open(`https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`, '_blank');
+  const whatsappUrl = `https://wa.me/${merchantPhone}?text=${encodeURIComponent(message)}`;
+  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+    navigator.clipboard.writeText(message).catch(() => {});
+  }
+  return { whatsappUrl, message };
 }

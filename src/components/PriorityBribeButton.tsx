@@ -2,13 +2,17 @@
 import { useState } from 'react';
 import { Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from './Toast';
 
 export default function PriorityBribeButton({ merchantId }: { merchantId: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const { toast } = useToast();
 
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="w-full mt-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold py-2 rounded-lg flex items-center justify-center gap-2 text-sm hover:from-amber-400 hover:to-orange-400"
       >
@@ -28,21 +32,32 @@ export default function PriorityBribeButton({ merchantId }: { merchantId: string
               </p>
 
               <button
+                type="button"
+                disabled={busy}
                 onClick={async () => {
+                  setBusy(true);
                   try {
-                    await fetch('/api/orders', {
+                    const res = await fetch('/api/orders', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       body: JSON.stringify({ amount: 50, itemName: `Priority Dispatch (${merchantId})` }),
                     });
+                    const data = await res.json();
+                    if (res.ok) {
+                      toast(`Priority order ${data.id || 'created'} for ₹50!`, 'success');
+                      setIsOpen(false);
+                    } else {
+                      toast(data?.error || 'Could not place priority order', 'error');
+                    }
                   } catch {
-                    // ignore
+                    toast('Network error creating priority order', 'error');
+                  } finally {
+                    setBusy(false);
                   }
-                  setIsOpen(false);
                 }}
-                className="w-full bg-amber-500 text-black font-bold py-3 rounded-xl hover:bg-amber-400"
+                className="w-full bg-amber-500 text-black font-bold py-3 rounded-xl hover:bg-amber-400 disabled:opacity-60"
               >
-                Pay ₹50 & Get Priority
+                {busy ? 'Creating Order...' : 'Pay ₹50 & Get Priority'}
               </button>
               <button
                 onClick={() => setIsOpen(false)}

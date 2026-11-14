@@ -6,8 +6,8 @@ export async function POST(req: Request) {
     const { amount, type, phone } = body;
     const amountInPaise = Math.round(amount * 100);
 
-    const key_id = process.env.RAZORPAY_KEY_ID;
-    const key_secret = process.env.RAZORPAY_KEY_SECRET;
+    const key_id = (process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').trim();
+    const key_secret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
 
     if (!key_id || !key_secret) {
         console.warn("Razorpay keys missing, falling back to UPI modal");

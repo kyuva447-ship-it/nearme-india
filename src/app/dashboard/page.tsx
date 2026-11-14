@@ -1,12 +1,15 @@
 'use client';
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Settings, ShieldCheck, QrCode, Upload, Loader2, IndianRupee } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { useToast } from '@/components/Toast';
+import QuickAuthModal from '@/components/QuickAuthModal';
 
 export default function MerchantDashboard() {
   const [phone, setPhone] = useState('');
+  const [ready, setReady] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
   const [activeTab, setActiveTab] = useState<'config' | 'verify' | 'kyc'>('config');
 
   const [pincode, setPincode] = useState('560001');
@@ -17,50 +20,94 @@ export default function MerchantDashboard() {
   const [loading, setLoading] = useState(false);
   const [kycStatus, setKycStatus] = useState<string | null>(null);
 
-  const router = useRouter();
   const { toast } = useToast();
 
+  const checkKycStatus = async (userPhone: string) => {
+    try {
+      const { data } = await supabase
+        .from('merchant_autopilot_nodes')
+        .select('kyc_verified')
+        .eq('phone', userPhone)
+        .single();
+      if (data?.kyc_verified) setKycStatus('VERIFIED');
+    } catch {
+      // Optional Supabase check
+    }
+  };
+
   useEffect(() => {
-    const saved = localStorage.getItem('nearme_user_phone');
-    if (!saved) router.push('/');
-    else {
-      setPhone(saved);
+    const saved = localStorage.getItem('nearme_user_phone') || '';
+    setPhone(saved);
+    setReady(true);
+    if (saved) {
       checkKycStatus(saved);
     }
-  }, [router]);
-
-  const checkKycStatus = async (userPhone: string) => {
-    const { data } = await supabase.from('merchant_autopilot_nodes').select('kyc_verified').eq('phone', userPhone).single();
-    if (data?.kyc_verified) setKycStatus('VERIFIED');
-  };
+  }, []);
 
   const handleSaveConfig = async () => {
     setLoading(true);
-    await supabase.from('merchant_autopilot_nodes').upsert({
-       phone: phone, pincode: pincode, floor_margin_pct: floorMargin, auto_bid_active: true
-    });
-    toast("AI Node Configuration Saved!", "success");
+    try {
+      await supabase.from('merchant_autopilot_nodes').upsert({
+        phone,
+        pincode,
+        floor_margin_pct: floorMargin,
+        auto_bid_active: true,
+      });
+    } catch {
+      // Fallback to localStorage config
+    }
+    localStorage.setItem('nearme_merchant_config', JSON.stringify({ pincode, floorMargin }));
+    toast('AI Node Configuration Saved!', 'success');
     setLoading(false);
   };
 
   const handleVerify = async () => {
-    if (!verifyId) return toast("Enter Order ID", "error");
+    const cleanId = verifyId.trim();
+    if (!cleanId) return toast('Enter Order ID or Escrow ID', 'error');
     setLoading(true);
-    const { data } = await supabase.from('autonomous_treasury_ledger').select('*').eq('razorpay_order_id', verifyId).single();
-    if (data && data.status === 'PAID') {
-        toast("Pass Verified! Customer Authorized.", "success");
-    } else {
-        toast("Invalid or Expired Pass.", "error");
+    try {
+      let verified = false;
+      const { data } = await supabase
+        .from('autonomous_treasury_ledger')
+        .select('*')
+        .eq('razorpay_order_id', cleanId)
+        .single();
+      if (data && data.status === 'PAID') verified = true;
+
+      if (!verified) {
+        const [ordRes, escRes] = await Promise.all([fetch('/api/orders'), fetch('/api/escrow')]);
+        if (ordRes.ok) {
+          const ordJson = await ordRes.json();
+          if (Array.isArray(ordJson.orders) && ordJson.orders.some((o: { id: string }) => o.id === cleanId)) {
+            verified = true;
+          }
+        }
+        if (!verified && escRes.ok) {
+          const escJson = await escRes.json();
+          if (Array.isArray(escJson.escrows) && escJson.escrows.some((e: { id: string }) => e.id === cleanId)) {
+            verified = true;
+          }
+        }
+      }
+
+      if (verified) {
+        toast('Pass Verified! Customer Authorized.', 'success');
+      } else {
+        toast('Order/Escrow ID not found or unpaid.', 'error');
+      }
+    } catch {
+      toast('Verification check failed.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const handleKycUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !upiId) return toast("Please enter UPI ID and select a file.", "error");
+    if (!file || !upiId) return toast('Please enter UPI ID and select a file.', 'error');
 
     setLoading(true);
-    toast("Compressing document...");
+    toast('Compressing document...');
 
     const img = new Image();
     const objectUrl = URL.createObjectURL(file);
@@ -73,20 +120,20 @@ export default function MerchantDashboard() {
       URL.revokeObjectURL(objectUrl);
 
       try {
-        toast("AI inspecting document...");
+        toast('AI inspecting document...');
         const res = await fetch('/api/merchant/kyc-verify', {
-          method: 'POST', headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ image_data: base64, phone, upi_id: upiId })
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ image_data: base64, phone, upi_id: upiId }),
         });
         const data = await res.json();
         if (res.ok) {
            setKycStatus('VERIFIED');
-           toast(data.message, "success");
+           toast(data.message, 'success');
         } else {
-           toast(data.message, "error");
+           toast(data.message, 'error');
         }
-      } catch (err) {
-        toast("KYC Verification Failed", "error");
+      } catch {
+        toast('KYC Verification Failed', 'error');
       } finally {
         setLoading(false);
       }
@@ -94,7 +141,42 @@ export default function MerchantDashboard() {
     img.src = objectUrl;
   };
 
-  if (!phone) return null;
+  if (!ready) return null;
+
+  if (!phone) {
+    return (
+      <div className="min-h-screen bg-gray-950 text-white flex items-center justify-center p-4 font-sans">
+        {showAuth && (
+          <QuickAuthModal
+            onClose={() => setShowAuth(false)}
+            onSuccess={() => {
+              const saved = localStorage.getItem('nearme_user_phone') || '';
+              setPhone(saved);
+              setShowAuth(false);
+              if (saved) checkKycStatus(saved);
+            }}
+          />
+        )}
+        <div className="max-w-sm w-full bg-gray-900 border border-gray-800 rounded-3xl p-8 text-center space-y-5">
+          <div className="w-14 h-14 rounded-full bg-blue-500/10 border border-blue-500/30 flex items-center justify-center mx-auto">
+            <Settings className="w-7 h-7 text-blue-400" />
+          </div>
+          <h1 className="text-2xl font-black">Merchant Autopilot</h1>
+          <p className="text-sm text-gray-400">Sign in via On-Site OTP to configure auto-bidding rules, verify customer passes, and complete KYC.</p>
+          <button
+            type="button"
+            onClick={() => setShowAuth(true)}
+            className="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl transition-colors"
+          >
+            Sign In via On-Site OTP
+          </button>
+          <Link href="/" className="block text-xs text-gray-400 hover:text-white">
+            Return Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-950 text-white p-4 sm:p-8 font-sans">

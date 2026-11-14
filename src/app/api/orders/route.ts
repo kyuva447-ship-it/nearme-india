@@ -16,13 +16,13 @@ export async function POST(req: Request) {
     const rawAmount = body.amount ?? body.amountInRupees;
     const { currency, receipt, customerIdentifier, itemName } = body;
 
-    if (!rawAmount || isNaN(Number(rawAmount))) {
-      return NextResponse.json({ error: 'Valid amount is required' }, { status: 400 });
+    if (!rawAmount || isNaN(Number(rawAmount)) || Number(rawAmount) <= 0) {
+      return NextResponse.json({ error: 'Valid positive amount is required' }, { status: 400 });
     }
 
     const amountInPaise = Math.round(Number(rawAmount) * 100);
-    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
-    const keySecret = process.env.RAZORPAY_KEY_SECRET;
+    const keyId = (process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').trim();
+    const keySecret = (process.env.RAZORPAY_KEY_SECRET || '').trim();
 
     if (!keyId || !keySecret) {
       const pendingOrder: OrderRecord = {
@@ -62,9 +62,12 @@ export async function POST(req: Request) {
       created_at: Math.floor(Date.now() / 1000),
     });
 
-    return NextResponse.json(order, { status: 200 });
+    return NextResponse.json({ ...order, key_id: keyId }, { status: 200 });
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : 'Internal Server Error';
+    const rzpErr = error as { error?: { description?: string; code?: string }; message?: string };
+    const message =
+      rzpErr?.error?.description ||
+      (error instanceof Error ? error.message : 'Order creation failed');
     console.error('Order generation failed:', message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

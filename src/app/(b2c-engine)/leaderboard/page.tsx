@@ -1,8 +1,10 @@
 'use client';
 import { motion } from 'framer-motion';
 import { Trophy, Flame, Share2, ArrowUpRight } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 
 export default function ViralLeaderboard() {
+  const { toast } = useToast();
   const leaders = [
     { rank: 1, name: 'Suresh Electricians', score: 1450, conversions: 89, trending: true },
     { rank: 2, name: 'Metro Fast Plumbers', score: 1220, conversions: 65, trending: false },
@@ -10,6 +12,25 @@ export default function ViralLeaderboard() {
     { rank: 4, name: 'A1 Carpenters', score: 850, conversions: 38, trending: false },
     { rank: 5, name: 'QuickFix Appliances', score: 720, conversions: 29, trending: false },
   ];
+
+  const handleShare = async () => {
+    const shareUrl = 'https://www.nearme-india.org';
+    const text = 'Check verified local service leaders and bill audits on NearMe India!';
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'NearMe India Leaderboard', text, url: shareUrl });
+        return;
+      }
+    } catch {
+      // Fallback to clipboard copy
+    }
+    try {
+      await navigator.clipboard.writeText(`${text} ${shareUrl}`);
+      toast('Invite link copied to clipboard!', 'success');
+    } catch {
+      toast('Share URL: https://www.nearme-india.org', 'info');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-4 md:p-8">
@@ -32,12 +53,16 @@ export default function ViralLeaderboard() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl p-6 mb-8 text-white shadow-xl shadow-indigo-500/20"
         >
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center gap-3 flex-wrap">
             <div>
               <h3 className="text-xl font-bold mb-1">Earn Free Leads</h3>
               <p className="text-indigo-100 text-sm">Invite a neighbor. Get ₹50 in your wallet.</p>
             </div>
-            <button className="bg-white text-indigo-600 font-bold px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-indigo-50 transition-colors">
+            <button
+              type="button"
+              onClick={handleShare}
+              className="bg-white text-indigo-600 font-bold px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-indigo-50 transition-colors"
+            >
               <Share2 className="w-4 h-4" /> Share Link
             </button>
           </div>

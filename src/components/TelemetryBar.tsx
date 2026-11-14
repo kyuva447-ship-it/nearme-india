@@ -32,15 +32,27 @@ export default function TelemetryBar() {
   ];
 
   useEffect(() => {
-    setUserPhone(localStorage.getItem('nearme_user_phone'));
-    const savedCity = localStorage.getItem('nearme_city');
-    if (savedCity) setSelectedCity(savedCity);
-    const savedLang = normalizeLang(localStorage.getItem('nearme_lang'));
-    setSelectedLang(savedLang);
+    const syncAuth = () => {
+      setUserPhone(localStorage.getItem('nearme_user_phone'));
+      const savedCity = localStorage.getItem('nearme_city');
+      if (savedCity) setSelectedCity(savedCity);
+      const savedLang = normalizeLang(localStorage.getItem('nearme_lang'));
+      setSelectedLang(savedLang);
+    };
+    syncAuth();
+    window.addEventListener('auth_change', syncAuth);
+    window.addEventListener('storage', syncAuth);
+    return () => {
+      window.removeEventListener('auth_change', syncAuth);
+      window.removeEventListener('storage', syncAuth);
+    };
   }, []);
 
   const handleSignOut = () => {
     localStorage.removeItem('nearme_user_phone');
+    localStorage.removeItem('nearme_user_name');
+    localStorage.removeItem('nearme_user_email');
+    window.dispatchEvent(new Event('auth_change'));
     setUserPhone(null);
     toast('Signed out', 'info');
   };

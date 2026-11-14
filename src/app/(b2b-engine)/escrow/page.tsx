@@ -52,6 +52,7 @@ export default function OrderWorkflowDashboard() {
   const [orders, setOrders] = useState<EscrowDashboardOrder[]>(DEFAULT_WORKFLOW_ORDERS);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
   const [sortBy, setSortBy] = useState<SortOption>('VALUE_DESC');
+  const [milestoneRequested, setMilestoneRequested] = useState(false);
 
   useEffect(() => {
     fetch('/api/escrow')
@@ -338,12 +339,19 @@ export default function OrderWorkflowDashboard() {
               <ArrowRight className="w-6 h-6 text-slate-600" />
               <div className="text-right">
                 <p className="text-amber-500 text-sm font-bold">Milestone Target Status</p>
-                <p className="text-3xl font-black text-amber-400 mt-1">75% Complete</p>
+                <p className="text-3xl font-black text-amber-400 mt-1">
+                  {milestoneRequested ? 'Approval Queued' : '75% Complete'}
+                </p>
               </div>
             </div>
 
-            <button className="w-full mt-6 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black py-4 rounded-xl transition-all shadow-lg shadow-amber-500/20">
-              Request Milestone Approval
+            <button
+              type="button"
+              onClick={() => setMilestoneRequested(true)}
+              disabled={milestoneRequested}
+              className="w-full mt-6 bg-amber-500 hover:bg-amber-400 disabled:bg-emerald-600 disabled:text-white text-slate-950 font-black py-4 rounded-xl transition-all shadow-lg shadow-amber-500/20"
+            >
+              {milestoneRequested ? 'Milestone Approval Logged ✓' : 'Request Milestone Approval'}
             </button>
           </motion.div>
         )}

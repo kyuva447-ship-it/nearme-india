@@ -70,7 +70,7 @@ export default function QuickAuthModal({ onClose, onSuccess }: { onClose: () => 
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500"
             />
             <input
-              type="tel" maxLength={10} value={phone} onChange={e => setPhone(e.target.value)}
+              type="tel" maxLength={10} value={phone} onChange={e => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               placeholder="10-digit Indian Mobile"
               className="w-full bg-gray-800 border border-gray-700 rounded-xl px-4 py-3 text-white outline-none focus:border-blue-500"
             />

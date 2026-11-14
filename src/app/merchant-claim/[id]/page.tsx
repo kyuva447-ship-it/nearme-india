@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { Store, CheckCircle2, Loader2, IndianRupee } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -10,14 +11,31 @@ export default function MerchantClaimPage({ params }: { params: { id: string } }
   const [success, setSuccess] = useState(false);
   const { toast } = useToast();
 
-  const handleClaim = () => {
-    if (!shopName || !upiId) return toast("Enter both Shop Name and UPI ID", "error");
+  const handleClaim = async () => {
+    if (!shopName.trim() || !upiId.trim()) {
+      return toast('Enter both Shop Name and UPI ID', 'error');
+    }
     setLoading(true);
-    setTimeout(() => {
-        setLoading(false);
+    try {
+      const res = await fetch('/api/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          businessName: shopName.trim(),
+          issueType: `Merchant Claim #${params.id} (UPI: ${upiId.trim()})`,
+        }),
+      });
+      if (res.ok) {
         setSuccess(true);
-        toast("Order Claimed! Funds will be routed to your UPI.", "success");
-    }, 1500);
+        toast('Order Claimed! Verified via NearMe India Route.', 'success');
+      } else {
+        toast('Could not verify claim details right now', 'error');
+      }
+    } catch {
+      toast('Connection failed. Please retry.', 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (success) {
@@ -26,8 +44,10 @@ export default function MerchantClaimPage({ params }: { params: { id: string } }
             <div className="bg-emerald-950/40 border border-emerald-500/50 p-8 rounded-3xl text-center max-w-sm w-full animate-in fade-in zoom-in duration-300">
                <CheckCircle2 className="w-16 h-16 text-emerald-400 mx-auto mb-4" />
                <h2 className="text-2xl font-black text-white mb-2">Order Claimed!</h2>
-               <p className="text-emerald-200 text-sm mb-6">You are now part of the NearMe India Auto-Bidder network.</p>
-               <a href="/dashboard" className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center">Go to Merchant Dashboard</a>
+               <p className="text-emerald-200 text-sm mb-6">You are now registered on the NearMe India Auto-Bidder network.</p>
+               <Link href="/dashboard" className="w-full py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl flex items-center justify-center">
+                 Go to Merchant Dashboard
+               </Link>
             </div>
         </div>
       );

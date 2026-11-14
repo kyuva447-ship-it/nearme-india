@@ -1,8 +1,19 @@
 'use client';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, Zap, Box, KeyRound } from 'lucide-react';
+import { useToast } from '@/components/Toast';
 
 export default function CompetitiveEdgeDashboard() {
+  const [routingActive, setRoutingActive] = useState(true);
+  const { toast } = useToast();
+
+  const toggleRouting = () => {
+    const next = !routingActive;
+    setRoutingActive(next);
+    toast(next ? 'Capacity routing resumed!' : 'Capacity routing paused!', 'info');
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 overflow-hidden relative">
       {/* Mesh Gradient Background (Feature 41) */}
@@ -44,15 +55,22 @@ export default function CompetitiveEdgeDashboard() {
             </div>
             <div className="relative z-10">
               <h3 className="text-2xl font-black text-white mb-2">Capacity Routing Engine</h3>
-              <p className="text-slate-400 mb-8">Monetize idle machinery. Our PostGIS algorithm routes commercial overflow work to workshops within 10km.</p>
+              <p className="text-slate-400 mb-8">Monetize idle machinery. Our spatial router forwards commercial overflow work to verified workshops within 10km.</p>
 
               <div className="bg-slate-950 rounded-2xl p-4 border border-slate-800 flex items-center justify-between">
                 <div>
                   <p className="text-slate-500 text-xs font-bold uppercase mb-1">Status</p>
-                  <p className="text-emerald-400 font-black flex items-center gap-2"><Zap className="w-4 h-4 fill-emerald-400" /> Accepting Overflow</p>
+                  <p className={`font-black flex items-center gap-2 ${routingActive ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    <Zap className={`w-4 h-4 ${routingActive ? 'fill-emerald-400' : 'fill-amber-400'}`} />
+                    {routingActive ? 'Accepting Overflow' : 'Routing Paused'}
+                  </p>
                 </div>
-                <button className="bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold py-2 px-4 rounded-xl transition-colors border border-slate-700">
-                  Pause Routing
+                <button
+                  type="button"
+                  onClick={toggleRouting}
+                  className="bg-slate-800 hover:bg-slate-700 text-white text-sm font-bold py-2 px-4 rounded-xl transition-colors border border-slate-700"
+                >
+                  {routingActive ? 'Pause Routing' : 'Resume Routing'}
                 </button>
               </div>
             </div>

@@ -720,7 +720,7 @@ export default function NearMePlatform({
         >
           <Layers className="w-4 h-4 text-emerald-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab1}</p>
-          <p className="text-[11px] text-emerald-300">₹49 / ₹199 · Streaming Audit</p>
+          <p className="text-[11px] text-emerald-300">Spot extra charges · ₹49 / ₹199</p>
         </button>
 
         <button
@@ -734,7 +734,7 @@ export default function NearMePlatform({
         >
           <Lock className="w-4 h-4 text-cyan-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab2}</p>
-          <p className="text-[11px] text-cyan-300">48h Refund · 3% Day-1</p>
+          <p className="text-[11px] text-cyan-300">Pay safely until OTP · 48h Refund</p>
         </button>
 
         <button
@@ -748,7 +748,7 @@ export default function NearMePlatform({
         >
           <Scale className="w-4 h-4 text-amber-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab3}</p>
-          <p className="text-[11px] text-amber-300">Mod-36 GSTIN · e-Daakhil</p>
+          <p className="text-[11px] text-amber-300">Check if shop GST is real</p>
         </button>
 
         <button
@@ -762,7 +762,7 @@ export default function NearMePlatform({
         >
           <Store className="w-4 h-4 text-fuchsia-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab4}</p>
-          <p className="text-[11px] text-fuchsia-300">₹99/Day · 0.1% QR Army</p>
+          <p className="text-[11px] text-fuchsia-300">₹99/Day Shop AI · Earn 0.1%</p>
         </button>
       </div>
 
@@ -773,16 +773,16 @@ export default function NearMePlatform({
             <div className="text-left">
               <h2 className="text-xl sm:text-2xl font-black text-white flex items-center gap-2">
                 <Layers className="w-6 h-6 text-emerald-400" />
-                Unlimited-Page (1 to 500+ Pages) Streaming Bill Auditor
+                Unlimited-Page Bill &amp; Quote Checker (1 to 500+ Pages)
               </h2>
-              <p className="text-xs text-gray-400 mt-0.5">
-                ₹49 Standard Audit / ₹199 Heavy Institutional Audit (Bills ≥ ₹10,000) • Zero Page or File Caps
+              <p className="text-xs text-gray-300 mt-0.5">
+                ₹49 Standard Bill Check • ₹199 Large Bill Audit (₹10,000+ bills) • Works with any page count
               </p>
             </div>
             {attachments.length > 0 && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-xs font-bold shrink-0">
                 <CheckCircle2 className="w-3.5 h-3.5" />
-                Streaming Document Indexer: {attachments.length} Files • {totalDetectedPages} Total Pages Scanned (Unlimited Page Capacity) • Ready for Deep Line-Item Audit
+                Ready: {attachments.length} File(s) • {totalDetectedPages} Pages Detected • Safe to Audit
               </span>
             )}
           </div>
@@ -790,7 +790,7 @@ export default function NearMePlatform({
           {/* 1-Tap Presets */}
           <div>
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2 text-left">
-              1-Tap Unlimited-Page Simulation Presets:
+              No bill handy? Try a 1-click sample bill right now:
             </p>
             <div className="flex flex-wrap gap-2">
               {AUDIT_PRESETS.map((preset, idx) => {
@@ -1182,10 +1182,10 @@ export default function NearMePlatform({
             <div>
               <h3 className="text-lg font-black text-white flex items-center gap-2">
                 <Lock className="w-5 h-5 text-blue-400" />
-                15/85 Protected Wholesale UPI Escrow & MSME Section 43B(h)
+                Safe Payment Escrow (15/85 Protection &amp; 48h Refund)
               </h3>
-              <p className="text-xs text-gray-400">
-                48-Hr Refund Guarantee • OTP Delivery Release • Optional 3% Day-1 Invoice Discounting
+              <p className="text-xs text-gray-300 mt-0.5">
+                How it works: Your payment stays locked until you confirm delivery with a 6-digit OTP. Not delivered in 48 hours? Get an instant refund.
               </p>
             </div>
           </div>
@@ -1388,8 +1388,11 @@ export default function NearMePlatform({
         <div className="bg-gray-950/70 border border-gray-800 rounded-2xl p-5 space-y-4 text-left">
           <h3 className="text-lg font-black text-white flex items-center gap-2">
             <Scale className="w-5 h-5 text-amber-400" />
-            Instant e-Court, GSTIN Mod-36 & Consumer Forum Trust Shield
+            Check Any Seller&apos;s GST Number &amp; Legal Protection
           </h3>
+          <p className="text-xs text-gray-300">
+            Enter a shop&apos;s 15-character GST number before you pay to confirm it is valid and view consumer forum legal options.
+          </p>
           <div className="flex flex-col sm:flex-row gap-3">
             <input
               type="text"

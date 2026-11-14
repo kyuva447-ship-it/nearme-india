@@ -45,9 +45,9 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { pin, action, city, pincode } = body;
-    const expectedPin = process.env.OWNER_PIN || DEFAULT_OWNER_PIN;
+    const expectedPin = (process.env.OWNER_PIN || DEFAULT_OWNER_PIN).trim();
 
-    if (pin && String(pin) !== expectedPin) {
+    if (pin && String(pin).trim() !== expectedPin) {
       return NextResponse.json({ error: 'Invalid owner PIN' }, { status: 401 });
     }
 

@@ -7,20 +7,63 @@ export default function SavingsPassModal({ amount, service, onClose }: { amount:
   const { toast } = useToast();
 
   const handleShare = async () => {
-    const text = `I just slashed ₹${amount} on ${service} via NearMe India! Claim your AI deals here: https://www.nearme-india.org`;
+    const text = `I just slashed ₹${amount} on ${service} via NearMe India! Check fair prices here: https://www.nearme-india.org`;
     if (navigator.share) {
       try {
         await navigator.share({ title: 'NearMe India Savings', text, url: 'https://www.nearme-india.org' });
-      } catch (e) {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+        return;
+      } catch {
+        // Fallback to clipboard copy
       }
-    } else {
-        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Share message copied to clipboard!', 'success');
+    } catch {
+      toast('Share link: https://www.nearme-india.org', 'info');
     }
   };
 
   const handleDownload = () => {
-      toast("Image downloading... (Demo)", "success");
+    const canvas = document.createElement('canvas');
+    canvas.width = 720;
+    canvas.height = 900;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const grad = ctx.createLinearGradient(0, 0, 0, 900);
+      grad.addColorStop(0, '#0f172a');
+      grad.addColorStop(1, '#064e3b');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 720, 900);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 28px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('VERIFIED NEARME INDIA PASS', 360, 150);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 34px sans-serif';
+      ctx.fillText(service.slice(0, 32), 360, 260);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 22px sans-serif';
+      ctx.fillText('TOTAL AMOUNT / SAVINGS', 360, 420);
+
+      ctx.fillStyle = '#34d399';
+      ctx.font = 'bold 88px sans-serif';
+      ctx.fillText(`INR ${amount.toLocaleString('en-IN')}`, 360, 530);
+
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '20px monospace';
+      ctx.fillText('WWW.NEARME-INDIA.ORG', 360, 780);
+
+      const url = canvas.toDataURL('image/png');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `NearMe_Verified_Pass_${Date.now()}.png`;
+      a.click();
+      toast('Verified Pass image downloaded!', 'success');
+    }
   };
 
   return (
