@@ -508,6 +508,37 @@ export default function NearMePlatform({
     toast('Official IRDAI / TPA Rebuttal Legal Notice downloaded!', 'success');
   };
 
+  const handleExportAuditCsv = () => {
+    if (!auditResult) return;
+    const headers = [
+      'Page Range',
+      'Department / Section',
+      'Line Items',
+      'Billed (INR)',
+      'Fair Benchmark (INR)',
+      'Overcharge Stripped (INR)',
+      'Audit Flag Reason',
+    ];
+    const rows = auditResult.pageBreakdown.map((row) => [
+      `"${String(row.pageRange).replace(/"/g, '""')}"`,
+      `"${String(row.departmentOrSection).replace(/"/g, '""')}"`,
+      row.lineItemsCount,
+      row.billedAmount,
+      row.fairBenchmarkAmount,
+      row.overchargeStripped,
+      `"${String(row.flagReason).replace(/"/g, '""')}"`,
+    ]);
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `NearMe_Audit_Ledger_${auditResult.totalPagesAudited}Pages.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Exported ${auditResult.totalPagesAudited}-Page Audit Ledger CSV!`, 'success');
+  };
+
   const handleCreateEscrow = async () => {
     setEscrowBusy(true);
     try {
@@ -660,20 +691,20 @@ export default function NearMePlatform({
         </div>
       )}
 
-      {/* 4 Main Navigation Tabs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 bg-gray-900/60 border border-gray-800 rounded-2xl p-2">
+      {/* 4 Main Color-Coded Navigation Tabs */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 bg-slate-900/70 border border-slate-800 rounded-2xl p-2">
         <button
           type="button"
           onClick={() => setActivePillar('auditor')}
           className={`p-3 rounded-xl border text-left transition-all ${
             activePillar === 'auditor'
-              ? 'bg-emerald-950/70 border-emerald-500 text-white'
-              : 'bg-gray-950/50 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              ? 'bg-gradient-to-br from-emerald-600/30 via-teal-600/20 to-cyan-600/15 border-emerald-400/70 text-white shadow-lg shadow-emerald-950/50'
+              : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-emerald-500/40'
           }`}
         >
           <Layers className="w-4 h-4 text-emerald-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab1}</p>
-          <p className="text-[11px] text-emerald-400">₹49 / ₹199 · Streaming Audit</p>
+          <p className="text-[11px] text-emerald-300">₹49 / ₹199 · Streaming Audit</p>
         </button>
 
         <button
@@ -681,13 +712,13 @@ export default function NearMePlatform({
           onClick={() => setActivePillar('escrow')}
           className={`p-3 rounded-xl border text-left transition-all ${
             activePillar === 'escrow'
-              ? 'bg-emerald-950/70 border-emerald-500 text-white'
-              : 'bg-gray-950/50 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              ? 'bg-gradient-to-br from-blue-600/30 via-indigo-600/20 to-cyan-600/15 border-blue-400/70 text-white shadow-lg shadow-blue-950/50'
+              : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-blue-500/40'
           }`}
         >
-          <Lock className="w-4 h-4 text-blue-400 mb-1" />
+          <Lock className="w-4 h-4 text-cyan-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab2}</p>
-          <p className="text-[11px] text-blue-400">48h Refund · 3% Day-1</p>
+          <p className="text-[11px] text-cyan-300">48h Refund · 3% Day-1</p>
         </button>
 
         <button
@@ -695,13 +726,13 @@ export default function NearMePlatform({
           onClick={() => setActivePillar('ecourt')}
           className={`p-3 rounded-xl border text-left transition-all ${
             activePillar === 'ecourt'
-              ? 'bg-emerald-950/70 border-emerald-500 text-white'
-              : 'bg-gray-950/50 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              ? 'bg-gradient-to-br from-amber-500/30 via-orange-500/20 to-yellow-500/15 border-amber-400/70 text-white shadow-lg shadow-amber-950/50'
+              : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-amber-500/40'
           }`}
         >
           <Scale className="w-4 h-4 text-amber-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab3}</p>
-          <p className="text-[11px] text-amber-400">Mod-36 GSTIN · e-Daakhil</p>
+          <p className="text-[11px] text-amber-300">Mod-36 GSTIN · e-Daakhil</p>
         </button>
 
         <button
@@ -709,13 +740,13 @@ export default function NearMePlatform({
           onClick={() => setActivePillar('marketplace')}
           className={`p-3 rounded-xl border text-left transition-all ${
             activePillar === 'marketplace'
-              ? 'bg-emerald-950/70 border-emerald-500 text-white'
-              : 'bg-gray-950/50 border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'
+              ? 'bg-gradient-to-br from-violet-600/30 via-fuchsia-600/20 to-purple-600/15 border-violet-400/70 text-white shadow-lg shadow-violet-950/50'
+              : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white hover:border-violet-500/40'
           }`}
         >
-          <Store className="w-4 h-4 text-emerald-400 mb-1" />
+          <Store className="w-4 h-4 text-fuchsia-400 mb-1" />
           <p className="text-xs font-extrabold leading-tight truncate">{uiCopy.tab4}</p>
-          <p className="text-[11px] text-emerald-300">₹99/Day · 0.1% QR Army</p>
+          <p className="text-[11px] text-fuchsia-300">₹99/Day · 0.1% QR Army</p>
         </button>
       </div>
 
@@ -742,25 +773,33 @@ export default function NearMePlatform({
 
           {/* 1-Tap Presets */}
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400 mb-2 text-left">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-slate-300 mb-2 text-left">
               1-Tap Unlimited-Page Simulation Presets:
             </p>
             <div className="flex flex-wrap gap-2">
-              {AUDIT_PRESETS.map((preset, idx) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handleLoadPreset(preset)}
-                  className={`text-xs font-bold px-3 py-2 rounded-xl border transition-all flex items-center gap-1.5 text-left ${
-                    idx === 0
-                      ? 'bg-gradient-to-r from-emerald-600/30 to-blue-600/30 border-emerald-500/50 text-emerald-200 hover:border-emerald-400 shadow-lg shadow-emerald-950/50'
-                      : 'bg-gray-800/80 border-gray-700 text-gray-200 hover:bg-gray-800 hover:border-gray-600'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span>{preset.label}</span>
-                </button>
-              ))}
+              {AUDIT_PRESETS.map((preset, idx) => {
+                const presetThemes = [
+                  'bg-gradient-to-r from-rose-500/25 via-emerald-500/20 to-cyan-500/25 border-emerald-400/60 text-emerald-100 hover:border-cyan-300 shadow-lg shadow-emerald-950/40',
+                  'bg-gradient-to-r from-amber-500/20 to-orange-500/20 border-amber-400/50 text-amber-100 hover:border-amber-300',
+                  'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border-cyan-400/50 text-cyan-100 hover:border-cyan-300',
+                  'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border-yellow-400/50 text-yellow-100 hover:border-yellow-300',
+                  'bg-gradient-to-r from-lime-500/20 to-emerald-500/20 border-lime-400/50 text-lime-100 hover:border-lime-300',
+                  'bg-gradient-to-r from-violet-500/20 to-fuchsia-500/20 border-violet-400/50 text-violet-100 hover:border-violet-300',
+                ];
+                return (
+                  <button
+                    key={preset.id}
+                    type="button"
+                    onClick={() => handleLoadPreset(preset)}
+                    className={`text-xs font-bold px-3 py-2 rounded-xl border transition-all flex items-center gap-1.5 text-left ${
+                      presetThemes[idx % presetThemes.length]
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                    <span>{preset.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -772,7 +811,7 @@ export default function NearMePlatform({
                   e.preventDefault();
                   handleFilesSelected(e.dataTransfer.files);
                 }}
-                className="w-full min-h-[175px] border-2 border-dashed border-gray-600 rounded-2xl flex flex-col items-center justify-center bg-gray-800/40 cursor-pointer hover:border-emerald-500 hover:bg-gray-800/70 transition-all p-6 text-center"
+                className="w-full min-h-[185px] border-2 border-dashed border-emerald-400/50 rounded-2xl flex flex-col items-center justify-center bg-gradient-to-br from-emerald-950/35 via-slate-900/90 to-indigo-950/35 cursor-pointer hover:border-cyan-400 hover:from-emerald-950/50 hover:to-cyan-950/40 transition-all p-6 text-center shadow-lg shadow-emerald-950/20"
               >
                 <input
                   ref={fileInputRef}
@@ -784,13 +823,13 @@ export default function NearMePlatform({
                 />
                 {processingFiles ? (
                   <div className="w-full max-w-md space-y-3">
-                    <Loader2 className="w-9 h-9 text-emerald-400 animate-spin mx-auto" />
+                    <Loader2 className="w-9 h-9 text-cyan-400 animate-spin mx-auto" />
                     <p className="text-emerald-300 font-bold text-sm">
                       Streaming Chunks via File.slice()... {streamProgress}%
                     </p>
-                    <div className="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden border border-gray-700">
+                    <div className="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-slate-700">
                       <div
-                        className="h-full bg-gradient-to-r from-emerald-500 to-blue-500 transition-all duration-200"
+                        className="h-full bg-gradient-to-r from-emerald-400 via-cyan-400 to-violet-500 transition-all duration-200"
                         style={{ width: `${streamProgress}%` }}
                       />
                     </div>
@@ -798,14 +837,20 @@ export default function NearMePlatform({
                 ) : (
                   <>
                     <div className="flex items-center gap-3 mb-3">
-                      <Upload className="w-9 h-9 text-emerald-400" />
-                      <FileText className="w-8 h-8 text-blue-400" />
-                      <Camera className="w-8 h-8 text-purple-400" />
+                      <div className="p-2.5 rounded-xl bg-emerald-500/20 border border-emerald-400/40">
+                        <Upload className="w-7 h-7 text-emerald-300" />
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-cyan-500/20 border border-cyan-400/40">
+                        <FileText className="w-7 h-7 text-cyan-300" />
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-violet-500/20 border border-violet-400/40">
+                        <Camera className="w-7 h-7 text-violet-300" />
+                      </div>
                     </div>
-                    <span className="text-emerald-400 font-black text-base">
+                    <span className="bg-gradient-to-r from-emerald-300 via-cyan-300 to-amber-200 bg-clip-text text-transparent font-black text-base">
                       Drop 50, 150, or 500+ Page Hospital PDFs, Wholesale BOQs, Excel/CSV, or 50+ Photos
                     </span>
-                    <span className="text-xs text-gray-400 mt-1">
+                    <span className="text-xs text-slate-300 mt-1">
                       PDF, JPG/PNG/WEBP, CSV, TXT, DOC/DOCX, XLS/XLSX, JSON • Auto-Packed &lt;3.2 MB (Zero 413 Errors)
                     </span>
                   </>
@@ -926,15 +971,25 @@ export default function NearMePlatform({
               </div>
 
               {/* Unlimited-Page Department Breakdown Table */}
-              <div className="bg-gray-950/90 border border-gray-800 rounded-xl overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between bg-gray-900/70">
+              <div className="bg-slate-950/90 border border-slate-800 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2 bg-slate-900/80">
                   <h3 className="text-sm font-black text-white flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-amber-400" />
                     Unlimited-Page Department Breakdown Table
                   </h3>
-                  <span className="text-[11px] text-gray-400 tabular-nums">
-                    15/85 Escrow Fee: ₹{auditResult.platform_success_fee_inr.toLocaleString('en-IN')}
-                  </span>
+                  <div className="flex items-center gap-2.5">
+                    <span className="text-[11px] text-slate-300 tabular-nums">
+                      15/85 Escrow Fee: ₹{auditResult.platform_success_fee_inr.toLocaleString('en-IN')}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleExportAuditCsv}
+                      className="px-2.5 py-1 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/35 border border-cyan-400/50 text-cyan-200 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                    >
+                      <Download className="w-3 h-3" />
+                      Export CSV
+                    </button>
+                  </div>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse text-xs">
@@ -1366,10 +1421,10 @@ export default function NearMePlatform({
       )}
 
       {/* MULTIPLIER D: PROGRAMMATIC 19,300+ PINCODE WHOLESALE BENCHMARK INDEX */}
-      <div className="bg-gray-950/60 border border-gray-800 rounded-2xl p-4 text-left space-y-3">
+      <div className="bg-gradient-to-br from-slate-900/95 via-emerald-950/20 to-indigo-950/25 border border-cyan-500/30 rounded-2xl p-4 text-left space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
+            <span className="text-[10px] font-black uppercase tracking-widest text-cyan-300">
               Multiplier D • Programmatic 19,300+ Pincode Wholesale Benchmark Index
             </span>
             <h4 className="text-sm font-black text-white flex items-center gap-1.5">
@@ -1378,20 +1433,30 @@ export default function NearMePlatform({
             </h4>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {ZONE_WHOLESALE_INDEX.map((z, i) => (
-              <button
-                key={z.zone}
-                type="button"
-                onClick={() => setSelectedZoneIdx(i)}
-                className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-colors ${
-                  selectedZoneIdx === i
-                    ? 'bg-emerald-600 text-white border-emerald-500'
-                    : 'bg-gray-900 text-gray-400 border-gray-800 hover:text-white'
-                }`}
-              >
-                {z.zone.split(' ')[0]} ({z.pincodesCovered.toLocaleString('en-IN')})
-              </button>
-            ))}
+            {ZONE_WHOLESALE_INDEX.map((z, i) => {
+              const zoneColors = [
+                'from-emerald-500 to-teal-500 border-emerald-400',
+                'from-amber-500 to-orange-500 border-amber-400',
+                'from-cyan-500 to-blue-500 border-cyan-400',
+                'from-violet-500 to-fuchsia-500 border-violet-400',
+                'from-rose-500 to-orange-500 border-rose-400',
+                'from-lime-500 to-emerald-500 border-lime-400',
+              ];
+              return (
+                <button
+                  key={z.zone}
+                  type="button"
+                  onClick={() => setSelectedZoneIdx(i)}
+                  className={`text-[11px] font-bold px-2.5 py-1 rounded-lg border transition-all ${
+                    selectedZoneIdx === i
+                      ? `bg-gradient-to-r ${zoneColors[i % zoneColors.length]} text-slate-950 font-extrabold shadow-sm`
+                      : 'bg-slate-900 text-slate-300 border-slate-700 hover:text-white'
+                  }`}
+                >
+                  {z.zone.split(' ')[0]} ({z.pincodesCovered.toLocaleString('en-IN')})
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -1399,16 +1464,16 @@ export default function NearMePlatform({
           {ZONE_WHOLESALE_INDEX[selectedZoneIdx].benchmarks.map((b, bIdx) => (
             <div
               key={bIdx}
-              className="bg-gray-900/80 border border-gray-800 rounded-xl p-3 flex items-center justify-between gap-3"
+              className="bg-slate-900/90 border border-slate-700/70 rounded-xl p-3 flex items-center justify-between gap-3"
             >
               <div>
                 <p className="text-xs font-bold text-white">{b.item}</p>
-                <p className="text-[11px] text-gray-400">
-                  Retail: <span className="line-through">{b.retailRate}</span> → Wholesale:{' '}
-                  <span className="text-emerald-400 font-bold">{b.nearmeWholesaleRate}</span>
+                <p className="text-[11px] text-slate-300">
+                  Retail: <span className="line-through text-rose-300">{b.retailRate}</span> → Wholesale:{' '}
+                  <span className="text-emerald-300 font-bold">{b.nearmeWholesaleRate}</span>
                 </p>
               </div>
-              <span className="text-xs font-black text-emerald-300 bg-emerald-500/15 px-2.5 py-1 rounded-full shrink-0">
+              <span className="text-xs font-black text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 px-2.5 py-1 rounded-full shrink-0">
                 -{b.savingsPct}%
               </span>
             </div>
@@ -1422,7 +1487,7 @@ export default function NearMePlatform({
               <Link
                 key={hub}
                 href={`/services/${citySlug}/hospital-bill-audit`}
-                className="text-[11px] text-blue-400 hover:text-blue-300 bg-gray-900 border border-gray-800 px-2.5 py-1 rounded-full"
+                className="text-[11px] text-cyan-300 hover:text-amber-300 bg-slate-900/90 border border-cyan-500/30 px-2.5 py-1 rounded-full transition-colors"
               >
                 {hub} Wholesale Index →
               </Link>

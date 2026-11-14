@@ -123,7 +123,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className="antialiased bg-gray-950 text-white min-h-screen flex flex-col">
+      <body className="antialiased bg-slate-950 text-white min-h-screen flex flex-col">
         <ToastProvider>
           <TelemetryBar />
           <div className="flex-1">{children}</div>

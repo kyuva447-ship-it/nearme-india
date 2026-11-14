@@ -68,7 +68,8 @@ export default function TelemetryBar() {
   };
 
   return (
-    <header className="w-full bg-gray-950/95 backdrop-blur-md border-b border-gray-800/80 sticky top-0 z-40">
+    <header className="w-full bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40">
+      <div className="h-0.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 via-amber-400 to-violet-500" />
       {showAuth && (
         <PhoneAuthModal
           onClose={() => setShowAuth(false)}
@@ -84,25 +85,28 @@ export default function TelemetryBar() {
         {/* Zone 1: Clean single-line brand wordmark */}
         <Link
           href="/"
-          className="text-lg sm:text-xl font-bold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2"
+          className="text-lg sm:text-xl font-extrabold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2"
         >
           <span>
-            NearMe <span className="text-emerald-400">India</span>
+            NearMe{' '}
+            <span className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-amber-300 bg-clip-text text-transparent">
+              India
+            </span>
           </span>
         </Link>
 
-        {/* Zone 2: Clean single-line navigation links + 6-language switcher */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-gray-300">
-          <Link href="/#auditor" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+        {/* Zone 2: Clean single-line navigation links */}
+        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-300">
+          <Link href="/#auditor" className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0">
             Bill Stripper
           </Link>
-          <Link href="/#syndicates" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+          <Link href="/#syndicates" className="hover:text-cyan-300 transition-colors whitespace-nowrap shrink-0">
             Syndicates
           </Link>
-          <Link href="/search" className="hover:text-white transition-colors whitespace-nowrap shrink-0">
+          <Link href="/search" className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0">
             Wholesale Index
           </Link>
-          <Link href="/owner" className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1">
+          <Link href="/owner" className="text-violet-300 hover:text-violet-200 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1">
             <Shield className="w-3.5 h-3.5" />
             Founder Portal
           </Link>
@@ -114,7 +118,7 @@ export default function TelemetryBar() {
           <div
             role="group"
             aria-label="Language Switcher"
-            className="hidden sm:flex items-center bg-gray-900 border border-gray-800 rounded-lg p-0.5"
+            className="hidden sm:flex items-center bg-slate-900 border border-slate-700/80 rounded-lg p-0.5"
           >
             {LANGUAGES.map((l) => (
               <button
@@ -122,10 +126,10 @@ export default function TelemetryBar() {
                 type="button"
                 onClick={() => handleLangSelect(l.code)}
                 title={l.native}
-                className={`px-2 py-1 text-[11px] font-bold rounded-md transition-colors whitespace-nowrap shrink-0 ${
+                className={`px-2 py-1 text-[11px] font-bold rounded-md transition-all whitespace-nowrap shrink-0 ${
                   selectedLang === l.code
-                    ? 'bg-emerald-600 text-white'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 shadow-sm'
+                    : 'text-slate-400 hover:text-white'
                 }`}
               >
                 {l.code}
