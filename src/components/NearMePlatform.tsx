@@ -938,24 +938,46 @@ export default function NearMePlatform({
           ) : (
             <div className="w-full bg-emerald-950/20 border border-emerald-500/30 rounded-2xl p-5 sm:p-6 space-y-5 text-left">
               {/* Verification Banner */}
-              <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm sm:text-base font-black text-white">
-                      Unlimited-Page Deep Audit Ledger: {auditResult.totalPagesAudited} Pages •{' '}
-                      {auditResult.totalLineItemsScanned.toLocaleString('en-IN')} Line Items •{' '}
-                      {auditResult.flaggedPagesCount} Pages Flagged
-                    </p>
-                    <p className="text-xs text-emerald-200/80 mt-0.5">
-                      {auditResult.bill_type} • Audit Fee Tier: ₹{auditResult.auditFeeInr}
-                    </p>
+              {auditResult.usedLiveAI === false && auditResult.fallbackReason !== 'sample_preset' ? (
+                <div className="bg-amber-500/15 border border-amber-400/50 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm sm:text-base font-black text-amber-200">
+                        Sample Estimate Shown — Live AI Did Not Read Your Uploaded Bill Yet
+                      </p>
+                      <p className="text-xs text-amber-100/90 mt-1">
+                        {auditResult.fallbackReason === 'missing_api_key'
+                          ? 'The server GEMINI_API_KEY is not active on this deployment yet (redeploy Vercel after saving the key). The numbers below (₹4,500 / ₹3,060) are a generic placeholder template, not totals from your bill.'
+                          : 'Live AI could not parse this file clearly, so a generic estimate is shown below instead of your real bill figures. Try uploading a sharper photo or text PDF.'}
+                      </p>
+                    </div>
                   </div>
+                  <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-gray-950/70 text-amber-300 border border-amber-400/40 shrink-0">
+                    Template Estimate
+                  </span>
                 </div>
-                <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-gray-950/70 text-emerald-300 border border-emerald-500/30 shrink-0">
-                  100% Pages Audited
-                </span>
-              </div>
+              ) : (
+                <div className="bg-emerald-500/15 border border-emerald-500/40 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm sm:text-base font-black text-white">
+                        {auditResult.usedLiveAI ? 'Live Gemini AI Bill Audit' : 'Sample Preset Audit'}:{' '}
+                        {auditResult.totalPagesAudited} Pages •{' '}
+                        {auditResult.totalLineItemsScanned.toLocaleString('en-IN')} Line Items •{' '}
+                        {auditResult.flaggedPagesCount} Pages Flagged
+                      </p>
+                      <p className="text-xs text-emerald-200/80 mt-0.5">
+                        {auditResult.bill_type} • Audit Fee Tier: ₹{auditResult.auditFeeInr}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full bg-gray-950/70 text-emerald-300 border border-emerald-500/30 shrink-0">
+                    {auditResult.usedLiveAI ? 'Live AI Verified' : 'Sample Preview'}
+                  </span>
+                </div>
+              )}
 
               {/* Financial Summary */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -985,6 +1007,13 @@ export default function NearMePlatform({
                   </p>
                 </div>
               </div>
+
+              {auditResult.ai_audit_notes && (
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-xl p-3.5 text-xs text-slate-200 leading-relaxed">
+                  <span className="font-bold text-cyan-300 mr-1.5">Plain-English Summary:</span>
+                  {auditResult.ai_audit_notes}
+                </div>
+              )}
 
               {/* Unlimited-Page Department Breakdown Table */}
               <div className="bg-slate-950/90 border border-slate-800 rounded-xl overflow-hidden">

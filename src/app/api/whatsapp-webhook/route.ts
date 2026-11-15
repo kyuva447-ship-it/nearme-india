@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
 import { OWNER_CONTACT_EMAIL } from '@/lib/seeded-marketplace';
@@ -7,9 +8,10 @@ export async function GET(req: Request) {
   const mode = searchParams.get('hub.mode');
   const challenge = searchParams.get('hub.challenge');
   const verifyToken = searchParams.get('hub.verify_token');
+  const expectedToken = (process.env.WHATSAPP_VERIFY_TOKEN || '').trim();
 
   if (mode === 'subscribe' && challenge) {
-    if (!process.env.WHATSAPP_VERIFY_TOKEN || verifyToken === process.env.WHATSAPP_VERIFY_TOKEN) {
+    if (expectedToken && verifyToken === expectedToken) {
       return new NextResponse(challenge, { status: 200 });
     }
     return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
@@ -24,7 +26,20 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    const appSecret = (process.env.WHATSAPP_APP_SECRET || '').trim();
+    if (appSecret) {
+      const signatureHeader = req.headers.get('x-hub-signature-256') || '';
+      const expectedSig =
+        'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+      const a = Buffer.from(expectedSig, 'utf8');
+      const b = Buffer.from(signatureHeader, 'utf8');
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return NextResponse.json({ error: 'Invalid Meta signature' }, { status: 401 });
+      }
+    }
+
+    const body = JSON.parse(rawBody);
     const messageText =
       body?.message ||
       body?.entry?.[0]?.changes?.[0]?.value?.messages?.[0]?.text?.body ||
@@ -36,7 +51,7 @@ export async function POST(req: Request) {
 
     const ai = getGeminiClient();
     let reply =
-      'NearMe India AI: Upload your multi-page hospital bill or wholesale quote at https://www.nearme-india.org to strip overcharges immediately, or use the 24/7 On-Site Self-Support Desk on our website.';
+      'NearMe India AI: Upload your hospital bill or wholesale quote at https://www.nearme-india.org to strip overcharges immediately.';
 
     if (ai) {
       try {

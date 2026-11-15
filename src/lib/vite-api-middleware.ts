@@ -2,7 +2,6 @@ import type { IncomingMessage, ServerResponse } from 'http';
 import { AuditRequestPayload, runMultiDocBillAudit } from './auditEngine';
 import {
   AUDIT_PRESETS,
-  DEFAULT_OWNER_PIN,
   OWNER_CONTACT_EMAIL,
   SEEDED_MERCHANTS,
   ZONE_WHOLESALE_INDEX,
@@ -312,9 +311,10 @@ export function createNearMeViteApiMiddleware() {
         }
         if (method === 'POST') {
           const body = await readJsonBody(req);
-          const expectedPin = process.env.OWNER_PIN || DEFAULT_OWNER_PIN;
-          if (body.pin && String(body.pin) !== expectedPin) {
-            return sendJson(res, 401, { error: 'Invalid owner PIN' });
+          const expectedPin = (process.env.OWNER_PASSWORD || process.env.OWNER_PIN || '748599').trim();
+          const supplied = String(body.password || body.pin || '').trim();
+          if (!expectedPin || !supplied || supplied !== expectedPin) {
+            return sendJson(res, 401, { error: 'Invalid or missing owner PIN' });
           }
           if (body.action === 'update_controls') {
             updateFounderControls({

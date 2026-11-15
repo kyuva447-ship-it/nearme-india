@@ -1,7 +1,6 @@
 export const OWNER_CONTACT_PHONE = process.env.OWNER_CONTACT_PHONE || '';
 export const OWNER_WHATSAPP_NUMBER = process.env.OWNER_WHATSAPP_NUMBER || '';
 export const OWNER_CONTACT_EMAIL = process.env.OWNER_CONTACT_EMAIL || 'support@nearme-india.org';
-export const DEFAULT_OWNER_PIN = '748599';
 
 export interface PageBreakdownItem {
   pageRange: string;
@@ -38,6 +37,7 @@ export interface MultiDocAuditResult {
   irdaiRebuttal?: IrdaiRebuttalData;
   ai_audit_notes: string;
   usedLiveAI?: boolean;
+  fallbackReason?: 'missing_api_key' | 'ai_error' | 'sample_preset';
 }
 
 export interface SeededMerchant {

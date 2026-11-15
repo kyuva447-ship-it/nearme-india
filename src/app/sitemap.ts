@@ -7,6 +7,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     '',
     '/search',
     '/pricing',
+    '/claim',
     '/about',
     '/contact',
     '/terms',
@@ -22,31 +23,36 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: route === '' ? 1.0 : 0.8,
   }));
 
-  const pincodes = [
+  const citiesAndPincodes = [
+    'bengaluru',
+    'hyderabad',
+    'mumbai',
+    'delhi',
+    'pune',
+    'chennai',
+    'kolkata',
+    'jaipur',
+    'indore',
     '560001',
     '110001',
     '400002',
     '500081',
     '600001',
-    '411001',
-    '700001',
-    '517325',
-    '302001',
-    '452001',
-    '781001',
-    '800001',
   ];
+
   const categories = [
     'hospital-bill-audit',
     'wholesale-cement-tmt',
     'pharmacy-jan-aushadhi',
     'gold-bullion-making',
     'agri-drip-irrigation',
+    'diagnostic-labs',
+    'plumbing-electrical',
   ];
 
-  const programmaticRoutes = pincodes.flatMap((pincode) =>
+  const programmaticRoutes = citiesAndPincodes.flatMap((city) =>
     categories.map((category) => ({
-      url: `${baseUrl}/services/${pincode}/${category}`,
+      url: `${baseUrl}/services/${city}/${category}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
       priority: 0.7,

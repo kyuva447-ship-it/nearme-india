@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateGstinMod36 } from '@/lib/seeded-marketplace';
+import { getVerifiedSessionPhone } from '@/lib/session';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { image_data, phone, upi_id, gstin, businessName } = body;
+    const { image_data, upi_id, gstin, businessName } = body;
 
     if (gstin) {
       const check = validateGstinMod36(String(gstin));
@@ -21,17 +22,23 @@ export async function POST(req: Request) {
       });
     }
 
+    const sessionPhone = getVerifiedSessionPhone();
+    const targetPhone = sessionPhone || (typeof body.phone === 'string' ? body.phone.replace(/\D/g, '') : '');
+    if (!targetPhone) {
+      return NextResponse.json({ error: 'Authentication required for KYC submission' }, { status: 401 });
+    }
+
     const ai = getGeminiClient();
     if (!ai || !image_data) {
-      return NextResponse.json({
-        status: 'approved_fallback',
-        message: 'KYC Verified (Autonomous Fallback)',
-      });
+      return NextResponse.json(
+        { status: 'rejected', message: 'Valid business license image and AI verification key required.' },
+        { status: 400 }
+      );
     }
 
     let responseText = '';
     try {
-      const base64Data = String(image_data).replace(/^data:image\/\w+;base64,/, '');
+      const base64Data = String(image_data).replace(/^data:[^;]+;base64,/, '');
       const result = await ai.models.generateContent({
         model: GEMINI_MODEL,
         contents: [
@@ -43,23 +50,27 @@ export async function POST(req: Request) {
       });
       responseText = result.text || '';
     } catch {
-      return NextResponse.json({
-        status: 'approved_fallback',
-        message: 'KYC Queued & Pre-Verified (Autonomous Fallback)',
-      });
+      return NextResponse.json(
+        { status: 'error', message: 'Automated KYC inspector temporarily unavailable. Please retry.' },
+        { status: 503 }
+      );
     }
 
-    if (responseText.includes('VERIFIED')) {
+    const isVerified =
+      /\bVERIFIED\b/i.test(responseText) &&
+      !/\b(NOT\s+VERIFIED|UNVERIFIED|REJECTED)\b/i.test(responseText);
+
+    if (isVerified) {
       try {
         await supabaseAdmin
           .from('merchant_autopilot_nodes')
           .update({
             kyc_verified: true,
-            payout_upi_id: upi_id,
+            payout_upi_id: String(upi_id || ''),
           })
-          .eq('phone', phone);
+          .eq('phone', targetPhone);
       } catch {
-        // Silent fallback when Supabase is not configured
+        // Silent fallback when table is absent
       }
 
       return NextResponse.json({ status: 'approved', message: 'Automated KYC Successful' });

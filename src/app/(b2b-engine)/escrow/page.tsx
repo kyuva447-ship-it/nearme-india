@@ -72,7 +72,9 @@ export default function OrderWorkflowDashboard() {
                 ? 'Verified via 6-Digit Delivery OTP'
                 : esc.status === 'REFUNDED_48HR_GUARANTEE'
                   ? '48h Escrow Guarantee Refunded'
-                  : `Pending Delivery OTP (${esc.delivery_otp})`,
+                  : esc.delivery_otp
+                    ? `Pending Delivery OTP (${esc.delivery_otp})`
+                    : 'Pending Delivery OTP Verification',
           })
         );
         setOrders([...liveMapped, ...DEFAULT_WORKFLOW_ORDERS]);

@@ -81,7 +81,9 @@ export default function AccountPage() {
               amountInr: Number(e.total_amount_inr || 0),
               status: String(e.status || 'ESCROW_LOCKED_15_85'),
               createdAt: String(e.created_at || new Date().toISOString()),
-              label: `${e.merchant_name} (OTP: ${e.delivery_otp})`,
+              label: e.delivery_otp
+                ? `${e.merchant_name} (OTP: ${e.delivery_otp})`
+                : `${e.merchant_name} (Delivery OTP Protected)`,
             });
           }
         }

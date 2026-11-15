@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import { ownerAlerts, pushOwnerAlert } from '@/lib/autonomousStore';
 import { OWNER_CONTACT_EMAIL } from '@/lib/seeded-marketplace';
+import { isAuthorizedOwnerRequest } from '@/lib/session';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!isAuthorizedOwnerRequest(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   return NextResponse.json({
     status: 'operational',
     ownerEmail: OWNER_CONTACT_EMAIL,
@@ -11,6 +15,9 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  if (!isAuthorizedOwnerRequest(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const body = await req.json();
     const message = String(body.message || '').trim();

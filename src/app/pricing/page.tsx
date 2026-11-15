@@ -17,14 +17,19 @@ export default function PricingPage() {
     try {
       const savedPhone =
         typeof window !== 'undefined' ? localStorage.getItem('nearme_user_phone') || '' : '';
-      const res = await fetch('/api/orders', {
+      const actionType = amount === 999 || amount === 299 ? 'pro_subscription' : 'wallet_recharge';
+
+      const res = await fetch('/api/payment/razorpay-split', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           amount,
-          receipt: `plan_${Date.now()}`,
-          itemName: planName,
-          customerIdentifier: savedPhone || undefined,
+          type: actionType,
+          phone: savedPhone || undefined,
+          metadata: {
+            plan: planName,
+            ...(savedPhone ? { merchant_id: `m-${savedPhone.replace(/\D/g, '').slice(-10)}` } : {}),
+          },
         }),
       });
       const data = await res.json();
@@ -33,7 +38,7 @@ export default function PricingPage() {
         return;
       }
 
-      if (data.fallbackMode || !data.id || !data.key_id) {
+      if (data.fallbackMode || !data.order_id || !data.key_id) {
         setFallbackPlan({ name: planName, amount });
         return;
       }
@@ -51,11 +56,29 @@ export default function PricingPage() {
         currency: data.currency || 'INR',
         name: 'NearMe India',
         description: planName,
-        order_id: data.id,
-        handler: (response: { razorpay_payment_id?: string }) => {
-          toast(`${planName} activated!`, 'success');
+        order_id: data.order_id,
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          const verifyRes = await fetch('/api/payment/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ...response,
+              actionType,
+              amountInRupees: amount,
+              phone: savedPhone || undefined,
+            }),
+          });
+          if (!verifyRes.ok) {
+            toast('Payment signature verification failed', 'error');
+            return;
+          }
+          toast(`${planName} verified and activated!`, 'success');
           window.location.href = `/success?payment_id=${encodeURIComponent(
-            response.razorpay_payment_id || data.id
+            response.razorpay_payment_id || data.order_id
           )}&amount=${amount}&item=${encodeURIComponent(planName)}`;
         },
         prefill: savedPhone ? { contact: savedPhone } : undefined,

@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { ordersLedger } from '@/lib/ordersStore';
+import { isAuthorizedOwnerRequest } from '@/lib/session';
 
-export async function GET() {
+export async function GET(req: Request) {
+  if (!isAuthorizedOwnerRequest(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const key_id = (process.env.RAZORPAY_KEY_ID || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '').trim();
     const key_secret = (process.env.RAZORPAY_KEY_SECRET || '').trim();

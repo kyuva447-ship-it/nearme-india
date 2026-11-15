@@ -12,39 +12,52 @@ export async function GET(req: Request) {
   const query = (searchParams.get('q') || '').trim().toLowerCase();
   const city = (searchParams.get('city') || '').trim().toLowerCase();
 
-  let merchants = [...SEEDED_MERCHANTS];
+  let merchants = SEEDED_MERCHANTS.map((m) => ({ ...m, is_verified_pro: false }));
 
-  if (process.env.NEXT_PUBLIC_SUPABASE_URL && !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')) {
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+  ) {
     try {
-      const { data } = await supabaseAdmin.from('v2_merchants').select('*').limit(25);
-      if (data && data.length > 0) {
-        merchants = data.map((m: Record<string, unknown>, idx: number) => ({
-          id: String(m.id || `db-${idx}`),
-          business_name: String(m.business_name || 'Verified Partner'),
+      const { data: walletMerchants } = await supabaseAdmin
+        .from('merchant_wallets')
+        .select('*')
+        .order('is_verified_pro', { ascending: false })
+        .order('trust_score', { ascending: false })
+        .limit(50);
+
+      if (walletMerchants && walletMerchants.length > 0) {
+        const dbList = walletMerchants.map((m) => ({
+          id: String(m.merchant_id),
+          business_name: String(m.business_name),
           gstin: String(m.gstin || '29AABCS1429B1ZQ'),
           category: String(m.category || 'Local Services'),
           city: String(m.city || 'Bengaluru'),
-          pincode: String(m.pincode || '560001'),
+          pincode: '560001',
           trust_score: Number(m.trust_score || 90),
-          verified: Boolean(m.is_verified ?? true),
-          avg_discount_pct: 30,
-          phone: String(m.phone || ''),
+          verified: true,
+          is_verified_pro: Boolean(m.is_verified_pro),
+          avg_discount_pct: Boolean(m.is_verified_pro) ? 35 : 25,
+          phone: '',
         }));
+        merchants = [...dbList, ...merchants];
       }
     } catch {
-      // Use seeded Pan-India marketplace data
+      // Fall back to seeded directory
     }
   }
 
-  const filtered = merchants.filter((m) => {
-    const matchesQ =
-      !query ||
-      m.business_name.toLowerCase().includes(query) ||
-      m.category.toLowerCase().includes(query) ||
-      m.gstin.toLowerCase().includes(query);
-    const matchesCity = !city || city === 'all india' || m.city.toLowerCase().includes(city);
-    return matchesQ && matchesCity;
-  });
+  const filtered = merchants
+    .filter((m) => {
+      const matchesQ =
+        !query ||
+        m.business_name.toLowerCase().includes(query) ||
+        m.category.toLowerCase().includes(query) ||
+        m.gstin.toLowerCase().includes(query);
+      const matchesCity = !city || city === 'all india' || m.city.toLowerCase().includes(city);
+      return matchesQ && matchesCity;
+    })
+    .sort((a, b) => Number(b.is_verified_pro) - Number(a.is_verified_pro) || b.trust_score - a.trust_score);
 
   return NextResponse.json({
     status: 'ok',

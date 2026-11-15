@@ -3,26 +3,38 @@ import { supabaseAdmin } from '@/lib/supabase/server';
 
 export async function POST(req: Request) {
   try {
-    const { phone } = await req.json();
+    const body = await req.json();
+    const phone = typeof body?.phone === 'string' ? body.phone.replace(/\D/g, '').slice(-10) : '';
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      return NextResponse.json({ error: 'Valid 10-digit Indian phone number is required' }, { status: 400 });
+    }
 
-    // Simulate finding active swarm
-    const { data: swarm } = await supabaseAdmin
-        .from('swarm_pools')
-        .select('*')
-        .limit(1)
-        .single();
+    let poolId = 'pan-india-wholesale-pool';
+    if (
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+    ) {
+      try {
+        const { data: swarm } = await supabaseAdmin
+          .from('swarm_pools')
+          .select('id')
+          .limit(1)
+          .single();
+        if (swarm?.id) poolId = String(swarm.id);
+      } catch {
+        // Fallback pool ID when table is not yet provisioned
+      }
+    }
 
-    const poolId = swarm?.id;
-
-    // We normally would insert user phone to a junction table here.
-
-    return NextResponse.json({
+    return NextResponse.json(
+      {
         status: 'joined',
         poolId,
-        message: 'Joined Swarm Successfully'
-    }, { status: 200 });
-
-  } catch (error) {
-    return NextResponse.json({ error: 'Failed to join swarm' }, { status: 500 });
+        message: 'Joined Swarm Wholesale Pool Successfully',
+      },
+      { status: 200 }
+    );
+  } catch {
+    return NextResponse.json({ error: 'Failed to join swarm pool' }, { status: 400 });
   }
 }

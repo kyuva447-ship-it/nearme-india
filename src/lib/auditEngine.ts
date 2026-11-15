@@ -54,7 +54,8 @@ Grounds:
 function buildFallbackAudit(
   payload: AuditRequestPayload,
   totalPages: number,
-  combinedText: string
+  combinedText: string,
+  fallbackReason: 'missing_api_key' | 'ai_error' | 'sample_preset' = 'ai_error'
 ): MultiDocAuditResult {
   if (payload.presetId) {
     const preset = AUDIT_PRESETS.find((p) => p.id === payload.presetId);
@@ -62,6 +63,7 @@ function buildFallbackAudit(
       return {
         ...preset.simulatedResult,
         usedLiveAI: false,
+        fallbackReason: 'sample_preset',
       };
     }
   }
@@ -153,6 +155,7 @@ function buildFallbackAudit(
       irdaiRebuttal: buildIrdaiRebuttal(totalPages, original, fair, savings),
       ai_audit_notes: `Stream-audited ${totalPages} pages (${totalLineItemsScanned.toLocaleString('en-IN')} line items) across ${payload.attachments?.length || 1} uploaded document(s). Identified NPPA consumable ceiling breaches, duplicate diagnostic tests, and IRDAI disallowed surcharges.`,
       usedLiveAI: false,
+      fallbackReason,
     };
   }
 
@@ -212,8 +215,9 @@ function buildFallbackAudit(
     flaggedPagesCount: Math.max(1, Math.ceil(totalPages * 0.75)),
     totalLineItemsScanned,
     pageBreakdown,
-    ai_audit_notes: `Audited ${totalPages} page(s) (${totalLineItemsScanned} line items) in ${payload.city || payload.pincode || 'India'}. Stripped ₹${savings.toLocaleString('en-IN')} in markups and duplicate charges.`,
+    ai_audit_notes: `Sample estimate shown (${totalPages} page(s), ${totalLineItemsScanned} line items). Live AI could not inspect the uploaded document yet, so placeholder benchmark numbers (₹${baseAmount.toLocaleString('en-IN')} → ₹${fairAmount.toLocaleString('en-IN')}) are displayed.`,
     usedLiveAI: false,
+    fallbackReason,
   };
 }
 
@@ -272,20 +276,21 @@ export async function runMultiDocBillAudit(payload: AuditRequestPayload): Promis
 
   const ai = getGeminiClient();
   if (!ai) {
-    return finalize(buildFallbackAudit(payload, totalPages, combinedText));
+    return finalize(buildFallbackAudit(payload, totalPages, combinedText, 'missing_api_key'));
   }
 
   try {
     const parts: Array<{ text: string } | { inlineData: { data: string; mimeType: string } }> = [];
 
-    const systemPrompt = `You are NearMe India's Principal Forensic Bill & Hospital Auditor (serving ${payload.city || 'Pan-India'}, Pincode: ${payload.pincode || '560001'}).
-Audit ALL uploaded pages (${totalPages} total pages across ${attachments.length || 1} document(s)) page-by-page with unlimited-page capacity.
-For hospital/medical bills: compare ICU/room tariffs against CGHS/PMJAY benchmarks, check consumables (gloves, syringes, stents, implants, ventilators) against NPPA ceiling prices, strip branded medicine markups using Jan Aushadhi equivalents, cross-check IRDAI Schedule-I non-payable rules + ICD-10 codes, and flag duplicate lab/diagnostic panels.
-For B2B/wholesale/contractor/retail bills: benchmark unit prices against direct factory/mandi/karigar wholesale rates and flag double-counted logistics or handling fees.
-Return a strict JSON object with realistic INR figures, totalLineItemsScanned, and a complete pageBreakdown array covering all pages from Page 1 to Page ${totalPages}.`;
+    const systemPrompt = `You are NearMe India's Principal Forensic Bill Auditor (serving ${payload.city || 'Pan-India'}, Pincode: ${payload.pincode || '560001'}).
+Extract the ACTUAL billed total, department/section names, and itemized charges visible in ALL uploaded pages/images (${totalPages} total page(s) across ${attachments.length || 1} file(s)). Do NOT invent generic placeholder numbers.
+- For hospital/medical bills: compare ICU/room tariffs against CGHS/PMJAY benchmarks, check consumables (gloves, syringes, stents, implants) against NPPA ceilings, strip branded medicine markups using Jan Aushadhi equivalents, and flag IRDAI Schedule-I non-payable or duplicate lab items.
+- For vehicle/two-wheeler service bills (Bajaj, Hero, Honda, TVS, Maruti, Hyundai, etc.): read the exact spare parts, engine oil, consumables, GST, and labour charges from the invoice; flag unnecessary add-ons (chain lube, polishing, teflon, misc consumables), inflated consumable markups, and duplicate labour charges against OEM/local workshop rates.
+- For B2B/wholesale/retail bills: benchmark unit prices against direct factory/mandi/local wholesale rates and flag double-counted logistics or handling fees.
+Return strict JSON with realistic INR figures matching the uploaded bill, totalLineItemsScanned, a concise ai_audit_notes summary naming the actual bill items found, and a pageBreakdown array covering Page 1 to Page ${totalPages}.`;
 
     parts.push({
-      text: `${systemPrompt}\n\nUploaded Document Manifest & Extracted Text:\n${combinedText || 'Analyze the attached visual/PDF document(s).'}`,
+      text: `${systemPrompt}\n\nUploaded Document Manifest & Extracted Text:\n${combinedText || 'Read the attached image/PDF bill directly and extract every visible line item and total.'}`,
     });
 
     for (const att of attachments) {
@@ -307,7 +312,7 @@ Return a strict JSON object with realistic INR figures, totalLineItemsScanned, a
 
     const response = await ai.models.generateContent({
       model: GEMINI_MODEL,
-      contents: { parts },
+      contents: [{ role: 'user', parts }],
       config: {
         responseMimeType: 'application/json',
         responseSchema: {
@@ -400,8 +405,18 @@ Return a strict JSON object with realistic INR figures, totalLineItemsScanned, a
       });
     }
   } catch (err) {
-    console.warn('Gemini audit fallback activated:', err);
+    const rawMsg = err instanceof Error ? err.message : String(err);
+    const safeMsg = rawMsg.replace(/(?:AIza|AQ\.)[0-9A-Za-z_.-]{10,}/g, '[REDACTED]').slice(0, 180);
+    console.warn('Gemini audit fallback activated:', safeMsg);
+    const isKeyError = /API key not valid|API_KEY_INVALID|UNAUTHENTICATED|PERMISSION_DENIED/i.test(rawMsg);
+    const fb = buildFallbackAudit(
+      payload,
+      totalPages,
+      combinedText,
+      isKeyError ? 'missing_api_key' : 'ai_error'
+    );
+    return finalize(fb);
   }
 
-  return finalize(buildFallbackAudit(payload, totalPages, combinedText));
+  return finalize(buildFallbackAudit(payload, totalPages, combinedText, 'ai_error'));
 }

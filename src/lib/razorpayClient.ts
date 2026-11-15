@@ -2,46 +2,56 @@ export function triggerNearMeCheckout({
   itemName,
   amountInRupees,
   actionType,
+  metadata,
   onSuccess,
   onFallback,
-  onAuthRequired
+  onAuthRequired,
 }: {
   itemName: string;
   amountInRupees: number;
   actionType: string;
+  metadata?: Record<string, string | number>;
   onSuccess: (paymentId: string) => void;
   onFallback: () => void;
   onAuthRequired?: () => void;
 }) {
-  const phone = localStorage.getItem('nearme_user_phone');
+  const phone = typeof window !== 'undefined' ? localStorage.getItem('nearme_user_phone') : null;
 
   if (!phone) {
     if (onAuthRequired) onAuthRequired();
     return;
   }
 
-  // Safety net: if the whole async process hangs, force a fallback state after 2.5s
+  let timedOut = false;
+  const controller = new AbortController();
+
   const executionWatchdog = setTimeout(() => {
-     onFallback();
-  }, 2500);
+    timedOut = true;
+    controller.abort();
+    onFallback();
+  }, 8000);
 
   fetch('/api/payment/razorpay-split', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ amount: amountInRupees, type: actionType, phone })
+    signal: controller.signal,
+    body: JSON.stringify({ amount: amountInRupees, type: actionType, phone, metadata }),
   })
-    .then((res) => {
-        clearTimeout(executionWatchdog);
-        if (!res.ok) {
-            return res.json().then(errData => {
-               if(errData.fallbackMode) { onFallback(); return null; }
-               throw new Error(errData.error || 'Network error');
-            });
+    .then(async (res) => {
+      clearTimeout(executionWatchdog);
+      if (timedOut) return null;
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        if (errData.fallbackMode) {
+          onFallback();
+          return null;
         }
-        return res.json();
+        throw new Error(errData.error || 'Network error');
+      }
+      return res.json();
     })
     .then((data) => {
-      if (!data) return;
+      if (!data || timedOut) return;
 
       if (data.fallbackMode || !data.order_id) {
         onFallback();
@@ -49,49 +59,78 @@ export function triggerNearMeCheckout({
       }
 
       if (typeof window === 'undefined') return;
-
-      const rzpObj = (window as any).Razorpay;
-      if (!rzpObj) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const RzpObj = (window as any).Razorpay;
+      if (!RzpObj) {
         onFallback();
         return;
       }
 
       const options = {
         key: data.key_id,
-        amount: Math.round(amountInRupees * 100),
+        amount: data.amount,
         currency: 'INR',
         name: 'NearMe India',
         description: itemName,
         order_id: data.order_id,
-        handler: (response: any) => {
-          onSuccess(response.razorpay_payment_id);
-          window.location.href = `/success?payment_id=${response.razorpay_payment_id}&amount=${amountInRupees}`;
+        handler: async (response: {
+          razorpay_payment_id: string;
+          razorpay_order_id: string;
+          razorpay_signature: string;
+        }) => {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                ...response,
+                actionType,
+                amountInRupees,
+                phone,
+                metadata,
+              }),
+            });
+            if (!verifyRes.ok) {
+              onFallback();
+              return;
+            }
+            onSuccess(response.razorpay_payment_id);
+            window.location.href = `/success?payment_id=${encodeURIComponent(
+              response.razorpay_payment_id
+            )}&order_id=${encodeURIComponent(
+              response.razorpay_order_id
+            )}&amount=${encodeURIComponent(String(amountInRupees))}&item=${encodeURIComponent(
+              itemName
+            )}`;
+          } catch {
+            onFallback();
+          }
         },
         prefill: {
-          contact: phone || '9999999999',
+          contact: phone,
         },
         theme: {
-          color: '#2563EB',
+          color: '#059669',
         },
         modal: {
-            ondismiss: function() {
-                onFallback();
-            }
-        }
+          ondismiss: () => {
+            onFallback();
+          },
+        },
       };
 
       try {
-          const rzp = new rzpObj(options);
-          rzp.on('payment.failed', function () {
-             onFallback();
-          });
-          rzp.open();
-      } catch (err) {
+        const rzp = new RzpObj(options);
+        rzp.on('payment.failed', () => {
           onFallback();
+        });
+        rzp.open();
+      } catch {
+        onFallback();
       }
     })
     .catch(() => {
       clearTimeout(executionWatchdog);
-      onFallback();
+      if (!timedOut) onFallback();
     });
 }

@@ -1,12 +1,27 @@
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 import { ordersLedger, recordOrderEntry, OrderRecord } from '@/lib/ordersStore';
+import { getVerifiedSessionPhone, isAuthorizedOwnerRequest } from '@/lib/session';
 
-export async function GET() {
+export async function GET(req: Request) {
+  const isOwner = isAuthorizedOwnerRequest(req);
+  const sessionPhone = getVerifiedSessionPhone();
+
+  if (!isOwner && !sessionPhone) {
+    return NextResponse.json({ status: 'ok', count: 0, orders: [] });
+  }
+
+  const visibleOrders = isOwner
+    ? ordersLedger
+    : ordersLedger.filter(
+        (o) => !o.customerIdentifier || String(o.customerIdentifier).includes(sessionPhone!)
+      );
+
+  const sanitizedOrders = visibleOrders.map(({ customerIdentifier: _hidden, ...safe }) => safe);
   return NextResponse.json({
     status: 'ok',
-    count: ordersLedger.length,
-    orders: ordersLedger,
+    count: sanitizedOrders.length,
+    orders: sanitizedOrders,
   });
 }
 

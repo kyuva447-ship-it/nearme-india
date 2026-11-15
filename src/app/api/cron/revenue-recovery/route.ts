@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/server';
+import { isAuthorizedCronOrOwner } from '@/lib/session';
 
 export async function GET(req: Request) {
+  if (!isAuthorizedCronOrOwner(req)) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
   try {
     const fifteenMinsAgo = new Date(Date.now() - 15 * 60000).toISOString();
 

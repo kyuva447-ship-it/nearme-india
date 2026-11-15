@@ -9,47 +9,91 @@ import {
   TrendingDown,
   Send,
   Layers,
+  Crown,
 } from 'lucide-react';
 import { SEEDED_MERCHANTS, ZONE_WHOLESALE_INDEX } from '@/lib/seeded-marketplace';
+import { supabaseAdmin } from '@/lib/supabase/server';
 
-async function getCategoryData(rawSlugs?: string[]) {
-  const slugs =
-    Array.isArray(rawSlugs) && rawSlugs.length > 0
-      ? rawSlugs
-      : ['all-india', 'hospital-bill-audit'];
-  const city = slugs[0] || 'all-india';
-  const category = slugs[1] || 'hospital-bill-audit';
-  const formattedCity = city
+function formatSlug(raw: string): string {
+  return decodeURIComponent(raw || '')
     .split('-')
+    .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
-  const formattedCategory = category
-    .split('-')
-    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(' ');
+}
+
+async function getCategoryData(citySlug: string, categorySlug: string) {
+  const formattedCity = formatSlug(citySlug || 'bengaluru');
+  const formattedCategory = formatSlug(categorySlug || 'hospital-bill-audit');
 
   const matchedZone =
     ZONE_WHOLESALE_INDEX.find((z) =>
       z.hubs.some((h) => h.toLowerCase().includes(formattedCity.toLowerCase()))
     ) || ZONE_WHOLESALE_INDEX[0];
 
+  let liveProMerchants: Array<{
+    id: string;
+    business_name: string;
+    gstin: string;
+    category: string;
+    city: string;
+    pincode: string;
+    trust_score: number;
+    is_verified_pro: boolean;
+    liveCashOrderInr?: number;
+  }> = [];
+
+  if (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+  ) {
+    try {
+      const { data } = await supabaseAdmin
+        .from('merchant_wallets')
+        .select('merchant_id, business_name, gstin, category, city, trust_score, is_verified_pro')
+        .ilike('city', `%${formattedCity}%`)
+        .order('is_verified_pro', { ascending: false })
+        .order('trust_score', { ascending: false })
+        .limit(8);
+
+      if (data && data.length > 0) {
+        liveProMerchants = data.map((m) => ({
+          id: m.merchant_id,
+          business_name: m.business_name,
+          gstin: m.gstin || 'MOD36-VERIFIED',
+          category: m.category,
+          city: m.city,
+          pincode: 'Verified Hub',
+          trust_score: Number(m.trust_score || 92),
+          is_verified_pro: Boolean(m.is_verified_pro),
+          liveCashOrderInr: 29900,
+        }));
+      }
+    } catch {
+      // Fallback cleanly to seeded merchants
+    }
+  }
+
+  const seededWithFlags = SEEDED_MERCHANTS.map((m) => ({ ...m, is_verified_pro: false }));
+  const combinedMerchants = [...liveProMerchants, ...seededWithFlags];
+
   return {
-    title: `${formattedCategory} & Wholesale Index in ${formattedCity}`,
-    description: `Audit 1–500+ page hospital bills, strip contractor overcharges, and lock 15/85 UPI Escrow deals in ${formattedCity} (${matchedZone.zone}).`,
-    merchants: SEEDED_MERCHANTS,
+    title: `${formattedCategory} & Verified Providers in ${formattedCity}`,
+    description: `Audit bills, strip overcharges, and hire top-ranked Verified Pro ${formattedCategory} businesses in ${formattedCity} (${matchedZone.zone}) with 5% Escrow protection.`,
+    merchants: combinedMerchants,
     zone: matchedZone,
     formattedCity,
     formattedCategory,
-    slugPath: slugs.join('/'),
+    slugPath: `${citySlug}/${categorySlug}`,
   };
 }
 
 export async function generateMetadata({
   params,
 }: {
-  params: { slug?: string[] };
+  params: { city: string; category: string };
 }): Promise<Metadata> {
-  const data = await getCategoryData(params?.slug);
+  const data = await getCategoryData(params.city, params.category);
   return {
     title: `${data.title} | NearMe India`,
     description: data.description,
@@ -59,25 +103,16 @@ export async function generateMetadata({
   };
 }
 
-export default async function CatchAllSEOPage({
+export default async function ProgrammaticCityCategoryPage({
   params,
 }: {
-  params: { slug?: string[] };
+  params: { city: string; category: string };
 }) {
-  const data = await getCategoryData(params?.slug);
+  const data = await getCategoryData(params.city, params.category);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white relative overflow-x-clip">
-      <div
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 -z-10 overflow-hidden"
-      >
-        <div className="absolute -top-24 left-1/4 w-96 h-96 bg-emerald-500/15 blur-3xl rounded-full" />
-        <div className="absolute top-40 right-1/4 w-96 h-96 bg-cyan-500/12 blur-3xl rounded-full" />
-      </div>
-
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 space-y-12">
-        {/* Breadcrumbs */}
         <nav className="flex items-center gap-2 text-xs font-bold text-slate-400">
           <Link href="/" className="hover:text-white">
             Home
@@ -88,7 +123,6 @@ export default async function CatchAllSEOPage({
           <span className="text-emerald-300">{data.formattedCategory}</span>
         </nav>
 
-        {/* Hero */}
         <div className="flex flex-col md:flex-row gap-8 items-stretch">
           <div className="flex-1 space-y-4">
             <p className="text-xs font-mono font-bold text-amber-300">
@@ -109,11 +143,13 @@ export default async function CatchAllSEOPage({
                 Audit Your Bill Now (1–500+ Pages)
               </Link>
               <Link
-                href={`/search?q=${encodeURIComponent(data.formattedCategory)}&city=${encodeURIComponent(data.formattedCity)}`}
+                href={`/search?q=${encodeURIComponent(data.formattedCategory)}&city=${encodeURIComponent(
+                  data.formattedCity
+                )}`}
                 className="px-5 py-3 rounded-xl bg-slate-900 border border-cyan-500/40 hover:border-cyan-300 text-cyan-200 font-bold text-xs flex items-center gap-2 transition-colors"
               >
                 <Zap className="w-4 h-4 text-amber-300" />
-                Explore Live Wholesale Quotes
+                Explore Live Quotes
               </Link>
             </div>
           </div>
@@ -133,33 +169,34 @@ export default async function CatchAllSEOPage({
                     <p className="font-bold text-white">{b.item}</p>
                     <p className="text-slate-300 tabular-nums">
                       <span className="line-through text-rose-300 mr-2">{b.retailRate}</span>
-                      <span className="text-emerald-300 font-extrabold">{b.nearmeWholesaleRate}</span>
+                      <span className="text-emerald-300 font-extrabold">
+                        {b.nearmeWholesaleRate}
+                      </span>
                     </p>
                   </div>
                 ))}
               </div>
             </div>
             <Link
-              href="/merchant-claim/new"
+              href="/claim"
               className="w-full py-2.5 bg-violet-600 hover:bg-violet-500 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-colors"
             >
-              Broadcast Order to {data.formattedCity} <ArrowRight className="w-3.5 h-3.5" />
+              List Your {data.formattedCity} Business <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
         </div>
 
-        {/* Verified GSTIN Mod-36 Suppliers */}
         <section className="space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-800 pb-3">
             <h2 className="text-xl font-black flex items-center gap-2">
               <Store className="w-5 h-5 text-emerald-400" />
-              Verified Wholesale & Institutional Nodes
+              Verified Providers in {data.formattedCity}
             </h2>
             <Link
-              href="/add-shop"
+              href="/claim"
               className="text-xs text-amber-300 hover:text-amber-200 font-bold flex items-center gap-1"
             >
-              Onboard Shop (₹99/Day AI Twin) <Send className="w-3.5 h-3.5" />
+              Claim Business (2 Free Leads) <Send className="w-3.5 h-3.5" />
             </Link>
           </div>
 
@@ -167,16 +204,14 @@ export default async function CatchAllSEOPage({
             {data.merchants.map((m, idx) => {
               const baseOrder = m.liveCashOrderInr || 42500;
               const retailRef = Math.round(baseOrder * 1.28);
-              const gradients = [
-                'from-emerald-950/40 via-slate-900 to-cyan-950/35 border-emerald-500/35',
-                'from-amber-950/40 via-slate-900 to-orange-950/35 border-amber-500/35',
-                'from-violet-950/40 via-slate-900 to-indigo-950/35 border-violet-500/35',
-                'from-cyan-950/40 via-slate-900 to-blue-950/35 border-cyan-500/35',
-              ];
               return (
                 <div
-                  key={m.id}
-                  className={`bg-gradient-to-br ${gradients[idx % gradients.length]} border rounded-2xl p-5 flex flex-col justify-between gap-4`}
+                  key={`${m.id}-${idx}`}
+                  className={`border rounded-2xl p-5 flex flex-col justify-between gap-4 ${
+                    m.is_verified_pro
+                      ? 'bg-gradient-to-br from-indigo-950/60 via-slate-900 to-emerald-950/40 border-amber-400/50'
+                      : 'bg-slate-900/90 border-slate-800'
+                  }`}
                 >
                   <div>
                     <div className="flex items-center justify-between text-xs mb-1.5">
@@ -184,6 +219,11 @@ export default async function CatchAllSEOPage({
                         {m.city} · {m.pincode}
                       </span>
                       <span className="text-emerald-300 font-bold flex items-center gap-1">
+                        {m.is_verified_pro && (
+                          <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 flex items-center gap-1 mr-1">
+                            <Crown className="w-3 h-3" /> PRO
+                          </span>
+                        )}
                         <ShieldCheck className="w-3.5 h-3.5" />
                         {m.trust_score}% Trust
                       </span>
@@ -207,7 +247,7 @@ export default async function CatchAllSEOPage({
                       href={`/merchant-claim/${m.id}`}
                       className="px-4 py-2 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 text-xs font-black rounded-xl flex items-center gap-1"
                     >
-                      Claim 15/85 Escrow <ChevronRight className="w-3.5 h-3.5" />
+                      Book with Escrow <ChevronRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
