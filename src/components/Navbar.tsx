@@ -9,22 +9,37 @@ export default function Navbar() {
           <Link href="/">
             <BrandLogo />
           </Link>
-          <div className="hidden md:flex items-center space-x-6">
-            <Link href="/" className="text-sm font-semibold text-slate-600 hover:text-emerald-600">Home</Link>
-            <Link href="/leaderboard" className="text-sm font-semibold text-slate-600 hover:text-emerald-600">Leaderboard</Link>
-            <Link href="/pricing" className="text-sm font-semibold text-slate-600 hover:text-emerald-600">Pricing</Link>
-            <Link href="/escrow" className="text-sm font-semibold text-slate-600 hover:text-emerald-600">B2B Workflow</Link>
-            <Link href="/edge" className="text-sm font-semibold text-slate-600 hover:text-emerald-600">Edge Security</Link>
-            <Link href="/login" className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors">
+          <div className="hidden md:flex items-center space-x-5">
+            <Link href="/search" className="text-sm font-semibold text-slate-700 hover:text-emerald-600">
+              Find Services
+            </Link>
+            <Link href="/claim" className="text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+              List Your Business (Free)
+            </Link>
+            <Link href="/dashboard" className="text-sm font-semibold text-slate-700 hover:text-emerald-600">
+              Merchant Dashboard
+            </Link>
+            <Link href="/escrow" className="text-sm font-semibold text-slate-700 hover:text-emerald-600">
+              Track Escrow
+            </Link>
+            <Link
+              href="/login"
+              className="bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-lg transition-colors"
+            >
               Merchant Portal
             </Link>
           </div>
-          {/* Mobile menu button (Simplified for brevity, assuming standard responsive hidden) */}
-          <div className="md:hidden flex items-center">
-            <Link href="/login" className="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-md">Login</Link>
+          <div className="md:hidden flex items-center gap-2">
+            <Link href="/search" className="text-xs font-bold text-slate-700 px-2 py-1.5">
+              Find Services
+            </Link>
+            <Link href="/login" className="bg-slate-900 text-white text-xs font-bold px-3 py-1.5 rounded-md">
+              Login
+            </Link>
           </div>
         </div>
       </div>
     </nav>
   );
 }
+

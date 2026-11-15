@@ -74,12 +74,29 @@ async function getCategoryData(citySlug: string, categorySlug: string) {
     }
   }
 
-  const seededWithFlags = SEEDED_MERCHANTS.map((m) => ({ ...m, is_verified_pro: false }));
-  const combinedMerchants = [...liveProMerchants, ...seededWithFlags];
+  const cityLower = formattedCity.toLowerCase();
+  const catTokens = formattedCategory
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t.length >= 3);
+
+  const scoredSeeded = SEEDED_MERCHANTS.map((m) => {
+    const hay = `${m.business_name} ${m.category} ${m.city} ${m.pincode} ${(m.tags || []).join(' ')}`.toLowerCase();
+    let score = 0;
+    if (hay.includes(cityLower)) score += 10;
+    for (const token of catTokens) {
+      if (hay.includes(token)) score += 8;
+    }
+    return { ...m, is_verified_pro: m.trust_score >= 96, _score: score };
+  })
+    .sort((a, b) => b._score - a._score || b.trust_score - a.trust_score)
+    .slice(0, 8);
+
+  const combinedMerchants = [...liveProMerchants, ...scoredSeeded];
 
   return {
     title: `${formattedCategory} & Verified Providers in ${formattedCity}`,
-    description: `Audit bills, strip overcharges, and hire top-ranked Verified Pro ${formattedCategory} businesses in ${formattedCity} (${matchedZone.zone}) with 5% Escrow protection.`,
+    description: `Compare verified ${formattedCategory} pros in ${formattedCity}, audit bills, and pay safely with 15/85 UPI Escrow (${matchedZone.zone}).`,
     merchants: combinedMerchants,
     zone: matchedZone,
     formattedCity,

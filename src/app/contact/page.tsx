@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Bot, CheckCircle2, ShieldCheck, Send, Loader2, MapPin, Download } from 'lucide-react';
+import { Bot, CheckCircle2, ShieldCheck, Send, Loader2, MapPin, Download, ArrowRight } from 'lucide-react';
 import { LANGUAGES } from '@/lib/i18n';
 import type { SupportTicket, SupportedLang } from '@/lib/autonomousStore';
 
@@ -92,10 +92,49 @@ Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
         </div>
 
         <p className="text-sm text-slate-300 leading-relaxed">
-          All audit receipt unlocks, 48-hour escrow refunds, Delivery OTP release checks, and Mod-36 GSTIN verifications are resolved directly inside this website in 6 Indian languages — with zero external phone calls or manual delays.
+          Ask any question about NearMe India—finding local services, claiming 2 free business leads, pricing, login OTP help, hospital Bill Stripper audits, 48-hour escrow refunds, or Mod-36 GSTIN verification—and get instant answers in 6 Indian languages right on this page.
         </p>
 
-        {/* Quick Actions */}
+        {/* Common Website Questions */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => submitTicket('How do I find local services and pros near me?')}
+            className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+          >
+            Find Local Services
+          </button>
+          <button
+            type="button"
+            onClick={() => submitTicket('How do I list my business free and get 2 free leads?')}
+            className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+          >
+            List Shop (2 Free Leads)
+          </button>
+          <button
+            type="button"
+            onClick={() => submitTicket('What is the pricing and Verified Pro cost?')}
+            className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+          >
+            Pricing & ₹299 Pro
+          </button>
+          <button
+            type="button"
+            onClick={() => submitTicket('I am not receiving login OTP, how do I sign in?')}
+            className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+          >
+            Login / OTP Help
+          </button>
+          <button
+            type="button"
+            onClick={() => submitTicket('How does the hospital bill stripper work?')}
+            className="px-3 py-1.5 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+          >
+            Bill Stripper Help
+          </button>
+        </div>
+
+        {/* Account & Escrow Quick Actions */}
         <div className="grid sm:grid-cols-3 gap-2.5">
           <button
             type="button"
@@ -145,13 +184,13 @@ Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
           </div>
           <div>
             <label className="block text-xs font-bold text-slate-300 mb-1">
-              Describe Your Issue or Paste GSTIN / Transaction ID
+              Ask Any Question About NearMe India or Paste GSTIN / Transaction ID
             </label>
             <textarea
               rows={3}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Example: Check 48h escrow refund for ESC-IND-... or verify GSTIN 29AABCS1429B1ZQ"
+              placeholder="Ask how to find a plumber in Madanapalle, list your shop free, check pricing, fix login OTP, or paste ESC-IND-... / GSTIN"
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-emerald-500"
             />
           </div>
@@ -184,7 +223,23 @@ Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
                 <CheckCircle2 className="w-3.5 h-3.5" /> Resolved On-Site
               </span>
             </div>
-            <p className="text-sm text-slate-100 leading-relaxed">{ticket.resolutionSummary}</p>
+            <p className="text-sm text-slate-100 leading-relaxed whitespace-pre-line">
+              {ticket.resolutionSummary}
+            </p>
+            {ticket.suggestedLinks && ticket.suggestedLinks.length > 0 && (
+              <div className="flex flex-wrap gap-2 pt-1">
+                {ticket.suggestedLinks.map((link) => (
+                  <Link
+                    key={link.href + link.label}
+                    href={link.href}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/40 text-emerald-200 text-xs font-bold rounded-xl transition-colors"
+                  >
+                    {link.label}
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                ))}
+              </div>
+            )}
             {(ticket.refundVoucherCode || ticket.unlockedAuditRef) && (
               <button
                 type="button"

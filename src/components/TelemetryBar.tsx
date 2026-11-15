@@ -2,7 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MapPin, User, ChevronDown, Shield } from 'lucide-react';
+import {
+  MapPin,
+  User,
+  ChevronDown,
+  Shield,
+  Search,
+  Store,
+  LayoutDashboard,
+  ShieldCheck,
+} from 'lucide-react';
 import PhoneAuthModal from './QuickAuthModal';
 import PWAInstallButton from './PWAInstallButton';
 import { useToast } from './Toast';
@@ -22,13 +31,13 @@ export default function TelemetryBar() {
   const cities = [
     'All India',
     'Bengaluru',
-    'Mumbai',
-    'Delhi NCR',
+    'Madanapalle',
     'Hyderabad',
+    'Delhi NCR',
+    'Mumbai',
     'Chennai',
     'Pune',
     'Kolkata',
-    'Madanapalle',
   ];
 
   useEffect(() => {
@@ -80,8 +89,7 @@ export default function TelemetryBar() {
   };
 
   return (
-    <header className="w-full bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40">
-      <div className="h-0.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 via-amber-400 to-violet-500" />
+    <>
       {showAuth && (
         <PhoneAuthModal
           onClose={() => setShowAuth(false)}
@@ -91,10 +99,11 @@ export default function TelemetryBar() {
           }}
         />
       )}
+      <header className="w-full bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-40">
+        <div className="h-0.5 w-full bg-gradient-to-r from-emerald-400 via-cyan-400 via-amber-400 to-violet-500" />
 
-      {/* Single-Row Top Bar Contract: Brand — Single-Line Nav + City/Lang — Primary Actions */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between gap-6 px-4 sm:px-6 lg:px-8 h-16">
-        {/* Zone 1: Clean single-line brand wordmark */}
+      {/* Primary Top Bar */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 px-4 sm:px-6 lg:px-8 h-16">
         <Link
           href="/"
           className="text-lg sm:text-xl font-extrabold tracking-tight text-white whitespace-nowrap shrink-0 flex items-center gap-2"
@@ -107,30 +116,52 @@ export default function TelemetryBar() {
           </span>
         </Link>
 
-        {/* Zone 2: Clean single-line navigation links */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-slate-300">
-          <Link href="/#auditor" className="hover:text-emerald-300 transition-colors whitespace-nowrap shrink-0">
-            Bill Stripper
+        {/* Desktop Primary Discovery & Merchant Action Buttons */}
+        <nav aria-label="Main Navigation" className="hidden lg:flex items-center gap-2 text-xs font-bold">
+          <Link
+            href="/search"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-cyan-500/40 text-cyan-200 hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <Search className="w-3.5 h-3.5 text-cyan-400" />
+            Find Services
           </Link>
-          <Link href="/#syndicates" className="hover:text-cyan-300 transition-colors whitespace-nowrap shrink-0">
-            Syndicates
+          <Link
+            href="/claim"
+            className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-400/50 text-emerald-200 hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <Store className="w-3.5 h-3.5 text-emerald-400" />
+            List Your Business (Free)
           </Link>
-          <Link href="/search" className="hover:text-amber-300 transition-colors whitespace-nowrap shrink-0">
-            Wholesale Index
+          <Link
+            href="/dashboard"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
+            Merchant Dashboard
           </Link>
-          <Link href="/owner" className="text-violet-300 hover:text-violet-200 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1">
+          <Link
+            href="/escrow"
+            className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            Track Escrow
+          </Link>
+          <Link
+            href="/owner"
+            title="Owner Console"
+            className="px-2.5 py-1.5 rounded-lg text-violet-300 hover:text-violet-200 hover:bg-slate-900 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1"
+          >
             <Shield className="w-3.5 h-3.5" />
-            Founder Portal
+            Owner
           </Link>
         </nav>
 
-        {/* Zone 3: City, 6-Language Switcher, PWA Install & Account */}
-        <div className="flex items-center gap-2.5 shrink-0">
-          {/* 6-Language Switcher (EN, HI, KN, TA, TE, MR) */}
+        {/* City, 6-Language Switcher, PWA Install & Account */}
+        <div className="flex items-center gap-2 shrink-0">
           <div
             role="group"
             aria-label="Language Switcher"
-            className="hidden sm:flex items-center bg-slate-900 border border-slate-700/80 rounded-lg p-0.5"
+            className="hidden xl:flex items-center bg-slate-900 border border-slate-700/80 rounded-lg p-0.5"
           >
             {LANGUAGES.map((l) => (
               <button
@@ -149,12 +180,11 @@ export default function TelemetryBar() {
             ))}
           </div>
 
-          {/* Mobile compact language selector */}
           <select
             aria-label="Select Language"
             value={selectedLang}
             onChange={(e) => handleLangSelect(normalizeLang(e.target.value))}
-            className="sm:hidden bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5 text-xs font-bold text-white"
+            className="xl:hidden bg-gray-900 border border-gray-800 rounded-lg px-2 py-1.5 text-xs font-bold text-white"
           >
             {LANGUAGES.map((l) => (
               <option key={l.code} value={l.code}>
@@ -163,7 +193,6 @@ export default function TelemetryBar() {
             ))}
           </select>
 
-          {/* City Selector */}
           <div className="relative">
             <button
               type="button"
@@ -219,7 +248,7 @@ export default function TelemetryBar() {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="hidden xl:inline text-xs text-gray-400 hover:text-white whitespace-nowrap shrink-0"
+                className="hidden 2xl:inline text-xs text-gray-400 hover:text-white whitespace-nowrap shrink-0"
               >
                 Sign Out
               </button>
@@ -236,6 +265,43 @@ export default function TelemetryBar() {
           )}
         </div>
       </div>
-    </header>
+
+      {/* Mobile & Tablet Quick-Action Strip */}
+      <nav
+        aria-label="Quick Mobile Navigation"
+        className="lg:hidden border-t border-slate-800/80 bg-slate-950/95 px-4 py-2 flex items-center gap-2 overflow-x-auto text-xs font-bold"
+      >
+        <Link
+          href="/search"
+          className="px-3 py-1.5 rounded-lg bg-slate-900 border border-cyan-500/40 text-cyan-200 whitespace-nowrap shrink-0 flex items-center gap-1"
+        >
+          <Search className="w-3.5 h-3.5 text-cyan-400" />
+          Find Services
+        </Link>
+        <Link
+          href="/claim"
+          className="px-3 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-400/50 text-emerald-200 whitespace-nowrap shrink-0 flex items-center gap-1"
+        >
+          <Store className="w-3.5 h-3.5 text-emerald-400" />
+          List Your Business (Free)
+        </Link>
+        <Link
+          href="/dashboard"
+          className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 whitespace-nowrap shrink-0 flex items-center gap-1"
+        >
+          <LayoutDashboard className="w-3.5 h-3.5 text-amber-400" />
+          Merchant Dashboard
+        </Link>
+        <Link
+          href="/escrow"
+          className="px-3 py-1.5 rounded-lg bg-slate-900 border border-slate-700 text-slate-200 whitespace-nowrap shrink-0 flex items-center gap-1"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+          Track Escrow
+        </Link>
+      </nav>
+      </header>
+    </>
   );
 }
+

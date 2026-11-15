@@ -53,7 +53,7 @@ export const COPY_BY_LANG: Record<SupportedLang, LocalizedCopy> = {
     cashOrdersTitle: 'Live Wholesale Orders Waiting for Local Shops',
     supportButton: '24/7 AI Self-Support',
     supportGreeting:
-      '24/7 Self-Support is ready in 6 languages. Ask for a bill re-unlock, 48-hour escrow refund, OTP help, or GST check right here.',
+      '24/7 Self-Support is ready in 6 languages. Ask any question about NearMe India (finding services, 2 free merchant leads, pricing, login OTP help, bill audits, 48h refunds, or GST checks) right here.',
   },
   HI: {
     heroTitle: 'अधिक बिल हटाएं। पूरे भारत में थोक रेट लॉक करें।',

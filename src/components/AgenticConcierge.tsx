@@ -1,7 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Bot, X, Send, Mic, CheckCircle2, Download, ShieldAlert, Loader2, KeyRound } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import {
+  Bot,
+  X,
+  Send,
+  Mic,
+  CheckCircle2,
+  Download,
+  ShieldAlert,
+  Loader2,
+  KeyRound,
+  ArrowRight,
+} from 'lucide-react';
 import { COPY_BY_LANG, LANGUAGES, normalizeLang } from '@/lib/i18n';
 import type { SupportTicket, SupportedLang } from '@/lib/autonomousStore';
 
@@ -19,6 +31,7 @@ export default function AgenticConcierge() {
   const [sending, setSending] = useState(false);
   const [listening, setListening] = useState(false);
   const [messages, setMessages] = useState<ChatItem[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const current = normalizeLang(localStorage.getItem('nearme_lang'));
@@ -39,6 +52,12 @@ export default function AgenticConcierge() {
       window.removeEventListener('nearme-open-support', onOpenDesk);
     };
   }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [isOpen, messages.length, sending]);
 
   const copy = COPY_BY_LANG[lang];
 
@@ -164,7 +183,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
   }
 
   return (
-    <div className="fixed bottom-5 right-5 w-[350px] sm:w-[400px] max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
+    <div className="fixed bottom-5 right-5 w-[350px] sm:w-[410px] max-w-[calc(100vw-2rem)] bg-slate-900 border border-slate-700/80 rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col">
       <div className="bg-slate-950 p-3.5 flex justify-between items-center border-b border-slate-800">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 bg-emerald-500/15 border border-emerald-500/30 rounded-lg flex items-center justify-center">
@@ -173,7 +192,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
           <div>
             <h4 className="font-bold text-white text-sm">24/7 On-Site Self-Support</h4>
             <p className="text-[11px] text-emerald-400">
-              Instant On-Site Resolution · Zero External Redirects
+              Instant Website Answers & Account Help
             </p>
           </div>
         </div>
@@ -187,7 +206,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
         </button>
       </div>
 
-      {/* Inline Language Switcher + Quick Self-Service Actions */}
+      {/* Inline Language Switcher + Website FAQ & Self-Service Quick Buttons */}
       <div className="px-3 py-2 bg-slate-950/90 border-b border-slate-800 space-y-2">
         <div className="flex items-center justify-between gap-1">
           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Language:</span>
@@ -211,12 +230,40 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
         <div className="flex flex-wrap gap-1.5">
           <button
             type="button"
+            onClick={() => sendQuery('How do I find local services and pros near me?')}
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors"
+          >
+            Find Services
+          </button>
+          <button
+            type="button"
+            onClick={() => sendQuery('How do I list my business free and get 2 free leads?')}
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors"
+          >
+            List Shop (2 Free Leads)
+          </button>
+          <button
+            type="button"
+            onClick={() => sendQuery('What is the pricing and Verified Pro cost?')}
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors"
+          >
+            Pricing & ₹299 Pro
+          </button>
+          <button
+            type="button"
+            onClick={() => sendQuery('I am not receiving login OTP, how do I sign in?')}
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-2 py-1 rounded-md transition-colors"
+          >
+            Login / OTP Help
+          </button>
+          <button
+            type="button"
             onClick={() =>
               sendQuery(
                 `Re-unlock paid audit receipt${identifier.trim() ? ` for ${identifier.trim()}` : ''}`
               )
             }
-            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/20 px-2.5 py-1 rounded-md transition-colors"
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/25 px-2 py-1 rounded-md transition-colors"
           >
             Re-Unlock Audit
           </button>
@@ -227,7 +274,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
                 `Check 48-hour Escrow Refund Guarantee${identifier.trim() ? ` for ${identifier.trim()}` : ''}`
               )
             }
-            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/20 px-2.5 py-1 rounded-md transition-colors"
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/25 px-2 py-1 rounded-md transition-colors"
           >
             48h Escrow Refund
           </button>
@@ -238,7 +285,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
                 `Verify Delivery OTP & GSTIN${identifier.trim() ? ` for ${identifier.trim()}` : ' 29AABCS1429B1ZQ'}`
               )
             }
-            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/20 px-2.5 py-1 rounded-md transition-colors"
+            className="text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-amber-300 border border-amber-500/25 px-2 py-1 rounded-md transition-colors"
           >
             OTP & GST Check
           </button>
@@ -260,9 +307,24 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
                 : 'bg-slate-900 border border-slate-800 text-slate-200 mr-3'
             }`}
           >
-            <p className="leading-relaxed">{m.text}</p>
+            <p className="leading-relaxed whitespace-pre-line">{m.text}</p>
             {m.ticket && (
-              <div className="pt-2 border-t border-slate-800 space-y-1.5 text-[11px]">
+              <div className="pt-2 border-t border-slate-800 space-y-2 text-[11px]">
+                {m.ticket.suggestedLinks && m.ticket.suggestedLinks.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {m.ticket.suggestedLinks.map((link) => (
+                      <Link
+                        key={link.href + link.label}
+                        href={link.href}
+                        onClick={() => setIsOpen(false)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold transition-colors"
+                      >
+                        {link.label}
+                        <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    ))}
+                  </div>
+                )}
                 <div className="flex items-center justify-between text-slate-400 font-mono">
                   <span>{m.ticket.id}</span>
                   <span className="text-emerald-400 font-bold flex items-center gap-1">
@@ -307,6 +369,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
             Executing autonomous resolution...
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input */}
@@ -321,7 +384,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
           type="text"
           value={identifier}
           onChange={(e) => setIdentifier(e.target.value)}
-          placeholder="Your Phone, Order ID (order_...), or Escrow ID (ESC-IND-...)"
+          placeholder="Optional: Phone, Order ID (order_...), or Escrow ID (ESC-IND-...)"
           className="w-full bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-1.5 text-[11px] text-slate-200 font-mono outline-none focus:border-emerald-500"
         />
         <div className="flex gap-2">
@@ -329,7 +392,7 @@ Official Portal: https://www.nearme-india.org (Built in Bengaluru, Karnataka)`;
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Describe issue (unlock, 48h refund, OTP, GST)..."
+            placeholder="Ask about services, pricing, login OTP, bill audit, or GSTIN..."
             className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-emerald-500"
           />
           <button

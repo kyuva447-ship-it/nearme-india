@@ -42,6 +42,7 @@ export interface SupportTicket {
     | 'PAYMENT_UNLOCK_RESTORED'
     | 'ESCROW_48H_REFUND_APPROVED'
     | 'OTP_GSTIN_GUIDED'
+    | 'WEBSITE_FAQ_ANSWERED'
     | 'DPDP_GRIEVANCE_LOGGED'
     | 'ESCALATED_CRITICAL_FRAUD';
   resolutionSummary: string;
@@ -49,6 +50,7 @@ export interface SupportTicket {
   satisfactionScore: number;
   refundVoucherCode?: string;
   unlockedAuditRef?: string;
+  suggestedLinks?: Array<{ label: string; href: string }>;
   createdAt: string;
 }
 
@@ -417,11 +419,120 @@ export async function resolveSupportQuery(params: {
   const qLower = query.toLowerCase();
 
   let actionExecuted: SupportTicket['actionExecuted'] = 'DPDP_GRIEVANCE_LOGGED';
+  const nearmeSiteKnowledge = `NearMe India (https://www.nearme-india.org, built in Bengaluru, Karnataka):
+- Find Services (/search): Search verified Plumbers, Electricians, Tailors, Diagnostic Labs, AC Repair, Carpenters, Hospital Audits, OPC-53 Cement/TMT, Pharma & Agri across 19,300+ Indian pincodes (including Bengaluru 560001 & Madanapalle 517325).
+- List Business Free (/claim): Claim shop profile in 30 seconds -> get 2 FREE customer leads immediately. Subsequent lead phone unlocks cost ₹49/lead (or ₹199 / ₹499 wallet packs). Verified Pro plan is ₹299/month for #1 search ranking and badge. Dashboard is at /dashboard.
+- Bill Stripper (/#auditor): Upload 1 to 500+ page hospital ICU bills, pharmacy receipts, or contractor BOQs (PDF/CSV/image). Spots overcharges vs NPPA/CGHS caps in ~60s and drafts IRDAI/TPA rebuttals. Audit unlock: ₹199 (pricing details at /pricing).
+- Escrow & Track Escrow (/escrow): 15/85 UPI Escrow protection with 6-digit Delivery OTP payout release, MSME 43B(h) support, 5% escrow platform fee, and 48-hour Refund Guarantee.
+- Zero-Lockout Login (/login or Sign In): Enter 10-digit Indian mobile (Name & Email optional). Instant One-Tap Verify fallback code appears on-screen if SMS/WhatsApp is unavailable.
+- Compliance & Policies: /about, /pricing, /terms, /privacy, /refund-policy, /shipping-policy, /contact (email: support@nearme-india.org).`;
+
+  const matchWebsiteKnowledgeBase = (
+    textLower: string
+  ): { answer: string; links: Array<{ label: string; href: string }> } | null => {
+    if (
+      /\b(find|search|book|plumber|plumbers|electrician|electricians|tailor|tailors|carpenter|carpenters|ac|repair|repairs|lab|labs|diagnostic|diagnostics|doctor|doctors|service|services|city|cities|pincode|pincodes|madanapalle|bengaluru|bangalore|hyderabad|delhi|mumbai|chennai|pune|kolkata|near me)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'You can find verified local professionals (Plumbers, Electricians, Tailors, Diagnostic Labs, AC Repair, and Wholesale Suppliers) across 19,300+ pincodes—including Bengaluru and Madanapalle—by clicking "Find Services" (/search) or typing your service in the homepage search bar. Every booking is protected by 15/85 UPI Escrow.',
+        links: [
+          { label: 'Find Services Now', href: '/search' },
+          { label: 'Madanapalle Pros', href: '/services/madanapalle/plumber' },
+        ],
+      };
+    }
+    if (
+      /\b(price|prices|pricing|cost|costs|fee|fees|charge|charges|plan|plans|how much|pay|razorpay|199|49|499|commission|5%)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'NearMe India pricing: Searching services & previewing bill scans is FREE. Full 1–500+ page hospital/BOQ audit & IRDAI rebuttal unlocks are ₹199 (quick unlocks ₹49). For merchants: 2 Free Trial Leads on signup, ₹49 per extra lead unlock, ₹299/month Verified Pro badge, and a 5% platform fee on completed escrow payouts.',
+        links: [
+          { label: 'View All Plans (/pricing)', href: '/pricing' },
+          { label: 'Claim 2 Free Leads', href: '/claim' },
+        ],
+      };
+    }
+    if (
+      /\b(list|register|business|businesses|shop|shops|store|merchant|merchants|claim|onboard|partner|partners|lead|leads|dashboard|verified pro|299)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'To register your business free on NearMe India, open "List Your Business (Free)" (/claim). Claiming takes 30 seconds and includes 2 FREE customer leads. Additional leads unlock for ₹49 from your Merchant Dashboard (/dashboard) via ₹199/₹499 wallet top-ups, and Verified Pro (₹299/month) ranks your shop #1 in local searches.',
+        links: [
+          { label: 'List Business (Free)', href: '/claim' },
+          { label: 'Merchant Dashboard', href: '/dashboard' },
+        ],
+      };
+    }
+    if (
+      /\b(login|log in|sign in|signin|account|otp|sms|whatsapp|not receiving|not coming|cant login|cannot login|password|pin)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'Click "Sign In" at the top right (or visit /login) and enter your 10-digit Indian mobile number (Name & Email are optional). If SMS or WhatsApp OTP does not arrive immediately, our Zero-Lockout system shows an "Instant One-Tap Verify" code right inside the login box so you can enter in 1 tap.',
+        links: [
+          { label: 'Open Sign In Page', href: '/login' },
+          { label: 'My Account', href: '/account' },
+        ],
+      };
+    }
+    if (
+      /\b(hospital|hospitals|bill|bills|icu|stripper|pdf|upload|scan|audit|audits|irdai|tpa|overcharge|overcharges|medicine|medicines|pharmacy|pharmacies|jan aushadhi)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'Open the "Bill Stripper" section on the homepage (/#auditor) and drop any 1 to 500+ page hospital bill, pharmacy receipt, or contractor BOQ (PDF, CSV, or photo)—or try a 1-click preset. We benchmark every line against NPPA & CGHS wholesale rates in ~60 seconds and generate downloadable IRDAI/TPA claim letters.',
+        links: [
+          { label: 'Open Bill Stripper', href: '/#auditor' },
+          { label: 'Find Diagnostic Labs', href: '/search?q=Diagnostic+Lab' },
+        ],
+      };
+    }
+    if (/\b(track|tracking|milestone|milestones|15\/85|msme|43b|delivery)\b/.test(textLower)) {
+      return {
+        answer:
+          'Click "Track Escrow" (/escrow) to track active contracts, milestone completion, and 6-digit Delivery OTP status. Buyers stay protected under our 48-hour Escrow Refund Guarantee, and merchants receive fast payout release once the buyer confirms Delivery OTP.',
+        links: [
+          { label: 'Track Escrow (/escrow)', href: '/escrow' },
+          { label: 'Refund Policy', href: '/refund-policy' },
+        ],
+      };
+    }
+    if (
+      /\b(about|safe|safety|trust|legal|privacy|terms|contact|support|email|help|who are you|what is nearme|how it works|how does)\b/.test(
+        textLower
+      )
+    ) {
+      return {
+        answer:
+          'NearMe India (https://www.nearme-india.org), built in Bengaluru, helps customers find GST/KYC-verified local services, strip hospital/supplier bill overcharges, and protect payments using 15/85 UPI Escrow via RBI-authorized Razorpay partners. Reach our official desk anytime here or at support@nearme-india.org.',
+        links: [
+          { label: 'About NearMe India', href: '/about' },
+          { label: 'Find Services', href: '/search' },
+        ],
+      };
+    }
+    return null;
+  };
+
   let resolutionSummary = '';
   let humanInterventionNeeded = false;
   let refundVoucherCode: string | undefined;
   let unlockedAuditRef: string | undefined;
   let revenueAddedInr = 0;
+  let suggestedLinks: Array<{ label: string; href: string }> | undefined;
 
   if (
     qLower.includes('fraud') ||
@@ -437,7 +548,7 @@ export async function resolveSupportQuery(params: {
   } else if (
     qLower.includes('refund') ||
     qLower.includes('48') ||
-    qLower.includes('escrow') ||
+    (qLower.includes('escrow') && (qLower.includes('check') || qLower.includes('id') || qLower.includes('cancel') || /ESC-IND-/i.test(query))) ||
     qLower.includes('रिफंड') ||
     qLower.includes('ವಾಪಸ್')
   ) {
@@ -474,20 +585,24 @@ export async function resolveSupportQuery(params: {
         );
       } else {
         actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
-        resolutionSummary = `Escrow ${targetEscrow.id} logged for 48-hour SLA verification under manual review policy. Status updates appear directly inside your 15/85 Escrow tab.`;
+        resolutionSummary = `Escrow ${targetEscrow.id} logged for 48-hour SLA verification under manual review policy. Status updates appear directly inside Track Escrow (/escrow).`;
       }
     } else if (escrowMatch) {
       actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
-      resolutionSummary = `Escrow ID ${escrowMatch} was not found in the active escrow ledger. Please verify the ID in your "15/85 Escrow & MSME" tab or lock a new escrow order on the website.`;
+      resolutionSummary = `Escrow ID ${escrowMatch} was not found in the active escrow ledger. Please verify your ID on the Track Escrow page (/escrow) or lock a new order on NearMe India.`;
+      suggestedLinks = [{ label: 'Open Track Escrow', href: '/escrow' }];
     } else {
       actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
-      resolutionSummary = `48-Hour Escrow Refund Guarantee is active (${escrowLedger.length} escrow order(s) currently tracked). To execute an instant on-site refund, enter your Escrow ID (format ESC-IND-XXXX) in the box below or click "48h Refund" directly inside the 15/85 Escrow tab.`;
+      resolutionSummary = `48-Hour Escrow Refund Guarantee is active (${escrowLedger.length} escrow order(s) currently tracked). To execute an instant refund, enter your Escrow ID (format ESC-IND-XXXX) in the box below or check /escrow.`;
+      suggestedLinks = [
+        { label: 'Track Escrow (/escrow)', href: '/escrow' },
+        { label: 'Refund Policy', href: '/refund-policy' },
+      ];
     }
   } else if (
     qLower.includes('unlock') ||
-    qLower.includes('paid') ||
     qLower.includes('receipt') ||
-    qLower.includes('audit') ||
+    qLower.includes('re-unlock') ||
     qLower.includes('pay_') ||
     qLower.includes('order_') ||
     qLower.includes('aud-')
@@ -517,12 +632,17 @@ export async function resolveSupportQuery(params: {
       const latest = auditLedger[0];
       actionExecuted = 'PAYMENT_UNLOCK_RESTORED';
       unlockedAuditRef = latest.unlockCode;
-      resolutionSummary = `Restored latest session audit ledger (${latest.id}: ${latest.billType}, ${latest.totalPages} pages, Token: ${unlockedAuditRef}). You can view and export your CSV/IRDAI notice directly in the Bill Stripper tab.`;
+      resolutionSummary = `Restored latest session audit ledger (${latest.id}: ${latest.billType}, ${latest.totalPages} pages, Token: ${unlockedAuditRef}). You can view and export your CSV/IRDAI notice directly in the Bill Stripper.`;
     } else {
       actionExecuted = 'DPDP_GRIEVANCE_LOGGED';
-      resolutionSummary = `No completed payment or audit receipt matched "${orderOrPayMatch || customerIdentifier}" yet. Paste your Razorpay Order/Payment ID (order_... / pay_...) or run your bill scan in the "Bill Stripper (500+p)" tab to unlock and save a receipt.`;
+      resolutionSummary = `No completed payment or audit receipt matched "${orderOrPayMatch || customerIdentifier}" yet. Paste your Razorpay Order/Payment ID (order_... / pay_...) or run your scan in Bill Stripper (/#auditor) to unlock a receipt.`;
+      suggestedLinks = [{ label: 'Open Bill Stripper', href: '/#auditor' }];
     }
-  } else if (qLower.includes('otp') || qLower.includes('gst') || qLower.includes('payout')) {
+  } else if (
+    (qLower.includes('otp') && (qLower.includes('release') || qLower.includes('delivery') || /ESC-IND-/i.test(query))) ||
+    qLower.includes('gst') ||
+    qLower.includes('payout')
+  ) {
     actionExecuted = 'OTP_GSTIN_GUIDED';
     const gstMatch = query.match(/[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]/i)?.[0];
     const escrowMatch = query.match(/ESC-IND-\d+/i)?.[0]?.toUpperCase();
@@ -534,32 +654,55 @@ export async function resolveSupportQuery(params: {
         check.syntaxValid ? 'VALID' : 'INVALID'
       } • Mod-36 Checksum ${
         check.checksumValid ? 'PASSED' : 'INVALID'
-      }. Verified merchants settle 85% via buyer's 6-digit Delivery OTP inside the "15/85 Escrow & MSME" tab.`;
+      }. Verified merchants settle 85% via buyer's 6-digit Delivery OTP inside Track Escrow (/escrow).`;
     } else if (escrowMatch) {
       const esc = escrowLedger.find((e) => e.id === escrowMatch);
       resolutionSummary = esc
-        ? `Escrow ${esc.id} (${esc.merchant_name}) status is ${esc.status}. To release the 85% merchant payout, enter the 6-digit Delivery OTP shared with the buyer on the "15/85 Escrow & MSME" tab and click "OTP Release".`
-        : `Escrow ID ${escrowMatch} was not found in the active ledger. Check active escrows inside the "15/85 Escrow & MSME" tab.`;
+        ? `Escrow ${esc.id} (${esc.merchant_name}) status is ${esc.status}. To release the 85% merchant payout, enter the 6-digit Delivery OTP shared with the buyer on Track Escrow (/escrow).`
+        : `Escrow ID ${escrowMatch} was not found in the active ledger. Check active escrows inside Track Escrow (/escrow).`;
+      suggestedLinks = [{ label: 'Track Escrow', href: '/escrow' }];
     } else {
-      resolutionSummary = `To release an 85% merchant UPI payout, collect the buyer's 6-digit Delivery OTP shown when locking escrow, enter it in the "15/85 Escrow & MSME" tab, and click "OTP Release". You can also paste any 15-character GSTIN here for instant Mod-36 verification.`;
+      resolutionSummary = `To release an 85% merchant UPI payout, collect the buyer's 6-digit Delivery OTP shown when locking escrow and enter it inside Track Escrow (/escrow). You can also paste any 15-character GSTIN here for instant Mod-36 verification.`;
+      suggestedLinks = [{ label: 'Track Escrow', href: '/escrow' }];
     }
   } else {
+    const faqMatch = matchWebsiteKnowledgeBase(qLower);
     const ai = getGeminiClient();
     let aiText = '';
     if (ai) {
       try {
         const res = await ai.models.generateContent({
           model: GEMINI_MODEL,
-          contents: `You are NearMe India's 24/7 On-Site Autonomous Self-Support Desk (built in Bengaluru, Karnataka, operating at https://www.nearme-india.org). NEVER ask the user to contact WhatsApp, phone numbers, or external human support. Answer clearly in language code "${language}" (max 2 sentences) explaining how the user can resolve this directly on the website for ${customerIdentifier}: "${query}".`,
+          contents: `You are NearMe India's 24/7 Self-Support Assistant for https://www.nearme-india.org.
+Use ONLY these verified website facts to answer clearly and helpfully in language "${language}" (2-3 concise sentences max, never redirect to external phone/WhatsApp):
+${nearmeSiteKnowledge}
+
+Customer/Merchant (${customerIdentifier}) asks: "${query}"`,
         });
         aiText = (res.text || '').trim();
       } catch {
-        // Fallback below
+        // Fall through cleanly to deterministic knowledge base
       }
     }
-    resolutionSummary =
-      aiText ||
-      `Your on-site self-support ticket has been logged for ${customerIdentifier}. Use the quick tools above for instant GSTIN Mod-36 verification, audit receipt re-unlock, or 48-hour escrow refund execution right inside this website.`;
+
+    actionExecuted = 'WEBSITE_FAQ_ANSWERED';
+    if (aiText) {
+      resolutionSummary = aiText;
+      suggestedLinks = faqMatch?.links || [
+        { label: 'Find Services', href: '/search' },
+        { label: 'List Business (Free)', href: '/claim' },
+      ];
+    } else if (faqMatch) {
+      resolutionSummary = faqMatch.answer;
+      suggestedLinks = faqMatch.links;
+    } else {
+      resolutionSummary = `NearMe India helps you: (1) Find GST-verified local pros & wholesale rates (/search), (2) Strip hidden overcharges from 1–500+ page hospital & supplier bills (/#auditor), (3) List your shop for 2 free leads (/claim), and (4) Protect payments with 15/85 UPI Escrow (/escrow). Ask about any service, login OTP, pricing, or paste a GSTIN/Order ID for instant help!`;
+      suggestedLinks = [
+        { label: 'Find Services', href: '/search' },
+        { label: 'List Business (Free)', href: '/claim' },
+        { label: 'Track Escrow', href: '/escrow' },
+      ];
+    }
   }
 
   const ticket: SupportTicket = {
@@ -574,6 +717,7 @@ export async function resolveSupportQuery(params: {
     satisfactionScore: 5,
     refundVoucherCode,
     unlockedAuditRef,
+    suggestedLinks,
     createdAt: nowIso(),
   };
 

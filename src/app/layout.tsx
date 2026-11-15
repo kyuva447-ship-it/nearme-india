@@ -7,9 +7,9 @@ import TelemetryBar from '@/components/TelemetryBar';
 
 const siteUrl = 'https://www.nearme-india.org';
 const siteTitle =
-  'NearMe India — Strip Overcharges & Lock Wholesale Prices Across India';
+  'NearMe India — Local Services, Verified Pros & Bill Audits';
 const siteDescription =
-  'Audit 1 to 500+ page hospital ICU bills, wholesale BOQs, and pharmacy packs in 60s. Lock 15/85 UPI escrow deals, GST Mod-36 trust, and 24/7 AI self-support.';
+  'Find trusted Plumbers, Electricians, Tailors & Diagnostic Labs across India, audit hospital bills in 60s, and protect payments via 15/85 UPI Escrow.';
 
 export const viewport: Viewport = {
   themeColor: '#059669',
@@ -19,8 +19,24 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: siteTitle,
+  title: {
+    default: siteTitle,
+    template: '%s | NearMe India',
+  },
   description: siteDescription,
+  keywords: [
+    'NearMe India',
+    'nearme-india.org',
+    'local services near me India',
+    'plumber near me',
+    'electrician near me',
+    'tailor near me',
+    'diagnostic labs India',
+    'hospital bill audit India',
+    'Madanapalle local services',
+    'Bengaluru verified pros',
+    '15/85 UPI escrow',
+  ],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -34,8 +50,19 @@ export const metadata: Metadata = {
   alternates: {
     canonical: siteUrl,
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
   openGraph: {
     type: 'website',
+    locale: 'en_IN',
     url: siteUrl,
     siteName: 'NearMe India',
     title: siteTitle,
@@ -49,6 +76,78 @@ export const metadata: Metadata = {
 };
 
 const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': `${siteUrl}/#website`,
+    name: 'NearMe India',
+    alternateName: 'NearMe India Marketplace',
+    url: siteUrl,
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${siteUrl}/search?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    '@id': `${siteUrl}/#localbusiness`,
+    name: 'NearMe India',
+    url: siteUrl,
+    description: siteDescription,
+    priceRange: '₹49 - ₹999',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Bengaluru',
+      addressRegion: 'KA',
+      postalCode: '560001',
+      addressCountry: 'IN',
+    },
+    areaServed: {
+      '@type': 'Country',
+      name: 'India',
+    },
+    sameAs: [siteUrl],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    name: 'NearMe India Key Services',
+    itemListElement: [
+      {
+        '@type': 'SiteNavigationElement',
+        position: 1,
+        name: 'Search Services',
+        description: 'Find verified plumbers, electricians, tailors, diagnostic labs, and wholesale hubs.',
+        url: `${siteUrl}/search`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 2,
+        name: 'Register Business',
+        description: 'Claim your local business profile free and get 2 complimentary customer leads.',
+        url: `${siteUrl}/claim`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 3,
+        name: 'Verified Deals',
+        description: 'Compare pre-audited diagnostic labs, hospital bill audits, and wholesale rates.',
+        url: `${siteUrl}/services/bengaluru/diagnostic-labs`,
+      },
+      {
+        '@type': 'SiteNavigationElement',
+        position: 4,
+        name: 'Merchant Login',
+        description: 'Access your NearMe India Merchant Dashboard, lead wallet, and escrow milestones.',
+        url: `${siteUrl}/login`,
+      },
+    ],
+  },
   {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
@@ -76,9 +175,9 @@ const structuredData = [
     offers: {
       '@type': 'AggregateOffer',
       lowPrice: '49',
-      highPrice: '199',
+      highPrice: '299',
       priceCurrency: 'INR',
-      offerCount: '2',
+      offerCount: '3',
     },
   },
   {

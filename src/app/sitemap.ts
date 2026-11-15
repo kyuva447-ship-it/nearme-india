@@ -6,8 +6,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const coreRoutes = [
     '',
     '/search',
-    '/pricing',
     '/claim',
+    '/dashboard',
+    '/escrow',
+    '/login',
+    '/pricing',
+    '/leaderboard',
+    '/edge',
     '/about',
     '/contact',
     '/terms',
@@ -20,11 +25,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' ? 1.0 : 0.8,
+    priority: route === '' ? 1.0 : ['/search', '/claim', '/dashboard', '/escrow', '/login'].includes(route) ? 0.9 : 0.8,
   }));
 
   const citiesAndPincodes = [
     'bengaluru',
+    'madanapalle',
     'hyderabad',
     'mumbai',
     'delhi',
@@ -34,6 +40,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     'jaipur',
     'indore',
     '560001',
+    '517325',
     '110001',
     '400002',
     '500081',
@@ -41,12 +48,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
   ];
 
   const categories = [
+    'plumber',
+    'electrician',
+    'tailor',
+    'diagnostic-labs',
+    'ac-repair',
+    'carpenter',
     'hospital-bill-audit',
     'wholesale-cement-tmt',
     'pharmacy-jan-aushadhi',
     'gold-bullion-making',
     'agri-drip-irrigation',
-    'diagnostic-labs',
     'plumbing-electrical',
   ];
 
@@ -55,9 +67,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${baseUrl}/services/${city}/${category}`,
       lastModified: new Date(),
       changeFrequency: 'weekly' as const,
-      priority: 0.7,
+      priority: 0.75,
     }))
   );
 
   return [...coreRoutes, ...programmaticRoutes];
 }
+

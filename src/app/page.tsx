@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Search,
   TrendingDown,
@@ -10,12 +11,24 @@ import {
   ShieldCheck,
   Bot,
   Banknote,
+  HelpCircle,
+  ChevronDown,
 } from 'lucide-react';
 import NearMePlatform from '@/components/NearMePlatform';
 import { COPY_BY_LANG, normalizeLang } from '@/lib/i18n';
 import { SEEDED_MERCHANTS } from '@/lib/seeded-marketplace';
 import type { SupportedLang } from '@/lib/autonomousStore';
 import { useToast } from '@/components/Toast';
+
+const POPULAR_SERVICE_LINKS = [
+  { label: 'Plumber', href: '/search?q=Plumber' },
+  { label: 'Electrician', href: '/search?q=Electrician' },
+  { label: 'Tailor', href: '/search?q=Tailor' },
+  { label: 'Diagnostic Lab', href: '/search?q=Diagnostic+Lab' },
+  { label: 'AC Repair', href: '/search?q=AC+Repair' },
+  { label: 'Hospital Bill Audit', href: '/search?q=Hospital+ICU' },
+  { label: 'Madanapalle Pros', href: '/search?q=Madanapalle&city=Madanapalle' },
+];
 
 const REGIONAL_LOOPS = [
   {
@@ -101,9 +114,83 @@ const ORDER_CARD_THEMES = [
   'bg-gradient-to-br from-amber-950/35 via-slate-900/95 to-orange-950/35 border-amber-500/35',
 ];
 
+const FAQ_STRUCTURED_DATA = {
+  '@context': 'https://schema.org',
+  '@type': 'FAQPage',
+  mainEntity: [
+    {
+      '@type': 'Question',
+      name: 'What is NearMe India and how does the platform work?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'NearMe India (https://www.nearme-india.org) connects customers across 19,300+ Indian pincodes with GST/KYC-verified local professionals, wholesale suppliers, an unlimited-page hospital and contractor Bill Stripper, and 15/85 UPI Escrow protection.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How many pages can the NearMe India Bill Stripper audit?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'The client-side File.slice() streaming indexer supports 1 to 500+ page PDFs, Excel/CSV ledgers, and multi-photo bills without payload crashes, spotting overcharges against NPPA and CGHS rates in roughly 60 seconds.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Which local services and cities are available on NearMe India?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'You can search and book verified Plumbers, Electricians, Tailors, Diagnostic Labs, AC Repair technicians, Carpenters, and wholesale suppliers across India—including Bengaluru (560001), Madanapalle (517325), Delhi NCR, Mumbai, Hyderabad, and Chennai.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How do local businesses list for free and receive customer leads?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Shop owners and service pros can claim their profile free in 30 seconds under "List Your Business (Free)" to receive 2 complimentary customer leads. Additional leads unlock for ₹49 in the Merchant Dashboard, and Verified Pro (₹299/month) ranks listings first.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'How does the 15/85 UPI Escrow and 48-Hour Refund Guarantee work?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: '15% is held as platform audit escrow and 85% settles to verified merchants on 6-digit Delivery OTP confirmation, backed by an automated 48-hour refund guarantee.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'Where can I track my escrow order or verify Delivery OTP?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Use "Track Escrow" in the top navigation bar to check active escrow milestones, verify merchant GSTIN and MSME 43B(h) payout readiness, enter your 6-digit Delivery OTP, or claim an automated 48-hour refund.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What if I do not receive an SMS or WhatsApp OTP when signing in?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Enter your 10-digit Indian mobile number in the Sign In dialog (Name and Email are optional). If external SMS or WhatsApp delivery is unavailable, our Zero-Lockout fallback automatically displays an "Instant One-Tap Verify" code right on screen.',
+      },
+    },
+    {
+      '@type': 'Question',
+      name: 'What are the platform fees and unlock charges?',
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: 'Searching services and previewing bill scans is free. Full 1–500+ page audit reports and IRDAI/TPA rebuttal drafts unlock for ₹199 (quick unlocks ₹49), and completed escrow contracts carry a transparent 5% platform fee.',
+      },
+    },
+  ],
+} as const;
+
 export default function Home() {
+  const router = useRouter();
   const [lang, setLang] = useState<SupportedLang>('EN');
+  const [heroQuery, setHeroQuery] = useState('');
   const [joinedSyndicates, setJoinedSyndicates] = useState<Record<string, boolean>>({});
+  const [openFaqIndex, setOpenFaqIndex] = useState<number | null>(0);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -129,6 +216,16 @@ export default function Home() {
     });
   };
 
+  const handleHeroSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    const savedCity = localStorage.getItem('nearme_city') || 'All India';
+    const params = new URLSearchParams();
+    if (heroQuery.trim()) params.set('q', heroQuery.trim());
+    if (savedCity && savedCity !== 'All India') params.set('city', savedCity);
+    const qs = params.toString();
+    router.push(qs ? `/search?${qs}` : '/search');
+  };
+
   const copy = COPY_BY_LANG[lang];
 
   return (
@@ -145,7 +242,7 @@ export default function Home() {
       </div>
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-14">
-        {/* Clean Design #2 Hero — Vibrant multi-color typography + luminous CTAs */}
+        {/* Clean Design #2 Hero — Vibrant multi-color typography + live service search */}
         <section className="text-center max-w-4xl mx-auto space-y-6">
           <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-[1.12] text-balance bg-gradient-to-r from-white via-emerald-200 via-cyan-200 to-amber-200 bg-clip-text text-transparent">
             {copy.heroTitle}
@@ -155,18 +252,26 @@ export default function Home() {
           </p>
 
           <div className="max-w-2xl mx-auto pt-2 flex flex-col sm:flex-row gap-3">
-            <Link
-              href="/search"
-              className="flex-1 flex items-center gap-3 bg-slate-900/90 border border-cyan-500/40 hover:border-emerald-400 rounded-xl px-4 py-3.5 text-left transition-all shadow-lg shadow-emerald-950/30"
+            <form
+              onSubmit={handleHeroSearch}
+              className="flex-1 flex items-center gap-3 bg-slate-900/90 border border-cyan-500/40 focus-within:border-emerald-400 rounded-xl px-4 py-2 transition-all shadow-lg shadow-emerald-950/30"
             >
               <Search className="w-5 h-5 text-cyan-400 shrink-0" />
-              <span className="text-sm text-slate-300 truncate flex-1">
-                {copy.searchPlaceholder}
-              </span>
-              <span className="px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 text-xs font-extrabold rounded-lg shrink-0">
+              <input
+                type="text"
+                value={heroQuery}
+                onChange={(e) => setHeroQuery(e.target.value)}
+                placeholder={copy.searchPlaceholder}
+                aria-label="Search local services or bills"
+                className="w-full bg-transparent text-sm text-white placeholder-slate-400 outline-none py-1.5"
+              />
+              <button
+                type="submit"
+                className="px-4 py-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 text-xs font-extrabold rounded-lg shrink-0 transition-all"
+              >
                 {copy.searchCta}
-              </span>
-            </Link>
+              </button>
+            </form>
             <button
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('nearme-open-support'))}
@@ -175,6 +280,20 @@ export default function Home() {
               <Bot className="w-4 h-4 text-amber-300" />
               {copy.supportButton}
             </button>
+          </div>
+
+          {/* Instant 1-Click Local Service Directory Links */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="text-[11px] font-bold text-slate-400 mr-1">Popular Services:</span>
+            {POPULAR_SERVICE_LINKS.map((item) => (
+              <Link
+                key={item.label}
+                href={item.href}
+                className="px-3 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 border border-slate-700 hover:border-cyan-400/60 text-xs font-bold text-slate-200 hover:text-cyan-200 transition-colors"
+              >
+                {item.label}
+              </Link>
+            ))}
           </div>
         </section>
 
@@ -355,6 +474,74 @@ export default function Home() {
                 </div>
               </div>
             ))}
+          </div>
+        </section>
+
+        {/* Accordion FAQ Section (mirrors Schema.org FAQPage structured data format) */}
+        <section id="faq" className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+            <div>
+              <h2 className="text-lg sm:text-xl font-bold text-white flex items-center gap-2">
+                <HelpCircle className="w-5 h-5 text-emerald-400" />
+                Frequently Asked Questions
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Clear answers about the NearMe India platform, verified local services, and 15/85 UPI Escrow protection
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('nearme-open-support'))}
+              className="text-xs font-semibold text-emerald-300 hover:text-emerald-200 flex items-center gap-1"
+            >
+              Ask 24/7 Self-Support <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          <div className="space-y-2.5">
+            {FAQ_STRUCTURED_DATA.mainEntity.map((faq, idx) => {
+              const isOpen = openFaqIndex === idx;
+              const panelId = `faq-panel-${idx}`;
+              const headerId = `faq-header-${idx}`;
+              return (
+                <div
+                  key={faq.name}
+                  className={`rounded-xl border transition-colors ${
+                    isOpen
+                      ? 'bg-slate-900/95 border-emerald-500/40 shadow-lg shadow-emerald-950/20'
+                      : 'bg-slate-900/70 border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  <button
+                    id={headerId}
+                    type="button"
+                    aria-expanded={isOpen}
+                    aria-controls={panelId}
+                    onClick={() => setOpenFaqIndex(isOpen ? null : idx)}
+                    className="w-full px-5 py-4 flex items-center justify-between gap-4 text-left"
+                  >
+                    <span className="text-sm sm:text-base font-bold text-white">
+                      {faq.name}
+                    </span>
+                    <ChevronDown
+                      className={`w-4 h-4 text-emerald-400 shrink-0 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+                  {isOpen && (
+                    <div
+                      id={panelId}
+                      role="region"
+                      aria-labelledby={headerId}
+                      className="px-5 pb-4 pt-1 border-t border-slate-800/80 text-xs sm:text-sm text-slate-300 leading-relaxed"
+                    >
+                      {faq.acceptedAnswer.text}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </section>
       </main>
