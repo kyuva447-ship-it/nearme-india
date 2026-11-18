@@ -312,6 +312,7 @@ Return strict JSON with realistic INR figures matching the uploaded bill, totalL
 
     const response = await generateGeminiWithFallback(ai, {
       model: GEMINI_MODEL,
+      attemptTimeoutMs: 12000,
       contents: [{ role: 'user', parts }],
       config: {
         responseMimeType: 'application/json',
