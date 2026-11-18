@@ -1,6 +1,6 @@
 import crypto from 'crypto';
 import { NextResponse } from 'next/server';
-import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from '@/lib/gemini';
 import { OWNER_CONTACT_EMAIL } from '@/lib/seeded-marketplace';
 
 export async function GET(req: Request) {
@@ -55,7 +55,7 @@ export async function POST(req: Request) {
 
     if (ai) {
       try {
-        const res = await ai.models.generateContent({
+        const res = await generateGeminiWithFallback(ai, {
           model: GEMINI_MODEL,
           contents: `You are NearMe India's automated concierge (built in Bengaluru, Karnataka). Reply concisely (max 2 sentences) to customer (${senderPhone}): "${messageText}". Direct them to https://www.nearme-india.org and never share any personal phone number.`,
         });

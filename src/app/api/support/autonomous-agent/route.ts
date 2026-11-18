@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from '@/lib/gemini';
 import { resolveSupportQuery, SupportedLang } from '@/lib/autonomousStore';
 
 export async function POST(req: Request) {
@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     if (ai) {
       try {
         const prompt = `You are a 24/7 AI Voice Orb for NearMe India. Answer this user query concisely in ${language}: ${query}`;
-        const result = await ai.models.generateContent({
+        const result = await generateGeminiWithFallback(ai, {
           model: GEMINI_MODEL,
           contents: prompt,
         });

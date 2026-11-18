@@ -1,5 +1,5 @@
 import { Type } from '@google/genai';
-import { GEMINI_MODEL, getGeminiClient } from './gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from './gemini';
 import {
   AUDIT_PRESETS,
   IrdaiRebuttalData,
@@ -310,7 +310,7 @@ Return strict JSON with realistic INR figures matching the uploaded bill, totalL
       }
     }
 
-    const response = await ai.models.generateContent({
+    const response = await generateGeminiWithFallback(ai, {
       model: GEMINI_MODEL,
       contents: [{ role: 'user', parts }],
       config: {

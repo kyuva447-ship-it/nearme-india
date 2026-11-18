@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from '@/lib/gemini';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { resolveSupportQuery } from '@/lib/autonomousStore';
 import { getVerifiedSessionPhone } from '@/lib/session';
@@ -48,7 +48,7 @@ Website Features & Routes:
 User Question: "${query}"
 User Context: ${dbContext}
 Reply concisely (2-3 sentences), accurately answering their question about the website with direct links/paths.`;
-        const result = await ai.models.generateContent({
+        const result = await generateGeminiWithFallback(ai, {
           model: GEMINI_MODEL,
           contents: prompt,
         });

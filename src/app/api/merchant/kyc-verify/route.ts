@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from '@/lib/gemini';
 import { supabaseAdmin } from '@/lib/supabase/server';
 import { validateGstinMod36 } from '@/lib/seeded-marketplace';
 import { getVerifiedSessionPhone } from '@/lib/session';
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     let responseText = '';
     try {
       const base64Data = String(image_data).replace(/^data:[^;]+;base64,/, '');
-      const result = await ai.models.generateContent({
+      const result = await generateGeminiWithFallback(ai, {
         model: GEMINI_MODEL,
         contents: [
           {

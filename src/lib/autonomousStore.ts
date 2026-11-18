@@ -1,4 +1,4 @@
-import { GEMINI_MODEL, getGeminiClient } from './gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from './gemini';
 import {
   OWNER_CONTACT_EMAIL,
   validateGstinMod36,
@@ -292,7 +292,7 @@ export async function runMapsAndWebHarvester(
 
   if (ai) {
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateGeminiWithFallback(ai, {
         model: GEMINI_MODEL,
         contents: `Find 3 real ${category} in ${city} (pincode ${pincode}), India with strong public ratings or GST wholesale presence. List each on a single line formatted strictly as: Name | Category | Rating`,
         config: {
@@ -671,7 +671,7 @@ export async function resolveSupportQuery(params: {
     let aiText = '';
     if (ai) {
       try {
-        const res = await ai.models.generateContent({
+        const res = await generateGeminiWithFallback(ai, {
           model: GEMINI_MODEL,
           contents: `You are NearMe India's 24/7 Self-Support Assistant for https://www.nearme-india.org.
 Use ONLY these verified website facts to answer clearly and helpfully in language "${language}" (2-3 concise sentences max, never redirect to external phone/WhatsApp):

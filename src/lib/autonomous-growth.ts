@@ -1,4 +1,4 @@
-import { GEMINI_MODEL, getGeminiClient } from './gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from './gemini';
 import { OWNER_CONTACT_EMAIL } from './seeded-marketplace';
 import {
   founderControls,
@@ -49,7 +49,7 @@ export async function runAutonomousGrowthCycle(
   let usedLive = false;
   if (ai) {
     try {
-      const response = await ai.models.generateContent({
+      const response = await generateGeminiWithFallback(ai, {
         model: GEMINI_MODEL,
         contents: `Generate 2 crisp hyper-local promotional deal hooks for NearMe India in ${targetCity} (one for multi-page hospital bill auditing, one for B2B wholesale). Return concise plain text lines.`,
       });

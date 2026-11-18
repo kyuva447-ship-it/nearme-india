@@ -2,7 +2,7 @@ import crypto from 'crypto';
 import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { supabaseAdmin } from '@/lib/supabase/server';
-import { GEMINI_MODEL, getGeminiClient } from '@/lib/gemini';
+import { GEMINI_MODEL, generateGeminiWithFallback, getGeminiClient } from '@/lib/gemini';
 import { isAuthorizedCronOrOwner } from '@/lib/session';
 import { validateGstinMod36 } from '@/lib/seeded-marketplace';
 import { merchantClaimInvite } from '@/lib/emailTemplates';
@@ -264,7 +264,7 @@ async function runPipeline(forceRun: boolean) {
               pro: w.is_verified_pro,
             }))
           )}. Reply strictly with the single matching merchant id only.`;
-          const res = await ai.models.generateContent({
+          const res = await generateGeminiWithFallback(ai, {
             model: GEMINI_MODEL,
             contents: matchPrompt,
           });
