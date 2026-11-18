@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { runMultiDocBillAudit, AuditRequestPayload } from '@/lib/auditEngine';
+import { GEMINI_MODEL } from '@/lib/gemini';
 import { AUDIT_PRESETS } from '@/lib/seeded-marketplace';
 
 export async function GET() {
   return NextResponse.json({
     status: 'operational',
     engine: 'NearMe Unlimited-Page (1 to 500+ Pages) Multi-Document Streaming AI Auditor',
-    model: 'gemini-2.5-flash',
+    model: GEMINI_MODEL,
     unlimitedPageCapacity: true,
     presets: AUDIT_PRESETS.map((p) => ({
       id: p.id,
