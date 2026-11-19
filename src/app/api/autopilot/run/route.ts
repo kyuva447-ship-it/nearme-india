@@ -9,7 +9,15 @@ import { merchantClaimInvite } from '@/lib/emailTemplates';
 
 export const maxDuration = 60;
 
-const TARGET_CITIES = ['Bengaluru', 'Hyderabad', 'Mumbai', 'Delhi', 'Pune', 'Chennai'];
+const TARGET_CITIES = [
+  'Bengaluru',
+  'Madanapalle',
+  'Hyderabad',
+  'Mumbai',
+  'Delhi',
+  'Pune',
+  'Chennai',
+];
 const TARGET_CATEGORIES = [
   'Diagnostic Labs',
   'Construction Material Suppliers',
@@ -132,14 +140,19 @@ async function runPipeline(forceRun: boolean) {
     return NextResponse.json({ status: 'paused', message: 'Agents are paused by Owner.' });
   }
 
-  const city = TARGET_CITIES[new Date().getHours() % TARGET_CITIES.length];
-  const category = TARGET_CATEGORIES[new Date().getDate() % TARGET_CATEGORIES.length];
+  const nowIst = new Date(Date.now() + 5.5 * 60 * 60 * 1000);
+  const istHour = nowIst.getUTCHours();
+  const istDay = nowIst.getUTCDate();
+  const city = TARGET_CITIES[(istHour + istDay) % TARGET_CITIES.length];
+  const category = TARGET_CATEGORIES[(istHour + istDay * 2) % TARGET_CATEGORIES.length];
 
   // =========================================================================
   // STEP 1: AUTO-ACQUIRE BUSINESSES (Google Places API -> Supabase Outreach -> Claim Links)
   // =========================================================================
   let acquiredCount = 0;
   let contactedCount = 0;
+  let placesFoundCount = 0;
+  let placesErrorNote = '';
   const placesKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
 
   if (placesKey) {
@@ -167,6 +180,7 @@ async function runPipeline(forceRun: boolean) {
           nationalPhoneNumber?: string;
           rating?: number;
         }> = placesData.places || [];
+        placesFoundCount = places.length;
 
         for (const p of places) {
           const name = p.displayName?.text;
@@ -191,6 +205,10 @@ async function runPipeline(forceRun: boolean) {
             .select()
             .single();
 
+          if (insErr && insErr.code !== 'PGRST116' && !placesErrorNote) {
+            placesErrorNote = `DB save note: ${insErr.message.slice(0, 120)}`;
+          }
+
           if (!insErr && inserted) {
             acquiredCount += 1;
             const claimUrl = `https://www.nearme-india.org/claim?token=${inserted.claim_token}`;
@@ -210,19 +228,31 @@ async function runPipeline(forceRun: boolean) {
             }
           }
         }
+      } else {
+        const errBody = await placesRes.text().catch(() => '');
+        const cleanErr = errBody
+          .replace(/AIza[0-9A-Za-z_-]{10,}/g, '[REDACTED]')
+          .replace(/\s+/g, ' ')
+          .slice(0, 140);
+        placesErrorNote = `Google Places HTTP ${placesRes.status}${cleanErr ? `: ${cleanErr}` : ''}`;
       }
-    } catch {
-      // Log error below cleanly
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Network error';
+      placesErrorNote = `Google Places error: ${msg.slice(0, 120)}`;
     }
   }
+
+  const acquireSummary = !placesKey
+    ? `Skipped Google Places scan for ${city} — add GOOGLE_PLACES_API_KEY in Vercel.`
+    : placesErrorNote
+      ? `Scanned ${city} (${category}): ${placesErrorNote}`
+      : `Scanned ${city} (${category}): found ${placesFoundCount} listings, created ${acquiredCount} new claimable profiles, dispatched ${contactedCount} invites.`;
 
   await logAutopilot(
     'Auto-Acquire Places Agent',
     'acquire_businesses',
-    placesKey
-      ? `Scanned ${city} (${category}): created ${acquiredCount} new claimable profiles and dispatched ${contactedCount} invites.`
-      : `Skipped Google Places scan for ${city} — add GOOGLE_PLACES_API_KEY in Vercel.`,
-    placesKey ? 'success' : 'skipped',
+    acquireSummary,
+    !placesKey ? 'skipped' : placesErrorNote ? 'error' : 'success',
     0,
     city
   );
@@ -350,11 +380,13 @@ async function runPipeline(forceRun: boolean) {
     status: 'completed',
     city,
     category,
+    placesFoundCount,
     acquiredCount,
     contactedCount,
     matchedCount,
     rechargePrompts,
     verifiedProfiles,
+    ...(placesErrorNote ? { placesErrorNote } : {}),
   });
 }
 

@@ -1,0 +1,35 @@
+name: NearMe India 24/7 Hourly Autopilot
+
+on:
+  schedule:
+    # Runs every hour on the hour in IST (9:00 AM - 7:00 PM IST and 24/7)
+    - cron: '30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-autopilot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Trigger NearMe India Autopilot Pipeline
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET GitHub repository secret is not set yet. Skipping hourly ping (Vercel 9:00 AM IST daily cron still runs)."
+            exit 0
+          fi
+
+          HTTP_CODE=$(curl -sS -o /tmp/autopilot_resp.json -w "%{http_code}" \
+            --max-time 65 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            "https://www.nearme-india.org/api/autopilot/run")
+
+          echo "HTTP Status: ${HTTP_CODE}"
+          cat /tmp/autopilot_resp.json
+          echo ""
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "Autopilot call failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
