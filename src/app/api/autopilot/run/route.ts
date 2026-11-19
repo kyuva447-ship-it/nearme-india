@@ -25,6 +25,13 @@ const TARGET_CATEGORIES = [
   'Pharmacy Wholesale',
 ];
 
+const OSM_CATEGORY_QUERIES: Record<string, string[]> = {
+  'Diagnostic Labs': ['diagnostic lab', 'hospital', 'clinic'],
+  'Construction Material Suppliers': ['hardware', 'cement', 'building materials'],
+  'Plumbing & Electrical': ['electrical shop', 'hardware', 'plumbing'],
+  'Pharmacy Wholesale': ['pharmacy', 'medical', 'chemist'],
+};
+
 function maskCustomerPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '').slice(-10);
   if (digits.length < 4) return '+91 98XXXXXX10';
@@ -153,7 +160,18 @@ async function runPipeline(forceRun: boolean) {
   let contactedCount = 0;
   let placesFoundCount = 0;
   let placesErrorNote = '';
+  let acquisitionSource: 'google_places' | 'openstreetmap' | 'none' = 'none';
   const placesKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
+
+  type DiscoveredBusiness = {
+    sourceId: string;
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+    rating?: number | null;
+  };
+  const discovered: DiscoveredBusiness[] = [];
 
   if (placesKey) {
     try {
@@ -180,81 +198,157 @@ async function runPipeline(forceRun: boolean) {
           nationalPhoneNumber?: string;
           rating?: number;
         }> = placesData.places || [];
-        placesFoundCount = places.length;
-
         for (const p of places) {
-          const name = p.displayName?.text;
+          const name = p.displayName?.text?.trim();
           if (!name || !p.id) continue;
-          const claimToken = crypto.randomBytes(16).toString('hex');
-          const { data: inserted, error: insErr } = await supabaseAdmin
-            .from('outreach_leads')
-            .upsert(
-              {
-                business_name: name,
-                phone: p.nationalPhoneNumber || null,
-                city,
-                category,
-                google_place_id: p.id,
-                address: p.formattedAddress || null,
-                rating: p.rating || null,
-                claim_token: claimToken,
-                status: 'scraped',
-              },
-              { onConflict: 'google_place_id', ignoreDuplicates: true }
-            )
-            .select()
-            .single();
-
-          if (insErr && insErr.code !== 'PGRST116' && !placesErrorNote) {
-            placesErrorNote = `DB save note: ${insErr.message.slice(0, 120)}`;
-          }
-
-          if (!insErr && inserted) {
-            acquiredCount += 1;
-            const claimUrl = `https://www.nearme-india.org/claim?token=${inserted.claim_token}`;
-            const sent = await sendClaimNotification({
-              businessName: name,
-              city,
-              phone: inserted.phone,
-              email: inserted.email,
-              claimUrl,
-            });
-            if (sent) {
-              contactedCount += 1;
-              await supabaseAdmin
-                .from('outreach_leads')
-                .update({ status: 'contacted', contacted_at: new Date().toISOString() })
-                .eq('id', inserted.id);
-            }
-          }
+          discovered.push({
+            sourceId: p.id,
+            name,
+            phone: p.nationalPhoneNumber || null,
+            address: p.formattedAddress || null,
+            rating: p.rating || null,
+          });
+        }
+        if (discovered.length > 0) {
+          acquisitionSource = 'google_places';
         }
       } else {
         const errBody = await placesRes.text().catch(() => '');
         const cleanErr = errBody
           .replace(/AIza[0-9A-Za-z_-]{10,}/g, '[REDACTED]')
           .replace(/\s+/g, ' ')
-          .slice(0, 140);
+          .slice(0, 120);
         placesErrorNote = `Google Places HTTP ${placesRes.status}${cleanErr ? `: ${cleanErr}` : ''}`;
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Network error';
-      placesErrorNote = `Google Places error: ${msg.slice(0, 120)}`;
+      placesErrorNote = `Google Places error: ${msg.slice(0, 100)}`;
     }
   }
 
-  const acquireSummary = !placesKey
-    ? `Skipped Google Places scan for ${city} — add GOOGLE_PLACES_API_KEY in Vercel.`
-    : placesErrorNote
-      ? `Scanned ${city} (${category}): ${placesErrorNote}`
-      : `Scanned ${city} (${category}): found ${placesFoundCount} listings, created ${acquiredCount} new claimable profiles, dispatched ${contactedCount} invites.`;
+  // Free OpenStreetMap Nominatim fallback when Google Places is unavailable or restricted (e.g., HTTP 403)
+  if (discovered.length === 0) {
+    const queryTerms = OSM_CATEGORY_QUERIES[category] || [category];
+    for (const term of queryTerms) {
+      try {
+        const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          `${term} ${city} India`
+        )}&format=json&addressdetails=1&extratags=1&limit=5`;
+        const osmRes = await fetch(osmUrl, {
+          headers: {
+            'User-Agent': 'NearMeIndiaDirectory/1.0 (https://www.nearme-india.org)',
+            Accept: 'application/json',
+          },
+          signal: AbortSignal.timeout(8000),
+        });
+        if (!osmRes.ok) continue;
+        const rows: Array<{
+          osm_type?: string;
+          osm_id?: number;
+          name?: string;
+          display_name?: string;
+          extratags?: {
+            phone?: string;
+            'contact:phone'?: string;
+            email?: string;
+            'contact:email'?: string;
+          };
+        }> = await osmRes.json();
+
+        for (const row of rows) {
+          const name = (row.name || '').trim();
+          if (!name || !row.osm_id) continue;
+          const rawPhone = row.extratags?.phone || row.extratags?.['contact:phone'] || null;
+          const rawEmail = row.extratags?.email || row.extratags?.['contact:email'] || null;
+          discovered.push({
+            sourceId: `osm-${row.osm_type || 'node'}-${row.osm_id}`,
+            name,
+            phone: rawPhone,
+            email: rawEmail,
+            address: row.display_name ? row.display_name.slice(0, 220) : `${city}, India`,
+            rating: null,
+          });
+        }
+        if (discovered.length > 0) {
+          acquisitionSource = 'openstreetmap';
+          break;
+        }
+      } catch {
+        // Try next category term
+      }
+    }
+  }
+
+  placesFoundCount = discovered.length;
+
+  for (const item of discovered) {
+    const claimToken = crypto.randomBytes(16).toString('hex');
+    const { data: inserted, error: insErr } = await supabaseAdmin
+      .from('outreach_leads')
+      .upsert(
+        {
+          business_name: item.name,
+          phone: item.phone || null,
+          email: item.email || null,
+          city,
+          category,
+          google_place_id: item.sourceId,
+          address: item.address || null,
+          rating: item.rating || null,
+          claim_token: claimToken,
+          status: 'scraped',
+        },
+        { onConflict: 'google_place_id', ignoreDuplicates: true }
+      )
+      .select()
+      .single();
+
+    if (insErr && insErr.code !== 'PGRST116' && !placesErrorNote) {
+      placesErrorNote = `DB save note: ${insErr.message.slice(0, 120)}`;
+    }
+
+    if (!insErr && inserted) {
+      acquiredCount += 1;
+      const claimUrl = `https://www.nearme-india.org/claim?token=${inserted.claim_token}`;
+      const sent = await sendClaimNotification({
+        businessName: item.name,
+        city,
+        phone: inserted.phone,
+        email: inserted.email,
+        claimUrl,
+      });
+      if (sent) {
+        contactedCount += 1;
+        await supabaseAdmin
+          .from('outreach_leads')
+          .update({ status: 'contacted', contacted_at: new Date().toISOString() })
+          .eq('id', inserted.id);
+      }
+    }
+  }
+
+  const sourceLabel =
+    acquisitionSource === 'google_places'
+      ? 'Google Places'
+      : acquisitionSource === 'openstreetmap'
+        ? 'OpenStreetMap (free fallback)'
+        : 'Places Scanner';
+
+  const acquireSummary =
+    acquisitionSource !== 'none'
+      ? `Scanned ${city} (${category}) via ${sourceLabel}: found ${placesFoundCount} listings, created ${acquiredCount} new claimable profiles, dispatched ${contactedCount} invites.`
+      : placesErrorNote
+        ? `Scanned ${city} (${category}): ${placesErrorNote}`
+        : `Scanned ${city} (${category}): found 0 new listings this hour.`;
 
   await logAutopilot(
     'Auto-Acquire Places Agent',
     'acquire_businesses',
     acquireSummary,
-    !placesKey ? 'skipped' : placesErrorNote ? 'error' : 'success',
+    acquisitionSource !== 'none' ? 'success' : placesErrorNote ? 'error' : 'skipped',
     0,
-    city
+    city,
+    { acquisitionSource, placesFoundCount, ...(placesErrorNote ? { placesErrorNote } : {}) }
   );
 
   // =========================================================================
