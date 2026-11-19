@@ -11,6 +11,7 @@ import {
   Store,
   LayoutDashboard,
   ShieldCheck,
+  QrCode,
 } from 'lucide-react';
 import PhoneAuthModal from './QuickAuthModal';
 import PWAInstallButton from './PWAInstallButton';
@@ -131,6 +132,13 @@ export default function TelemetryBar() {
           >
             <Store className="w-3.5 h-3.5 text-emerald-400" />
             List Your Business (Free)
+          </Link>
+          <Link
+            href="/card"
+            className="px-3 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/40 text-amber-200 hover:text-white transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
+          >
+            <QrCode className="w-3.5 h-3.5 text-amber-400" />
+            Free Shop QR
           </Link>
           <Link
             href="/dashboard"
@@ -284,6 +292,13 @@ export default function TelemetryBar() {
         >
           <Store className="w-3.5 h-3.5 text-emerald-400" />
           List Your Business (Free)
+        </Link>
+        <Link
+          href="/card"
+          className="px-3 py-1.5 rounded-lg bg-amber-500/15 border border-amber-400/40 text-amber-200 whitespace-nowrap shrink-0 flex items-center gap-1"
+        >
+          <QrCode className="w-3.5 h-3.5 text-amber-400" />
+          Free Shop QR
         </Link>
         <Link
           href="/dashboard"

@@ -18,6 +18,7 @@ import {
   Lock,
   FileCheck2,
   PhoneCall,
+  QrCode,
 } from 'lucide-react';
 import NearMePlatform from '@/components/NearMePlatform';
 import { COPY_BY_LANG, normalizeLang } from '@/lib/i18n';
@@ -442,10 +443,16 @@ export default function Home() {
                   Claim Free Profile (2 Free Leads) <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
                 <Link
-                  href="/pricing"
+                  href="/card"
+                  className="px-4 py-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-400/50 text-amber-200 text-xs font-extrabold flex items-center gap-1.5 transition-colors"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-amber-300" /> Free Shop QR Standee
+                </Link>
+                <Link
+                  href="/shops"
                   className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition-colors"
                 >
-                  View Transparent Pricing
+                  Live Shop Directory
                 </Link>
               </div>
             </div>
@@ -713,6 +720,8 @@ export default function Home() {
             NearMe India · Built in Bengaluru, Karnataka · https://www.nearme-india.org
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4">
+            <Link href="/shops" className="text-cyan-300 hover:text-cyan-200 font-semibold">Live Shops Directory</Link>
+            <Link href="/card" className="text-amber-300 hover:text-amber-200 font-semibold">Free Shop QR Card</Link>
             <Link href="/about" className="hover:text-white">About</Link>
             <Link href="/pricing" className="hover:text-white">Pricing</Link>
             <Link href="/terms" className="hover:text-white">Terms</Link>

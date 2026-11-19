@@ -19,6 +19,8 @@ import {
   Copy,
   CheckCircle2,
   MapPin,
+  ExternalLink,
+  Mail,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -177,11 +179,11 @@ export default function OwnerPortal() {
     const claimUrl = `https://www.nearme-india.org/claim?token=${lead.claim_token}`;
     return [
       `Namaste ${lead.business_name} team!`,
-      `NearMe India (https://www.nearme-india.org) connects local buyers in ${lead.city} directly with verified ${lead.category} businesses.`,
-      `- List & claim free in 30 seconds`,
-      `- Get 2 FREE customer phone numbers immediately`,
-      `- Safe Razorpay 15/85 UPI Escrow + GSTIN Trust Badge`,
-      `Claim your shop profile here: ${claimUrl}`,
+      `Your shop is now listed on NearMe India (https://www.nearme-india.org) for local buyers in ${lead.city} searching for ${lead.category}.`,
+      `- Claim free in 30 seconds & get 2 FREE customer phone numbers`,
+      `- Download your FREE Counter QR Standee & GSTIN Trust Badge`,
+      `- Optional Razorpay 15/85 UPI Escrow for guaranteed payments`,
+      `Claim your profile here: ${claimUrl}`,
     ].join('\n');
   };
 
@@ -461,6 +463,22 @@ export default function OwnerPortal() {
                 const waHref = validIndianMobile
                   ? `https://wa.me/91${cleanDigits}?text=${pitchText}`
                   : `https://wa.me/?text=${pitchText}`;
+                const shopSlugName = lead.business_name
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, '')
+                  .slice(0, 48);
+                const shopSlugCity = lead.city
+                  .toLowerCase()
+                  .replace(/[^a-z0-9]+/g, '-')
+                  .replace(/^-+|-+$/g, '')
+                  .slice(0, 48);
+                const publicShopHref = `/shop/${shopSlugName}-${shopSlugCity}--lead-${lead.id}`;
+                const mailtoHref = lead.email
+                  ? `mailto:${encodeURIComponent(lead.email)}?subject=${encodeURIComponent(
+                      `${lead.business_name}: Claim Your Free Page & 2 Free Leads in ${lead.city}`
+                    )}&body=${pitchText}`
+                  : null;
 
                 return (
                   <div
@@ -469,7 +487,15 @@ export default function OwnerPortal() {
                   >
                     <div className="space-y-1.5 min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-bold text-sm text-white">{lead.business_name}</span>
+                        <a
+                          href={publicShopHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-bold text-sm text-white hover:text-emerald-300 flex items-center gap-1 transition-colors"
+                        >
+                          {lead.business_name}
+                          <ExternalLink className="w-3 h-3 text-slate-400" />
+                        </a>
                         <span
                           className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
                             lead.status === 'claimed'
@@ -491,6 +517,11 @@ export default function OwnerPortal() {
                       {lead.address && (
                         <p className="text-[11px] text-slate-400 truncate max-w-2xl">
                           {lead.address}
+                        </p>
+                      )}
+                      {lead.email && (
+                        <p className="text-[11px] text-cyan-300 font-mono">
+                          Email: {lead.email}
                         </p>
                       )}
                     </div>
@@ -522,6 +553,21 @@ export default function OwnerPortal() {
                         <MessageCircle className="w-3.5 h-3.5" />
                         WhatsApp Invite
                       </a>
+
+                      {mailtoHref && (
+                        <a
+                          href={mailtoHref}
+                          onClick={() => {
+                            if (lead.status === 'scraped') {
+                              void handleMarkOutreachStatus(lead, 'contacted', true);
+                            }
+                          }}
+                          className="px-3 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold flex items-center gap-1.5 transition-colors"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          Email
+                        </a>
+                      )}
 
                       <button
                         type="button"

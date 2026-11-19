@@ -1,11 +1,16 @@
 import { MetadataRoute } from 'next';
+import { fetchPublicShops } from '@/lib/shopDirectory';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export const revalidate = 3600;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://www.nearme-india.org';
 
   const coreRoutes = [
     '',
     '/search',
+    '/shops',
+    '/card',
     '/claim',
     '/dashboard',
     '/escrow',
@@ -25,7 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: 'daily' as const,
-    priority: route === '' ? 1.0 : ['/search', '/claim', '/dashboard', '/escrow', '/login'].includes(route) ? 0.9 : 0.8,
+    priority:
+      route === ''
+        ? 1.0
+        : ['/search', '/shops', '/card', '/claim', '/dashboard', '/escrow', '/login'].includes(route)
+          ? 0.9
+          : 0.8,
   }));
 
   const citiesAndPincodes = [
@@ -71,6 +81,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     }))
   );
 
-  return [...coreRoutes, ...programmaticRoutes];
+  const publicShops = await fetchPublicShops(500);
+  const shopRoutes: MetadataRoute.Sitemap = publicShops.map((shop) => ({
+    url: `${baseUrl}/shop/${shop.slug}`,
+    lastModified: new Date(shop.updatedAt),
+    changeFrequency: 'daily' as const,
+    priority: shop.isClaimed ? 0.85 : 0.7,
+  }));
+
+  return [...coreRoutes, ...programmaticRoutes, ...shopRoutes];
 }
+
 

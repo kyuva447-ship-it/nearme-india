@@ -23,14 +23,45 @@ const TARGET_CATEGORIES = [
   'Construction Material Suppliers',
   'Plumbing & Electrical',
   'Pharmacy Wholesale',
+  'AC Repair & Home Services',
+  'Car & Bike Service Centers',
 ];
 
 const OSM_CATEGORY_QUERIES: Record<string, string[]> = {
-  'Diagnostic Labs': ['diagnostic lab', 'hospital', 'clinic'],
+  'Diagnostic Labs': ['diagnostic lab', 'pathology', 'clinic'],
   'Construction Material Suppliers': ['hardware', 'cement', 'building materials'],
   'Plumbing & Electrical': ['electrical shop', 'hardware', 'plumbing'],
   'Pharmacy Wholesale': ['pharmacy', 'medical', 'chemist'],
+  'AC Repair & Home Services': ['air conditioning', 'appliance repair', 'electronics'],
+  'Car & Bike Service Centers': ['car repair', 'auto service', 'motorcycle repair'],
 };
+
+const NON_COMMERCIAL_PATTERNS = [
+  /\bgovernment\b/i,
+  /\bgovt\b/i,
+  /\bstaff\b/i,
+  /\bquarters\b/i,
+  /\bresidence\b/i,
+  /\bhostel\b/i,
+  /\bpolice\b/i,
+  /\bpost office\b/i,
+  /\bschool\b/i,
+  /\bcollege\b/i,
+  /\btemple\b/i,
+  /\bmosque\b/i,
+  /\bchurch\b/i,
+  /\bpark\b/i,
+  /\brailway\b/i,
+  /\bbus stand\b/i,
+  /\bmunicipality\b/i,
+  /\bpanchayat\b/i,
+];
+
+function isCommercialBusinessName(name: string): boolean {
+  const clean = name.trim();
+  if (clean.length < 3) return false;
+  return !NON_COMMERCIAL_PATTERNS.some((rx) => rx.test(clean));
+}
 
 function maskCustomerPhone(phone: string): string {
   const digits = phone.replace(/\D/g, '').slice(-10);
@@ -160,7 +191,7 @@ async function runPipeline(forceRun: boolean) {
   let contactedCount = 0;
   let placesFoundCount = 0;
   let placesErrorNote = '';
-  let acquisitionSource: 'google_places' | 'openstreetmap' | 'none' = 'none';
+  let acquisitionSource: 'google_places' | 'google_search_ai' | 'openstreetmap' | 'none' = 'none';
   const placesKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
 
   type DiscoveredBusiness = {
@@ -184,7 +215,7 @@ async function runPipeline(forceRun: boolean) {
             'places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.rating',
         },
         body: JSON.stringify({
-          textQuery: `${category} in ${city}, India`,
+          textQuery: `private ${category} in ${city}, India`,
           maxResultCount: 5,
         }),
       });
@@ -200,7 +231,7 @@ async function runPipeline(forceRun: boolean) {
         }> = placesData.places || [];
         for (const p of places) {
           const name = p.displayName?.text?.trim();
-          if (!name || !p.id) continue;
+          if (!name || !p.id || !isCommercialBusinessName(name)) continue;
           discovered.push({
             sourceId: p.id,
             name,
@@ -226,14 +257,86 @@ async function runPipeline(forceRun: boolean) {
     }
   }
 
-  // Free OpenStreetMap Nominatim fallback when Google Places is unavailable or restricted (e.g., HTTP 403)
+  // Tier 2: Gemini Live Google Search Grounding — targets active commercial businesses marketing on IndiaMART, Justdial, Sulekha & Google
+  if (discovered.length === 0) {
+    const ai = getGeminiClient();
+    if (ai) {
+      try {
+        const searchRes = await generateGeminiWithFallback(ai, {
+          model: GEMINI_MODEL,
+          attemptTimeoutMs: 12000,
+          contents: `Search Google for 5 real, active, PRIVATE commercial "${category}" businesses in ${city}, India that actively advertise or promote their services online (such as on IndiaMART, Justdial, Sulekha, TradeIndia, or their own booking website). Strictly exclude government hospitals, staff quarters, schools, or non-commercial buildings, and NEVER invent fake phone numbers or emails.
+For each real business found, output ONE line strictly in this 5-field pipe-separated format with no markdown:
+Business Name | 10-digit Indian phone or NONE | Public business email or NONE | Locality/Area in ${city} | Rating number or 4.5`,
+          config: {
+            tools: [{ googleSearch: {} }],
+          },
+        });
+
+        const lines = (searchRes.text || '')
+          .split('\n')
+          .map((l) => l.replace(/^[-*\d.)\s]+/, '').replace(/\*\*/g, '').trim())
+          .filter((l) => l.includes('|') && l.length > 10)
+          .slice(0, 5);
+
+        const citySlug = city.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+        for (const line of lines) {
+          const [rawName, rawPhone, rawEmail, rawArea, rawRating] = line
+            .split('|')
+            .map((p) => p.trim());
+          if (!rawName || !isCommercialBusinessName(rawName)) continue;
+          const cleanDigits = (rawPhone || '').replace(/\D/g, '').slice(-10);
+          const phone = /^[6-9]\d{9}$/.test(cleanDigits) ? cleanDigits : null;
+          const candidateEmail = (rawEmail || '').toLowerCase();
+          const email =
+            candidateEmail !== 'none' &&
+            !candidateEmail.includes('example.com') &&
+            emailRegex.test(candidateEmail)
+              ? candidateEmail
+              : null;
+          const parsedRating = Number.parseFloat(rawRating || '');
+          const rating =
+            Number.isFinite(parsedRating) && parsedRating >= 1 && parsedRating <= 5
+              ? Math.round(parsedRating * 10) / 10
+              : null;
+          const nameSlug = rawName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 40);
+          if (!nameSlug) continue;
+
+          discovered.push({
+            sourceId: `gsearch-${citySlug}-${nameSlug}`,
+            name: rawName,
+            phone,
+            email,
+            address:
+              rawArea && rawArea.toUpperCase() !== 'NONE'
+                ? `${rawArea}, ${city}, India`
+                : `${city}, India`,
+            rating,
+          });
+        }
+
+        if (discovered.length > 0) {
+          acquisitionSource = 'google_search_ai';
+        }
+      } catch {
+        // Continue to OpenStreetMap fallback
+      }
+    }
+  }
+
+  // Tier 3: Free OpenStreetMap Nominatim fallback (commercial businesses only)
   if (discovered.length === 0) {
     const queryTerms = OSM_CATEGORY_QUERIES[category] || [category];
     for (const term of queryTerms) {
       try {
         const osmUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
           `${term} ${city} India`
-        )}&format=json&addressdetails=1&extratags=1&limit=5`;
+        )}&format=json&addressdetails=1&extratags=1&limit=8`;
         const osmRes = await fetch(osmUrl, {
           headers: {
             'User-Agent': 'NearMeIndiaDirectory/1.0 (https://www.nearme-india.org)',
@@ -257,7 +360,7 @@ async function runPipeline(forceRun: boolean) {
 
         for (const row of rows) {
           const name = (row.name || '').trim();
-          if (!name || !row.osm_id) continue;
+          if (!name || !row.osm_id || !isCommercialBusinessName(name)) continue;
           const rawPhone = row.extratags?.phone || row.extratags?.['contact:phone'] || null;
           const rawEmail = row.extratags?.email || row.extratags?.['contact:email'] || null;
           discovered.push({
@@ -268,6 +371,7 @@ async function runPipeline(forceRun: boolean) {
             address: row.display_name ? row.display_name.slice(0, 220) : `${city}, India`,
             rating: null,
           });
+          if (discovered.length >= 5) break;
         }
         if (discovered.length > 0) {
           acquisitionSource = 'openstreetmap';
@@ -330,9 +434,11 @@ async function runPipeline(forceRun: boolean) {
   const sourceLabel =
     acquisitionSource === 'google_places'
       ? 'Google Places'
-      : acquisitionSource === 'openstreetmap'
-        ? 'OpenStreetMap (free fallback)'
-        : 'Places Scanner';
+      : acquisitionSource === 'google_search_ai'
+        ? 'Gemini Live Google Search (Commercial)'
+        : acquisitionSource === 'openstreetmap'
+          ? 'OpenStreetMap (commercial fallback)'
+          : 'Places Scanner';
 
   const acquireSummary =
     acquisitionSource !== 'none'
