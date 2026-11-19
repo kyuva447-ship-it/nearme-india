@@ -11,6 +11,10 @@ import {
   Wallet,
   Crown,
   Sparkles,
+  Lock,
+  PhoneCall,
+  FileCheck2,
+  ArrowRight,
 } from 'lucide-react';
 import { triggerNearMeCheckout } from '@/lib/razorpayClient';
 import { useToast } from '@/components/Toast';
@@ -123,16 +127,18 @@ function ClaimContent() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center p-4">
-      <div className="max-w-lg w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-            <Store className="w-6 h-6 text-emerald-400" />
+    <div className="min-h-screen bg-slate-950 text-white py-10 px-4">
+      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left: 30-Second Claim Form */}
+        <div className="lg:col-span-6 bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+              <Store className="w-6 h-6 text-emerald-400" />
+            </div>
+            <span className="text-xs font-mono px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
+              2 FREE LEADS INCLUDED
+            </span>
           </div>
-          <span className="text-xs font-mono px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-            2 FREE LEADS INCLUDED
-          </span>
-        </div>
 
         {!claimedMerchantId ? (
           <>
@@ -246,6 +252,89 @@ function ClaimContent() {
             </Link>
           </div>
         )}
+        </div>
+
+        {/* Right: First-Time Merchant Trust & How-It-Works Guide */}
+        <aside className="lg:col-span-6 space-y-4">
+          <div className="bg-slate-900/90 border border-emerald-500/30 rounded-3xl p-6 sm:p-7 space-y-5">
+            <div className="space-y-1.5">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-emerald-400">
+                New to NearMe India?
+              </p>
+              <h2 className="text-xl font-black text-white">
+                How NearMe India Brings Verified Customers to Your Shop
+              </h2>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                NearMe India connects local buyers across 19,300+ pincodes with verified Indian businesses—with zero upfront fees to start.
+              </p>
+            </div>
+
+            <div className="space-y-3.5 text-xs">
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+                <PhoneCall className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">1. Claim Free &amp; Get 2 Free Customer Leads</p>
+                  <p className="text-slate-300 mt-0.5 leading-relaxed">
+                    Confirm your shop name and mobile number in 30 seconds. Your wallet starts with 2 free unlocked buyer leads so you can test real inquiries before spending a rupee.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+                <Wallet className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">2. Pay Only When You Want Extra Leads (₹49)</p>
+                  <p className="text-slate-300 mt-0.5 leading-relaxed">
+                    No compulsory monthly contract. Unlock additional customer contacts for ₹49 each, or optionally upgrade to Verified Pro (₹299/mo) to rank #1 in your city.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+                <Lock className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">3. 15/85 Razorpay Escrow &amp; MSME 43B(h) Protection</p>
+                  <p className="text-slate-300 mt-0.5 leading-relaxed">
+                    When buyers lock a wholesale or service order via Razorpay Escrow, you know the buyer is serious—85% settles upon 6-digit Delivery OTP confirmation.
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 flex items-start gap-3">
+                <FileCheck2 className="w-4 h-4 text-indigo-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white">4. GSTIN Mod-36 Verification Boosts Trust to 96%</p>
+                  <p className="text-slate-300 mt-0.5 leading-relaxed">
+                    Adding your optional 15-character GSTIN verifies your shop automatically and signals high trust to nearby buyers and corporate syndicates.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div className="flex flex-wrap gap-3 text-slate-300">
+                <Link href="/about" className="hover:text-white underline">
+                  About Us (Bengaluru)
+                </Link>
+                <Link href="/pricing" className="hover:text-white underline">
+                  Full Pricing
+                </Link>
+                <Link href="/escrow" className="hover:text-white underline">
+                  How Escrow Works
+                </Link>
+                <Link href="/refund-policy" className="hover:text-white underline">
+                  48h Refund Policy
+                </Link>
+              </div>
+              <Link
+                href="/contact"
+                className="text-emerald-300 hover:text-emerald-200 font-bold flex items-center gap-1"
+              >
+                24/7 Support <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

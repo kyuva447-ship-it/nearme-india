@@ -15,6 +15,10 @@ import {
   Crown,
   Wallet,
   ShieldCheck,
+  MessageCircle,
+  Copy,
+  CheckCircle2,
+  MapPin,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 
@@ -43,10 +47,26 @@ interface AutopilotLogItem {
   created_at: string;
 }
 
+interface OutreachLeadItem {
+  id: string;
+  business_name: string;
+  phone: string | null;
+  email: string | null;
+  city: string;
+  category: string;
+  address: string | null;
+  claim_token: string;
+  status: string;
+  created_at: string;
+  contacted_at: string | null;
+  claimed_at: string | null;
+}
+
 interface OwnerSnapshot {
   agentsPaused: boolean;
   metrics: OwnerMetrics;
   autopilotLogs: AutopilotLogItem[];
+  outreachLeads?: OutreachLeadItem[];
 }
 
 export default function OwnerPortal() {
@@ -54,6 +74,8 @@ export default function OwnerPortal() {
   const [password, setPassword] = useState('');
   const [authenticated, setAuthenticated] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [outreachFilter, setOutreachFilter] = useState<'all' | 'scraped' | 'contacted' | 'claimed'>('all');
+  const [phoneDrafts, setPhoneDrafts] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const fetchSnapshot = useCallback(async (pwd: string) => {
@@ -148,6 +170,64 @@ export default function OwnerPortal() {
       toast('Failed to run autopilot', 'error');
     } finally {
       setBusy(null);
+    }
+  };
+
+  const buildWhatsAppPitch = (lead: OutreachLeadItem) => {
+    const claimUrl = `https://www.nearme-india.org/claim?token=${lead.claim_token}`;
+    return [
+      `Namaste ${lead.business_name} team!`,
+      `NearMe India (https://www.nearme-india.org) connects local buyers in ${lead.city} directly with verified ${lead.category} businesses.`,
+      `- List & claim free in 30 seconds`,
+      `- Get 2 FREE customer phone numbers immediately`,
+      `- Safe Razorpay 15/85 UPI Escrow + GSTIN Trust Badge`,
+      `Claim your shop profile here: ${claimUrl}`,
+    ].join('\n');
+  };
+
+  const handleMarkOutreachStatus = async (
+    lead: OutreachLeadItem,
+    nextStatus: 'contacted' | 'scraped',
+    silent = false
+  ) => {
+    const rawDraft = phoneDrafts[lead.id] ?? lead.phone ?? '';
+    const cleanPhone = rawDraft.replace(/\D/g, '').slice(-10);
+    setBusy(`lead-${lead.id}`);
+    try {
+      const res = await fetch('/api/owner', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          password,
+          action: 'mark_outreach_contacted',
+          leadId: lead.id,
+          nextStatus,
+          phone: /^[6-9]\d{9}$/.test(cleanPhone) ? cleanPhone : undefined,
+        }),
+      });
+      if (res.ok) {
+        setSnapshot(await res.json());
+        if (!silent) {
+          toast(
+            nextStatus === 'contacted'
+              ? `Marked ${lead.business_name} as contacted`
+              : `Moved ${lead.business_name} back to pending`,
+            'success'
+          );
+        }
+      }
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleCopyPitch = async (lead: OutreachLeadItem) => {
+    const pitch = buildWhatsAppPitch(lead);
+    try {
+      await navigator.clipboard.writeText(pitch);
+      toast(`Copied WhatsApp invite & claim link for ${lead.business_name}`, 'success');
+    } catch {
+      toast('Could not copy automatically — use Send WhatsApp button instead', 'error');
     }
   };
 
@@ -319,6 +399,162 @@ export default function OwnerPortal() {
             </p>
           </div>
         </div>
+
+        {/* 1-Tap WhatsApp Outreach Queue */}
+        <section className="bg-slate-900 border border-emerald-500/30 rounded-2xl overflow-hidden">
+          <div className="p-5 border-b border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950">
+            <div>
+              <h2 className="text-base font-extrabold flex items-center gap-2 text-white">
+                <MessageCircle className="w-5 h-5 text-emerald-400" />
+                1-Tap WhatsApp Shop Outreach Queue ({snapshot?.outreachLeads?.length || 0})
+              </h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Discovered shops waiting for an invite. Add/check phone number and tap WhatsApp Invite to send their 2-free-leads link directly.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {(
+                [
+                  { id: 'all', label: 'All' },
+                  { id: 'scraped', label: 'Pending' },
+                  { id: 'contacted', label: 'Contacted' },
+                  { id: 'claimed', label: 'Claimed' },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setOutreachFilter(tab.id)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+                    outreachFilter === tab.id
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-900 text-slate-300 border border-slate-800 hover:border-slate-700'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="divide-y divide-slate-800 max-h-[520px] overflow-y-auto">
+            {(() => {
+              const allLeads = snapshot?.outreachLeads || [];
+              const filtered =
+                outreachFilter === 'all'
+                  ? allLeads
+                  : allLeads.filter((l) => l.status === outreachFilter);
+
+              if (filtered.length === 0) {
+                return (
+                  <p className="p-8 text-center text-xs text-slate-400">
+                    No shops in this filter yet. Click &quot;Run Autopilot Now&quot; to discover new local businesses.
+                  </p>
+                );
+              }
+
+              return filtered.map((lead) => {
+                const draft = phoneDrafts[lead.id] ?? (lead.phone || '');
+                const cleanDigits = draft.replace(/\D/g, '').slice(-10);
+                const validIndianMobile = /^[6-9]\d{9}$/.test(cleanDigits);
+                const pitchText = encodeURIComponent(buildWhatsAppPitch(lead));
+                const waHref = validIndianMobile
+                  ? `https://wa.me/91${cleanDigits}?text=${pitchText}`
+                  : `https://wa.me/?text=${pitchText}`;
+
+                return (
+                  <div
+                    key={lead.id}
+                    className="p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 text-xs"
+                  >
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-bold text-sm text-white">{lead.business_name}</span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            lead.status === 'claimed'
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                              : lead.status === 'contacted'
+                                ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
+                                : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                          }`}
+                        >
+                          {lead.status === 'scraped' ? 'pending invite' : lead.status}
+                        </span>
+                      </div>
+                      <p className="text-slate-300 flex items-center gap-1.5">
+                        <MapPin className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                        <span>
+                          {lead.city} · {lead.category}
+                        </span>
+                      </p>
+                      {lead.address && (
+                        <p className="text-[11px] text-slate-400 truncate max-w-2xl">
+                          {lead.address}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <input
+                        type="tel"
+                        maxLength={14}
+                        value={draft}
+                        onChange={(e) =>
+                          setPhoneDrafts((prev) => ({ ...prev, [lead.id]: e.target.value }))
+                        }
+                        placeholder="10-digit WhatsApp #"
+                        aria-label={`WhatsApp number for ${lead.business_name}`}
+                        className="w-40 bg-slate-950 border border-slate-700 focus:border-emerald-500 rounded-lg px-2.5 py-2 text-xs text-white font-mono outline-none"
+                      />
+
+                      <a
+                        href={waHref}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => {
+                          if (lead.status === 'scraped') {
+                            void handleMarkOutreachStatus(lead, 'contacted', true);
+                          }
+                        }}
+                        className="px-3 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold flex items-center gap-1.5 transition-colors"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        WhatsApp Invite
+                      </a>
+
+                      <button
+                        type="button"
+                        onClick={() => handleCopyPitch(lead)}
+                        className="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold flex items-center gap-1.5"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                        Copy
+                      </button>
+
+                      {lead.status !== 'claimed' && (
+                        <button
+                          type="button"
+                          disabled={busy === `lead-${lead.id}`}
+                          onClick={() =>
+                            handleMarkOutreachStatus(
+                              lead,
+                              lead.status === 'contacted' ? 'scraped' : 'contacted'
+                            )
+                          }
+                          className="px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 hover:border-cyan-500 text-slate-300 font-semibold flex items-center gap-1.5 disabled:opacity-50"
+                        >
+                          <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                          {lead.status === 'contacted' ? 'Reset' : 'Mark Sent'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </section>
 
         {/* Live AI Agent Execution Logs */}
         <section className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">

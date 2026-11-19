@@ -47,6 +47,20 @@ async function buildLiveOwnerPayload() {
     revenue_generated_inr: number;
     created_at: string;
   }> = [];
+  let outreachLeads: Array<{
+    id: string;
+    business_name: string;
+    phone: string | null;
+    email: string | null;
+    city: string;
+    category: string;
+    address: string | null;
+    claim_token: string;
+    status: string;
+    created_at: string;
+    contacted_at: string | null;
+    claimed_at: string | null;
+  }> = [];
   let agentsPaused = !snapshot.controls.autopilotEnabled;
 
   if (
@@ -54,22 +68,31 @@ async function buildLiveOwnerPayload() {
     !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
   ) {
     try {
-      const [{ data: viewMetrics }, { data: logs }, { data: ctrl }] = await Promise.all([
-        supabaseAdmin.from('owner_metrics').select('*').single(),
-        supabaseAdmin
-          .from('autopilot_logs')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(25),
-        supabaseAdmin
-          .from('system_controls')
-          .select('value_json')
-          .eq('key', 'autopilot_config')
-          .single(),
-      ]);
+      const [{ data: viewMetrics }, { data: logs }, { data: ctrl }, { data: leads }] =
+        await Promise.all([
+          supabaseAdmin.from('owner_metrics').select('*').single(),
+          supabaseAdmin
+            .from('autopilot_logs')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(25),
+          supabaseAdmin
+            .from('system_controls')
+            .select('value_json')
+            .eq('key', 'autopilot_config')
+            .single(),
+          supabaseAdmin
+            .from('outreach_leads')
+            .select(
+              'id, business_name, phone, email, city, category, address, claim_token, status, created_at, contacted_at, claimed_at'
+            )
+            .order('created_at', { ascending: false })
+            .limit(60),
+        ]);
 
       if (viewMetrics) metrics = { ...metrics, ...viewMetrics };
       if (logs) autopilotLogs = logs;
+      if (leads) outreachLeads = leads;
       if (typeof ctrl?.value_json?.paused === 'boolean') {
         agentsPaused = ctrl.value_json.paused;
       }
@@ -83,6 +106,7 @@ async function buildLiveOwnerPayload() {
     agentsPaused,
     metrics,
     autopilotLogs,
+    outreachLeads,
     totalMerchants: harvestedSuppliers.length,
     activeEscrows: escrowLedger.length,
     totalAuditsRun: auditLedger.length,
@@ -147,6 +171,36 @@ export async function POST(req: Request) {
           revenue_generated_inr: 0,
         });
       }
+      return NextResponse.json({
+        ...(await buildLiveOwnerPayload()),
+        status: 'updated',
+      });
+    }
+
+    if (action === 'mark_outreach_contacted') {
+      const leadId = typeof body.leadId === 'string' ? body.leadId.trim() : '';
+      const nextStatus = body.nextStatus === 'scraped' ? 'scraped' : 'contacted';
+      const phoneOverride =
+        typeof body.phone === 'string' ? body.phone.replace(/\D/g, '').slice(-10) : '';
+
+      if (!leadId) {
+        return NextResponse.json({ error: 'Missing leadId' }, { status: 400 });
+      }
+
+      if (
+        process.env.NEXT_PUBLIC_SUPABASE_URL &&
+        !process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder')
+      ) {
+        const updatePayload: Record<string, string | null> = {
+          status: nextStatus,
+          contacted_at: nextStatus === 'contacted' ? new Date().toISOString() : null,
+        };
+        if (/^[6-9]\d{9}$/.test(phoneOverride)) {
+          updatePayload.phone = phoneOverride;
+        }
+        await supabaseAdmin.from('outreach_leads').update(updatePayload).eq('id', leadId);
+      }
+
       return NextResponse.json({
         ...(await buildLiveOwnerPayload()),
         status: 'updated',

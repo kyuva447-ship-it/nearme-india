@@ -13,6 +13,11 @@ import {
   Banknote,
   HelpCircle,
   ChevronDown,
+  Store,
+  CheckCircle2,
+  Lock,
+  FileCheck2,
+  PhoneCall,
 } from 'lucide-react';
 import NearMePlatform from '@/components/NearMePlatform';
 import { COPY_BY_LANG, normalizeLang } from '@/lib/i18n';
@@ -324,6 +329,161 @@ export default function Home() {
             <div>
               <h2 className="text-sm font-extrabold text-white">{copy.step3Title}</h2>
               <p className="text-xs text-slate-300 mt-0.5 leading-relaxed">{copy.step3Desc}</p>
+            </div>
+          </div>
+        </section>
+
+        {/* New Visitor Guide: Clear explanation for Customers & Business Owners */}
+        <section id="how-it-works" className="space-y-6">
+          <div className="text-center max-w-3xl mx-auto space-y-2">
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+              First Time on NearMe India?
+            </p>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white">
+              How NearMe India Works for Customers &amp; Local Businesses
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Built in Bengaluru for 19,300+ Indian pincodes — verify local shops, cut unfair bill markups, get direct business leads, and protect every rupee in Razorpay Escrow.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            {/* For Customers & Buyers */}
+            <div className="bg-slate-900/90 border border-cyan-500/35 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-cyan-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">For Customers &amp; Buyers</h3>
+                    <p className="text-[11px] text-cyan-300">Save money &amp; hire verified local pros safely</p>
+                  </div>
+                </div>
+              </div>
+
+              <ul className="space-y-3 text-xs sm:text-sm text-slate-200">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">Find Trusted Local Pros:</strong> Search Plumbers, Electricians, Diagnostic Labs, Cement &amp; Wholesale Dealers verified by GSTIN checksums.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">Audit Any Bill (1–500+ Pages):</strong> Upload hospital or contractor bills to spot extra charges against NPPA/CGHS &amp; mandi rates in ~60 seconds.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">15/85 Razorpay Escrow Protection:</strong> Pay safely without fear of fraud — funds unlock only after you verify work with your 6-digit Delivery OTP, backed by a 48-hour refund guarantee.
+                  </span>
+                </li>
+              </ul>
+
+              <div className="flex flex-wrap gap-2.5 pt-2">
+                <Link
+                  href="/search"
+                  className="px-4 py-2.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-extrabold flex items-center gap-1.5 transition-colors"
+                >
+                  Find Local Services <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/escrow"
+                  className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <Lock className="w-3.5 h-3.5 text-emerald-400" /> Track Escrow &amp; OTP
+                </Link>
+              </div>
+            </div>
+
+            {/* For Shop Owners & Service Businesses */}
+            <div className="bg-slate-900/90 border border-emerald-500/35 rounded-2xl p-6 space-y-4">
+              <div className="flex items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
+                    <Store className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-extrabold text-white">For Shop Owners &amp; Service Pros</h3>
+                    <p className="text-[11px] text-emerald-300">Get direct customer phone numbers &amp; guaranteed payouts</p>
+                  </div>
+                </div>
+              </div>
+
+              <ul className="space-y-3 text-xs sm:text-sm text-slate-200">
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">Claim Free + 2 Free Customer Leads:</strong> List or claim your shop in 30 seconds with zero upfront payment and receive 2 free verified buyer leads immediately.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">Simple Pay-Per-Lead (₹49):</strong> Unlock extra verified customer calls only when you want them, or upgrade to Verified Pro (₹299/month) to rank #1 in your city.
+                  </span>
+                </li>
+                <li className="flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="text-white">Guaranteed Escrow &amp; GST Trust Badge:</strong> Verify your GSTIN to boost your Trust Score and receive buyer-committed Razorpay escrow orders settled on Delivery OTP.
+                  </span>
+                </li>
+              </ul>
+
+              <div className="flex flex-wrap gap-2.5 pt-2">
+                <Link
+                  href="/claim"
+                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-extrabold flex items-center gap-1.5 transition-colors"
+                >
+                  Claim Free Profile (2 Free Leads) <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/pricing"
+                  className="px-4 py-2.5 rounded-xl bg-slate-950 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-bold transition-colors"
+                >
+                  View Transparent Pricing
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* 4-Pillar Trust & Legitimacy Strip */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-300">
+                <Lock className="w-4 h-4 shrink-0" /> Razorpay Live Checkout
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                All UPI, Card, and Escrow payments are processed through encrypted Razorpay Live checkout—never raw bank transfers to strangers.
+              </p>
+            </div>
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-cyan-300">
+                <FileCheck2 className="w-4 h-4 shrink-0" /> GSTIN Mod-36 Verification
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Businesses can verify their 15-character GSTIN using Mod-36 checksum validation so customers know who they are dealing with.
+              </p>
+            </div>
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-amber-300">
+                <ShieldCheck className="w-4 h-4 shrink-0" /> 6-Digit OTP + 48h Refund
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                Escrow funds release only after 6-digit Delivery OTP confirmation, with an automated 48-hour refund policy on unfulfilled orders.
+              </p>
+            </div>
+            <div className="bg-slate-900/70 border border-slate-800 rounded-xl p-4 space-y-1.5">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-violet-300">
+                <PhoneCall className="w-4 h-4 shrink-0" /> 6-Language Self-Support
+              </div>
+              <p className="text-xs text-slate-300 leading-relaxed">
+                24/7 support across English, Hindi, Kannada, Tamil, Telugu, and Marathi, plus full public <Link href="/about" className="underline text-violet-200">About</Link> &amp; <Link href="/refund-policy" className="underline text-violet-200">Refund Policy</Link>.
+              </p>
             </div>
           </div>
         </section>
